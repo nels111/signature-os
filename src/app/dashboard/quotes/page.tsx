@@ -1,223 +1,472 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Modal } from "@/components/ui/Modal";
-import { QuoteForm } from "./QuoteForm";
+import { useEffect, useRef } from "react";
 
-interface Quote {
-  id: string;
-  status: string;
-  weeklyHours: string;
-  sellRate: string;
-  monthlyTotal: string;
-  annualTotal: string;
-  margin: string;
-  isPilot: boolean;
-  createdAt: string;
-  deal: { id: string; name: string } | null;
-  account: { id: string; name: string } | null;
-  contact: { id: string; firstName: string; lastName: string } | null;
-  creator: { id: string; name: string } | null;
-}
+const QUOTE_HTML = `
+<style>
+  .qg-wrap * { margin: 0; padding: 0; box-sizing: border-box; }
+  .qg-wrap {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #333;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 16px;
+    background: #f5f7f5;
+    min-height: 100%;
+  }
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  draft: { bg: "#e2e8f0", text: "#475569" },
-  sent: { bg: "#dbeafe", text: "#1d4ed8" },
-  accepted: { bg: "#dcfce7", text: "#16a34a" },
-  rejected: { bg: "#fee2e2", text: "#dc2626" },
-  expired: { bg: "#fef3c7", text: "#d97706" },
-};
+  .qg-wrap .section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .qg-wrap .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #2c5f2d;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e8f0e8;
+  }
 
-function formatCurrency(val: string | number): string {
-  return `£${parseFloat(String(val)).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
+  .qg-wrap .field { margin-bottom: 16px; }
+  .qg-wrap .field:last-child { margin-bottom: 0; }
+  .qg-wrap label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+  }
+  .qg-wrap label .required { color: #c4302b; }
 
-export default function QuotesPage() {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [filter, setFilter] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  .qg-wrap input[type="text"],
+  .qg-wrap input[type="email"],
+  .qg-wrap input[type="tel"],
+  .qg-wrap input[type="number"],
+  .qg-wrap select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.2s;
+    background: white;
+    -webkit-appearance: none;
+  }
+  .qg-wrap input:focus, .qg-wrap select:focus {
+    border-color: #2c5f2d;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(44, 95, 45, 0.1);
+  }
 
-  const fetchQuotes = useCallback(async () => {
-    const params = new URLSearchParams({ page: page.toString(), limit: "20" });
-    if (filter) params.set("status", filter);
-    const res = await fetch(`/api/quotes?${params}`);
-    const data = await res.json();
-    return { quotes: data.quotes || [], pages: data.pagination?.pages || 1 };
-  }, [page, filter]);
+  .qg-wrap .days-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .qg-wrap .day-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .qg-wrap .day-btn.active {
+    background: #2c5f2d;
+    color: white;
+    border-color: #2c5f2d;
+  }
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetchQuotes().then((result) => {
-      if (!cancelled) {
-        setQuotes(result.quotes);
-        setTotalPages(result.pages);
-        setLoading(false);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [fetchQuotes]);
+  .qg-wrap .pilot-toggle {
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+    border: 2px solid #ffc107;
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .qg-wrap .pilot-toggle .toggle-track {
+    width: 48px; height: 28px;
+    background: #ccc;
+    border-radius: 14px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .qg-wrap .pilot-toggle.active .toggle-track { background: #ffc107; }
+  .qg-wrap .toggle-track::after {
+    content: '';
+    width: 24px; height: 24px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px; left: 2px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .qg-wrap .pilot-toggle.active .toggle-track::after { transform: translateX(20px); }
+  .qg-wrap .pilot-info { flex: 1; }
+  .qg-wrap .pilot-info strong { color: #856404; font-size: 14px; }
+  .qg-wrap .pilot-info span { display: block; font-size: 12px; color: #856404; opacity: 0.8; }
 
-  const handleCreated = () => {
-    setShowCreate(false);
-    setPage(1);
-    fetchQuotes().then((result) => {
-      setQuotes(result.quotes);
-      setTotalPages(result.pages);
-    });
-  };
+  .qg-wrap .calc-card {
+    background: linear-gradient(135deg, #2c5f2d 0%, #1e4520 100%);
+    border-radius: 12px;
+    padding: 20px;
+    color: white;
+  }
+  .qg-wrap .calc-title { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 4px; }
+  .qg-wrap .calc-price { font-size: 36px; font-weight: 800; margin-bottom: 4px; }
+  .qg-wrap .calc-subtitle { font-size: 13px; opacity: 0.7; }
+  .qg-wrap .calc-pilot {
+    background: rgba(255,193,7,0.15);
+    border: 1px solid rgba(255,193,7,0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+  }
+  .qg-wrap .calc-pilot .pilot-label { font-size: 11px; color: #ffc107; text-transform: uppercase; letter-spacing: 1px; }
+  .qg-wrap .calc-pilot .pilot-price { font-size: 28px; font-weight: 800; color: #ffc107; }
+  .qg-wrap .calc-pilot .pilot-save { font-size: 12px; color: #ffc107; opacity: 0.8; }
 
-  const handleStatusChange = async (id: string, status: string) => {
-    await fetch(`/api/quotes/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    fetchQuotes().then((result) => {
-      setQuotes(result.quotes);
-      setTotalPages(result.pages);
-    });
-  };
+  .qg-wrap .calc-breakdown { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.2); }
+  .qg-wrap .calc-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; opacity: 0.85; }
+  .qg-wrap .calc-row.highlight { opacity: 1; font-weight: 700; font-size: 14px; padding-top: 8px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.15); }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold" style={{ color: "#1a1a1a" }}>Quotes</h1>
-        <div className="flex gap-2">
-          <select
-            value={filter}
-            onChange={(e) => { setFilter(e.target.value); setPage(1); }}
-            className="px-3 py-1.5 text-sm border rounded-md"
-            style={{ borderColor: "#e2e8f0" }}
-          >
-            <option value="">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="sent">Sent</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
+  .qg-wrap .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #2c5f2d 0%, #1e4520 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(44, 95, 45, 0.3);
+  }
+  .qg-wrap .submit-btn:active { transform: scale(0.98); }
+  .qg-wrap .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .qg-wrap .status-screen { display: none; text-align: center; padding: 40px 20px; }
+  .qg-wrap .status-screen.visible { display: block; }
+  .qg-wrap .status-icon { font-size: 64px; margin-bottom: 16px; }
+  .qg-wrap .status-title { font-size: 22px; font-weight: 700; color: #2c5f2d; margin-bottom: 8px; }
+  .qg-wrap .status-text { font-size: 15px; color: #666; margin-bottom: 24px; }
+  .qg-wrap .status-ref { background: #e8f0e8; padding: 8px 16px; border-radius: 8px; display: inline-block; font-family: monospace; font-size: 14px; color: #2c5f2d; }
+  .qg-wrap .reset-btn { margin-top: 24px; padding: 12px 32px; background: white; color: #2c5f2d; border: 2px solid #2c5f2d; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .qg-wrap .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin-top: 12px; color: #991b1b; font-size: 13px; display: none; }
+  .qg-wrap #form-container.hidden { display: none; }
+  .qg-wrap .spinner { width: 48px; height: 48px; border: 4px solid #e0e0e0; border-top-color: #2c5f2d; border-radius: 50%; animation: qg-spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes qg-spin { to { transform: rotate(360deg); } }
+</style>
+
+<div class="qg-wrap">
+  <div id="form-container">
+    <form id="quote-form">
+      <div class="section">
+        <div class="section-title">Client Details</div>
+        <div class="field"><label>Company Name <span class="required">*</span></label><input type="text" name="company_name" required autocomplete="organization"></div>
+        <div class="field"><label>Address <span class="required">*</span></label><input type="text" name="address" required autocomplete="street-address"></div>
+        <div class="field"><label>Contact Name <span class="required">*</span></label><input type="text" name="contact_name" required autocomplete="name"></div>
+        <div class="field"><label>Contact Email <span class="required">*</span></label><input type="email" name="contact_email" required autocomplete="email"></div>
+        <div class="field"><label>Contact Phone</label><input type="tel" name="contact_phone" autocomplete="tel"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Service Details</div>
+        <div class="field">
+          <label>Site Type <span class="required">*</span></label>
+          <select name="site_type" required>
+            <option value="">Select site type...</option>
+            <option value="Office/Commercial">Office / Commercial</option>
+            <option value="Welfare/Construction">Welfare / Construction</option>
+            <option value="Hospitality/Venue">Hospitality / Venue</option>
+            <option value="Education/Institutional">Education / Institutional</option>
+            <option value="Specialist/Industrial">Specialist / Industrial</option>
+            <option value="Dental/Medical">Dental / Medical</option>
           </select>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-1.5 text-sm text-white rounded-md"
-            style={{ backgroundColor: "#2c5f2d" }}
-          >
-            + New Quote
-          </button>
+        </div>
+        <div class="field"><label>Hours Per Day <span class="required">*</span></label><input type="number" name="hours_per_day" required min="0.5" max="24" step="0.5" inputmode="decimal"></div>
+        <div class="field">
+          <label>Frequency Per Week <span class="required">*</span></label>
+          <select name="frequency" required>
+            <option value="">Select...</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>On Which Days? <span class="required">*</span></label>
+          <div class="days-grid">
+            <div class="day-btn" data-day="Monday">Mon</div>
+            <div class="day-btn" data-day="Tuesday">Tue</div>
+            <div class="day-btn" data-day="Wednesday">Wed</div>
+            <div class="day-btn" data-day="Thursday">Thu</div>
+            <div class="day-btn" data-day="Friday">Fri</div>
+            <div class="day-btn" data-day="Saturday">Sat</div>
+            <div class="day-btn" data-day="Sunday">Sun</div>
+          </div>
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-8 text-gray-500">Loading...</div>
-      ) : quotes.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">No quotes yet</div>
-      ) : (
-        <div className="bg-white border rounded-lg overflow-hidden" style={{ borderColor: "#e2e8f0" }}>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b" style={{ borderColor: "#e2e8f0" }}>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "#64748b" }}>Deal / Account</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "#64748b" }}>Hrs/wk</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "#64748b" }}>Rate</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "#64748b" }}>Monthly</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "#64748b" }}>Annual</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "#64748b" }}>Margin</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "#64748b" }}>Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "#64748b" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quotes.map((q) => {
-                const marginNum = parseFloat(q.margin);
-                const sc = STATUS_COLORS[q.status] || STATUS_COLORS.draft;
-                return (
-                  <tr key={q.id} className="border-b hover:bg-gray-50" style={{ borderColor: "#e2e8f0" }}>
-                    <td className="px-4 py-3 text-sm">
-                      <div style={{ color: "#1a1a1a" }}>{q.deal?.name || q.account?.name || "Unlinked"}</div>
-                      {q.contact && (
-                        <div className="text-xs" style={{ color: "#64748b" }}>
-                          {q.contact.firstName} {q.contact.lastName}
-                        </div>
-                      )}
-                      {q.isPilot && (
-                        <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: "#fef3c7", color: "#d97706" }}>
-                          PILOT
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: "#1a1a1a" }}>{q.weeklyHours}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: "#1a1a1a" }}>
-                      {formatCurrency(q.sellRate)}/hr
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium" style={{ color: "#1a1a1a" }}>
-                      {formatCurrency(q.monthlyTotal)}
-                    </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: "#64748b" }}>
-                      {formatCurrency(q.annualTotal)}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium" style={{ color: marginNum >= 30 ? "#16a34a" : marginNum >= 25 ? "#d97706" : "#dc2626" }}>
-                      {marginNum.toFixed(1)}%
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={{ backgroundColor: sc.bg, color: sc.text }}>
-                        {q.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {q.status === "draft" && (
-                        <button
-                          onClick={() => handleStatusChange(q.id, "sent")}
-                          className="text-xs px-2 py-1 rounded text-white"
-                          style={{ backgroundColor: "#2c5f2d" }}
-                        >
-                          Mark Sent
-                        </button>
-                      )}
-                      {q.status === "sent" && (
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleStatusChange(q.id, "accepted")}
-                            className="text-xs px-2 py-1 rounded text-white bg-green-600"
-                          >
-                            Won
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange(q.id, "rejected")}
-                            className="text-xs px-2 py-1 rounded text-white bg-red-500"
-                          >
-                            Lost
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: "#e2e8f0" }}>
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-3 py-1 text-xs border rounded disabled:opacity-50" style={{ borderColor: "#e2e8f0" }}>
-                Prev
-              </button>
-              <span className="text-xs" style={{ color: "#64748b" }}>{page} / {totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="px-3 py-1 text-xs border rounded disabled:opacity-50" style={{ borderColor: "#e2e8f0" }}>
-                Next
-              </button>
-            </div>
-          )}
+      <div class="section">
+        <div class="section-title">Pricing</div>
+        <div class="field"><label>Margin % <span class="required">*</span></label><input type="number" name="margin" required min="1" max="80" step="1" value="40" inputmode="numeric"></div>
+        <div class="field"><label>Product Cost (Weekly) <span class="required">*</span></label><input type="number" name="product_cost" required min="0" step="0.01" value="0" inputmode="decimal"></div>
+        <div class="field"><label>Overhead Cost (Weekly) <span class="required">*</span></label><input type="number" name="overhead_cost" required min="0" step="0.01" value="0" inputmode="decimal"></div>
+        <div class="field">
+          <div class="pilot-toggle" id="pilot-toggle">
+            <div class="toggle-track"></div>
+            <div class="pilot-info"><strong>Pilot Pricing</strong><span>25% off for 30 days</span></div>
+          </div>
         </div>
-      )}
+      </div>
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New Quote">
-        <QuoteForm onSubmit={handleCreated} onCancel={() => setShowCreate(false)} />
-      </Modal>
+      <div class="section" style="padding:0;overflow:hidden;">
+        <div class="calc-card" id="calc-card">
+          <div class="calc-title">Per Visit Rate</div>
+          <div class="calc-price" id="calc-pervisit">--</div>
+          <div class="calc-subtitle">per visit (excl. VAT) — client sees this</div>
+          <div style="margin-top:8px;opacity:0.7;font-size:13px;">Monthly: <span id="calc-monthly">--</span></div>
+          <div class="calc-pilot" id="calc-pilot" style="display:none;">
+            <div class="pilot-label">Pilot Rate (30 days)</div>
+            <div class="pilot-price" id="calc-pilot-price">--</div>
+            <div class="pilot-save" id="calc-pilot-save"></div>
+          </div>
+          <div class="calc-breakdown">
+            <div class="calc-row"><span>Labour (per hr)</span><span>£17.00</span></div>
+            <div class="calc-row"><span>Weekly labour</span><span id="calc-labour">£0.00</span></div>
+            <div class="calc-row"><span>Weekly products</span><span id="calc-products">£0.00</span></div>
+            <div class="calc-row"><span>Weekly overhead</span><span id="calc-overhead">£0.00</span></div>
+            <div class="calc-row"><span>Weekly total spend</span><span id="calc-spend">£0.00</span></div>
+            <div class="calc-row highlight"><span>Weekly charge</span><span id="calc-weekly">£0.00</span></div>
+            <div class="calc-row highlight" style="color:#90ee90;"><span>Weekly profit</span><span id="calc-profit">£0.00</span></div>
+            <div class="calc-row" style="opacity:0.6;"><span>Margin</span><span id="calc-margin">40%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="error-box"></div>
+
+      <div class="section" style="background:none;box-shadow:none;padding:0;">
+        <button type="submit" class="submit-btn" id="submit-btn">Generate Quote</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="status-screen" id="loading-screen">
+    <div class="section">
+      <div class="spinner"></div>
+      <div class="status-title">Generating Quote...</div>
+      <div class="status-text">Creating documents, sending emails, and logging to CRM.</div>
+    </div>
+  </div>
+
+  <div class="status-screen" id="success-screen">
+    <div class="section">
+      <div class="status-icon">✓</div>
+      <div class="status-title">Quote Sent!</div>
+      <div class="status-text" id="success-text">Quote emailed to the client and logged.</div>
+      <div class="status-ref" id="success-ref"></div>
+      <br>
+      <button class="reset-btn" id="reset-btn">New Quote</button>
+    </div>
+  </div>
+
+  <div class="status-screen" id="error-screen">
+    <div class="section">
+      <div class="status-icon">⚠</div>
+      <div class="status-title" style="color:#c4302b;">Something Went Wrong</div>
+      <div class="status-text" id="error-text">Please try again or contact Nelson.</div>
+      <button class="reset-btn" id="reset-error-btn">Try Again</button>
+    </div>
+  </div>
+</div>
+`;
+
+export default function QuotesPage() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const LABOUR_RATE = 17;
+    const WEEKS_PER_MONTH = 4.33;
+    let pilotActive = false;
+    let selectedDays: string[] = [];
+
+    const el = containerRef.current;
+    const form = el.querySelector("#quote-form") as HTMLFormElement;
+    if (!form) return;
+
+    function getEl(id: string) { return el.querySelector("#" + id) as HTMLElement; }
+
+    // Day toggles
+    el.querySelectorAll(".day-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        btn.classList.toggle("active");
+        const day = (btn as HTMLElement).dataset.day || "";
+        if (btn.classList.contains("active")) {
+          if (!selectedDays.includes(day)) selectedDays.push(day);
+        } else {
+          selectedDays = selectedDays.filter((d) => d !== day);
+        }
+      });
+    });
+
+    // Pilot toggle
+    const pilotToggle = getEl("pilot-toggle");
+    if (pilotToggle) {
+      pilotToggle.addEventListener("click", () => {
+        pilotActive = !pilotActive;
+        pilotToggle.classList.toggle("active", pilotActive);
+        recalc();
+      });
+    }
+
+    // Calculator
+    function recalc() {
+      const hours = parseFloat((form.elements.namedItem("hours_per_day") as HTMLInputElement)?.value) || 0;
+      const freq = parseInt((form.elements.namedItem("frequency") as HTMLSelectElement)?.value) || 0;
+      const margin = (parseFloat((form.elements.namedItem("margin") as HTMLInputElement)?.value) || 0) / 100;
+      const products = parseFloat((form.elements.namedItem("product_cost") as HTMLInputElement)?.value) || 0;
+      const overhead = parseFloat((form.elements.namedItem("overhead_cost") as HTMLInputElement)?.value) || 0;
+
+      const weeklyLabour = hours * LABOUR_RATE * freq;
+      const weeklySpend = weeklyLabour + products + overhead;
+      const weeklyCharge = margin < 1 ? weeklySpend / (1 - margin) : 0;
+      const monthlyTotal = Math.round(weeklyCharge * WEEKS_PER_MONTH);
+      const weeklyProfit = weeklyCharge - weeklySpend;
+
+      const fmt = (n: number) => "£" + n.toFixed(2);
+
+      getEl("calc-labour").textContent = fmt(weeklyLabour);
+      getEl("calc-products").textContent = fmt(products);
+      getEl("calc-overhead").textContent = fmt(overhead);
+      getEl("calc-spend").textContent = fmt(weeklySpend);
+      getEl("calc-weekly").textContent = fmt(weeklyCharge);
+      getEl("calc-profit").textContent = fmt(weeklyProfit);
+      getEl("calc-margin").textContent = (margin * 100).toFixed(0) + "%";
+
+      const perVisit = freq > 0 ? weeklyCharge / freq : 0;
+      getEl("calc-pervisit").textContent = perVisit > 0 ? "£" + perVisit.toFixed(2) : "--";
+      getEl("calc-monthly").textContent = monthlyTotal > 0 ? "£" + monthlyTotal : "--";
+
+      if (pilotActive && perVisit > 0) {
+        const pilotPerVisit = perVisit * 0.75;
+        const visitSavings = perVisit - pilotPerVisit;
+        getEl("calc-pilot").style.display = "block";
+        getEl("calc-pilot-price").textContent = "£" + pilotPerVisit.toFixed(2) + "/visit";
+        getEl("calc-pilot-save").textContent = "Save £" + visitSavings.toFixed(2) + "/visit for 30 days";
+      } else {
+        getEl("calc-pilot").style.display = "none";
+      }
+    }
+
+    // Wire up recalc on input changes
+    ["hours_per_day", "margin", "product_cost", "overhead_cost"].forEach((name) => {
+      const input = form.elements.namedItem(name) as HTMLInputElement;
+      if (input) input.addEventListener("input", recalc);
+    });
+    const freqSelect = form.elements.namedItem("frequency") as HTMLSelectElement;
+    if (freqSelect) freqSelect.addEventListener("change", recalc);
+
+    function showScreen(screen: string) {
+      const formContainer = getEl("form-container");
+      if (formContainer) formContainer.classList.toggle("hidden", screen !== "form");
+      getEl("loading-screen")?.classList.toggle("visible", screen === "loading");
+      getEl("success-screen")?.classList.toggle("visible", screen === "success");
+      getEl("error-screen")?.classList.toggle("visible", screen === "error");
+    }
+
+    function showError(msg: string) {
+      const box = getEl("error-box");
+      box.textContent = msg;
+      box.style.display = "block";
+      setTimeout(() => { box.style.display = "none"; }, 4000);
+    }
+
+    function resetForm() {
+      form.reset();
+      selectedDays = [];
+      pilotActive = false;
+      el.querySelectorAll(".day-btn").forEach((b) => b.classList.remove("active"));
+      pilotToggle?.classList.remove("active");
+      recalc();
+      showScreen("form");
+    }
+
+    // Submit handler
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      if (selectedDays.length === 0) {
+        showError("Please select at least one day.");
+        return;
+      }
+
+      const data = {
+        company_name: (form.elements.namedItem("company_name") as HTMLInputElement).value.trim(),
+        address: (form.elements.namedItem("address") as HTMLInputElement).value.trim(),
+        contact_name: (form.elements.namedItem("contact_name") as HTMLInputElement).value.trim(),
+        contact_email: (form.elements.namedItem("contact_email") as HTMLInputElement).value.trim(),
+        contact_phone: (form.elements.namedItem("contact_phone") as HTMLInputElement).value.trim() || "Not provided",
+        site_type: (form.elements.namedItem("site_type") as HTMLSelectElement).value,
+        hours_per_day: parseFloat((form.elements.namedItem("hours_per_day") as HTMLInputElement).value),
+        frequency: parseInt((form.elements.namedItem("frequency") as HTMLSelectElement).value),
+        days: selectedDays,
+        margin: parseFloat((form.elements.namedItem("margin") as HTMLInputElement).value),
+        product_cost: parseFloat((form.elements.namedItem("product_cost") as HTMLInputElement).value) || 0,
+        overhead_cost: parseFloat((form.elements.namedItem("overhead_cost") as HTMLInputElement).value) || 0,
+        pilot_pricing: pilotActive,
+      };
+
+      showScreen("loading");
+
+      try {
+        const res = await fetch("/api/quotes/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Quote generation failed");
+
+        getEl("success-ref").textContent = result.quote_ref || "";
+        getEl("success-text").textContent = "Quote emailed to " + data.contact_email + " and logged.";
+        showScreen("success");
+      } catch (err: unknown) {
+        getEl("error-text").textContent = err instanceof Error ? err.message : "Unknown error";
+        showScreen("error");
+      }
+    });
+
+    // Reset buttons
+    getEl("reset-btn")?.addEventListener("click", resetForm);
+    getEl("reset-error-btn")?.addEventListener("click", resetForm);
+
+    // Initial calc
+    recalc();
+  }, []);
+
+  return (
+    <div className="h-[calc(100vh-64px)] overflow-y-auto">
+      <div ref={containerRef} dangerouslySetInnerHTML={{ __html: QUOTE_HTML }} />
     </div>
   );
 }
