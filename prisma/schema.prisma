@@ -1,13 +1,519 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ============ ENUMS ============
+
+enum Role {
+  admin
+  sales
+  operations
+  viewer
+}
+
+enum LeadSource {
+  cold_call
+  cold_email
+  referral
+  website
+  mark_walker
+  direct_mail
+  other
+}
+
+enum LeadStage {
+  cold_call
+  cold_email
+  follow_up_sequence
+  meeting_scheduled
+  meeting_attended
+  quote_delivered
+}
+
+enum MeetingOutcome {
+  good
+  bad
+  not_interested
+}
+
+enum DealStage {
+  quote_sent
+  follow_up_from_quote
+  closed_won
+  closed_lost
+}
+
+enum Priority {
+  highest
+  high
+  normal
+  low
+  lowest
+}
+
+enum TaskStatus {
+  not_started
+  in_progress
+  completed
+  deferred
+  waiting
+}
+
+enum TaskType {
+  business
+  personal
+  mobilisation
+  onboarding
+  audit_action
+  issue_followup
+}
+
+enum EventType {
+  meeting
+  site_survey
+  follow_up
+  calendly
+  personal
+}
+
+enum CalendarType {
+  personal
+  shared
+}
+
+enum InviteStatus {
+  pending
+  accepted
+  declined
+}
+
+enum QuoteStatus {
+  draft
+  sent
+  accepted
+  rejected
+  expired
+}
+
+enum CadenceStatus {
+  active
+  paused_replied
+  paused_meeting
+  stopped_active_client
+  completed
+  long_term_nurture
+}
+
+enum NotificationType {
+  task_due
+  task_overdue
+  event_reminder
+  email_received
+  deal_stage_changed
+  lead_assigned
+  invite_received
+  cadence_reply
+  audit_due
+  shift_alert
+}
+
+enum ActivityType {
+  note
+  call
+  email
+  meeting
+  status_change
+  task_completed
+  lead_created
+  deal_created
+  quote_sent
+  cadence_started
+}
+
+// ============ MODELS ============
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          Role      @default(viewer)
+  ionosEmail    String?
+  ionosPassword String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts        Account[]
+  contacts        Contact[]
+  leads           Lead[]
+  deals           Deal[]
+  tasks           Task[]
+  calendarEvents  CalendarEvent[]
+  calendarInvites CalendarInvite[]
+  emails          Email[]
+  emailTemplates  EmailTemplate[]
+  quotes          Quote[]
+  notifications   Notification[]
+  activities      Activity[]
+
+  @@map("users")
+}
+
+model Account {
+  id        String    @id @default(cuid())
+  name      String
+  industry  String?
+  website   String?
+  phone     String?
+  address   String?
+  notes     String?
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  creator  User      @relation(fields: [createdBy], references: [id])
+  contacts Contact[]
+  leads    Lead[]
+  deals    Deal[]
+  quotes   Quote[]
+
+  @@map("accounts")
+}
+
+model Contact {
+  id        String      @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  company   String?
+  accountId String?
+  notes     String?
+  source    LeadSource?
+  createdBy String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  creator            User                @relation(fields: [createdBy], references: [id])
+  account            Account?            @relation(fields: [accountId], references: [id])
+  leads              Lead[]
+  deals              Deal[]
+  quotes             Quote[]
+  emails             Email[]             @relation("ContactEmails")
+  tasks              Task[]              @relation("ContactTasks")
+  firefliesTranscripts FirefliesTranscript[] @relation("ContactTranscripts")
+
+  @@map("contacts")
+}
+
+model Lead {
+  id             String          @id @default(cuid())
+  companyName    String
+  contactName    String
+  email          String?
+  phone          String?
+  source         LeadSource
+  stage          LeadStage       @default(cold_call)
+  meetingOutcome MeetingOutcome?
+  ownerId        String
+  notes          String?
+  contactId      String?
+  accountId      String?
+  cadenceStatus  CadenceStatus?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  stageChangedAt DateTime        @default(now())
+  deletedAt      DateTime?
+
+  // Relations
+  owner    User     @relation(fields: [ownerId], references: [id])
+  contact  Contact? @relation(fields: [contactId], references: [id])
+  account  Account? @relation(fields: [accountId], references: [id])
+  deals    Deal[]   @relation("LeadDeals")
+  tasks    Task[]   @relation("LeadTasks")
+  emails   Email[]  @relation("LeadEmails")
+  cadences Cadence[]
+  firefliesTranscripts FirefliesTranscript[] @relation("LeadTranscripts")
+
+  @@map("leads")
+}
+
+model Deal {
+  id              String    @id @default(cuid())
+  name            String
+  stage           DealStage @default(quote_sent)
+  value           Decimal?
+  weeklyHours     Decimal?
+  ownerId         String
+  contactId       String?
+  accountId       String?
+  quoteId         String?
+  convertedFromId String?
+  wonAt           DateTime?
+  lostAt          DateTime?
+  lossReason      String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  stageChangedAt  DateTime  @default(now())
+  deletedAt       DateTime?
+
+  // Relations
+  owner         User     @relation(fields: [ownerId], references: [id])
+  contact       Contact? @relation(fields: [contactId], references: [id])
+  account       Account? @relation(fields: [accountId], references: [id])
+  convertedFrom Lead?    @relation("LeadDeals", fields: [convertedFromId], references: [id])
+  tasks         Task[]   @relation("DealTasks")
+  emails        Email[]  @relation("DealEmails")
+  quotes        Quote[]
+  firefliesTranscripts FirefliesTranscript[] @relation("DealTranscripts")
+
+  @@map("deals")
+}
+
+model Task {
+  id              String     @id @default(cuid())
+  subject         String
+  ownerId         String
+  dueDate         DateTime
+  priority        Priority   @default(normal)
+  status          TaskStatus @default(not_started)
+  taskType        TaskType   @default(business)
+  description     String?
+  repeat          Json?
+  reminder        Json?
+  linkedLeadId    String?
+  linkedDealId    String?
+  linkedContactId String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  completedAt     DateTime?
+  deletedAt       DateTime?
+
+  // Relations
+  owner         User     @relation(fields: [ownerId], references: [id])
+  linkedLead    Lead?    @relation("LeadTasks", fields: [linkedLeadId], references: [id])
+  linkedDeal    Deal?    @relation("DealTasks", fields: [linkedDealId], references: [id])
+  linkedContact Contact? @relation("ContactTasks", fields: [linkedContactId], references: [id])
+
+  @@map("tasks")
+}
+
+model CalendarEvent {
+  id           String       @id @default(cuid())
+  title        String
+  eventType    EventType    @default(meeting)
+  calendarType CalendarType @default(shared)
+  allDay       Boolean      @default(false)
+  startDate    DateTime
+  endDate      DateTime
+  notes        String?
+  repeat       Json?
+  alerts       Json?
+  ownerId      String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  owner   User             @relation(fields: [ownerId], references: [id])
+  invites CalendarInvite[]
+
+  @@map("calendar_events")
+}
+
+model CalendarInvite {
+  id          String       @id @default(cuid())
+  eventId     String
+  inviteeId   String
+  status      InviteStatus @default(pending)
+  respondedAt DateTime?
+
+  // Relations
+  event   CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  invitee User          @relation(fields: [inviteeId], references: [id])
+
+  @@unique([eventId, inviteeId])
+  @@map("calendar_invites")
+}
+
+model Email {
+  id              String   @id @default(cuid())
+  messageId       String   @unique
+  mailbox         String
+  from            String
+  to              String[]
+  cc              String[]
+  subject         String
+  bodyText        String?
+  bodyHtml        String?
+  date            DateTime
+  isRead          Boolean  @default(false)
+  folder          String   @default("INBOX")
+  userId          String
+  linkedLeadId    String?
+  linkedDealId    String?
+  linkedContactId String?
+  trackingId      String?
+  openCount       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id])
+  linkedLead    Lead?    @relation("LeadEmails", fields: [linkedLeadId], references: [id])
+  linkedDeal    Deal?    @relation("DealEmails", fields: [linkedDealId], references: [id])
+  linkedContact Contact? @relation("ContactEmails", fields: [linkedContactId], references: [id])
+
+  @@map("emails")
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  subject     String
+  bodyHtml    String
+  mergeFields String[]
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  creator      User          @relation(fields: [createdBy], references: [id])
+  cadenceSteps CadenceStep[]
+
+  @@map("email_templates")
+}
+
+model Quote {
+  id            String      @id @default(cuid())
+  dealId        String?
+  accountId     String?
+  contactId     String?
+  status        QuoteStatus @default(draft)
+  weeklyHours   Decimal
+  sellRate      Decimal
+  labourRate    Decimal     @default(17)
+  weeksPerMonth Decimal     @default(4.33)
+  isPilot       Boolean     @default(false)
+  pilotDiscount Decimal?    @default(25)
+  monthlyTotal  Decimal
+  annualTotal   Decimal
+  margin        Decimal
+  sentAt        DateTime?
+  acceptedAt    DateTime?
+  rejectedAt    DateTime?
+  trackingId    String?
+  openCount     Int         @default(0)
+  createdBy     String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  creator User     @relation(fields: [createdBy], references: [id])
+  deal    Deal?    @relation(fields: [dealId], references: [id])
+  account Account? @relation(fields: [accountId], references: [id])
+  contact Contact? @relation(fields: [contactId], references: [id])
+
+  @@map("quotes")
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  type       NotificationType
+  title      String
+  message    String
+  read       Boolean          @default(false)
+  entityType String?
+  entityId   String?
+  createdAt  DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model FirefliesTranscript {
+  id              String   @id @default(cuid())
+  firefliesId     String   @unique
+  title           String
+  date            DateTime
+  summary         String?
+  participants    String[]
+  linkedLeadId    String?
+  linkedDealId    String?
+  linkedContactId String?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  linkedLead    Lead?    @relation("LeadTranscripts", fields: [linkedLeadId], references: [id])
+  linkedDeal    Deal?    @relation("DealTranscripts", fields: [linkedDealId], references: [id])
+  linkedContact Contact? @relation("ContactTranscripts", fields: [linkedContactId], references: [id])
+
+  @@map("fireflies_transcripts")
+}
+
+model Activity {
+  id           String       @id @default(cuid())
+  activityType ActivityType
+  description  String
+  metadata     Json?
+  userId       String
+  entityType   String?
+  entityId     String?
+  createdAt    DateTime     @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("activities")
+}
+
+model Cadence {
+  id          String        @id @default(cuid())
+  leadId      String
+  status      CadenceStatus @default(active)
+  currentStep Int           @default(0)
+  startedAt   DateTime      @default(now())
+  pausedAt    DateTime?
+  pauseReason String?
+  nextSendAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  lead  Lead          @relation(fields: [leadId], references: [id])
+  steps CadenceStep[]
+
+  @@map("cadences")
+}
+
+model CadenceStep {
+  id         String    @id @default(cuid())
+  cadenceId  String
+  stepNumber Int
+  templateId String
+  delayDays  Int
+  sentAt     DateTime?
+  openedAt   DateTime?
+  repliedAt  DateTime?
+
+  // Relations
+  cadence  Cadence       @relation(fields: [cadenceId], references: [id], onDelete: Cascade)
+  template EmailTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([cadenceId, stepNumber])
+  @@map("cadence_steps")
 }
