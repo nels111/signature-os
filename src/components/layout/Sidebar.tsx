@@ -6,15 +6,15 @@ import { useState } from 'react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { href: '/leads', label: 'Leads', icon: '🎯' },
-  { href: '/pipeline', label: 'Pipeline', icon: '📈' },
-  { href: '/deals', label: 'Deals', icon: '🤝' },
-  { href: '/contacts', label: 'Contacts', icon: '👤' },
-  { href: '/accounts', label: 'Accounts', icon: '🏢' },
-  { href: '/tasks', label: 'Tasks', icon: '✅' },
-  { href: '/calendar', label: 'Calendar', icon: '📅' },
-  { href: '/emails', label: 'Email', icon: '✉️' },
-  { href: '/quotes', label: 'Quotes', icon: '💷' },
+  { href: '/dashboard/leads', label: 'Leads', icon: '🎯' },
+  { href: '/dashboard/pipeline', label: 'Pipeline', icon: '📈' },
+  { href: '/dashboard/deals', label: 'Deals', icon: '🤝' },
+  { href: '/dashboard/contacts', label: 'Contacts', icon: '👤' },
+  { href: '/dashboard/accounts', label: 'Accounts', icon: '🏢' },
+  { href: '/dashboard/tasks', label: 'Tasks', icon: '✅' },
+  { href: '/dashboard/calendar', label: 'Calendar', icon: '📅' },
+  { href: '/dashboard/emails', label: 'Email', icon: '✉️' },
+  { href: '/dashboard/quotes', label: 'Quotes', icon: '💷' },
 ];
 
 export function Sidebar() {
