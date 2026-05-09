@@ -49,26 +49,26 @@ export async function POST(request: NextRequest) {
 
     let synced = 0;
     for (const email of imapEmails) {
-      const existing = await prisma.email.findUnique({
+      const result = await prisma.email.upsert({
         where: { messageId: email.messageId },
+        create: {
+          messageId: email.messageId,
+          mailbox: targetEmail!,
+          from: email.from,
+          to: email.to,
+          cc: email.cc,
+          subject: email.subject,
+          bodyText: email.bodyText,
+          bodyHtml: email.bodyHtml,
+          date: email.date,
+          folder: email.folder,
+          userId: session.user.id,
+        },
+        update: {
+          folder: email.folder,
+        },
       });
-
-      if (!existing) {
-        await prisma.email.create({
-          data: {
-            messageId: email.messageId,
-            mailbox: targetEmail!,
-            from: email.from,
-            to: email.to,
-            cc: email.cc,
-            subject: email.subject,
-            bodyText: email.bodyText,
-            bodyHtml: email.bodyHtml,
-            date: email.date,
-            folder: email.folder,
-            userId: session.user.id,
-          },
-        });
+      if (result.createdAt.getTime() > Date.now() - 5000) {
         synced++;
       }
     }

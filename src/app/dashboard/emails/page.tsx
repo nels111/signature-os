@@ -211,7 +211,11 @@ export default function EmailsPage() {
             emails={emails}
             loading={loading}
             selectedId={selectedEmailId}
-            onSelect={(id) => setSelectedEmailId(id)}
+            onSelect={(id) => {
+              setSelectedEmailId(id);
+              // Optimistically mark as read in local state
+              setEmails(prev => prev.map(e => e.id === id ? { ...e, isRead: true } : e));
+            }}
             page={page}
             totalPages={totalPages}
             onPageChange={setPage}

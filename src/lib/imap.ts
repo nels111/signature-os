@@ -56,19 +56,15 @@ export async function fetchEmails(
     const lock = await client.getMailboxLock(folder);
 
     try {
-      const searchCriteria: Record<string, unknown> = {};
-      if (since) {
-        searchCriteria.since = since;
-      }
-
+      // Default to last 30 days if no since date, avoids scanning entire mailbox
+      const defaultSince = since || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const messages = client.fetch(
-        since ? { since } : '1:*',
+        { since: defaultSince },
         {
           envelope: true,
           source: true,
           uid: true,
-        },
-        { changedSince: BigInt(0) }
+        }
       );
 
       let count = 0;

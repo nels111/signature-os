@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 
 interface EmailFull {
   id: string;
@@ -167,7 +168,7 @@ export function EmailDetail({ emailId, onReply }: EmailDetailProps) {
         {email.bodyHtml ? (
           <div
             className="email-body prose prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: email.bodyHtml }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.bodyHtml) }}
           />
         ) : (
           <pre className="text-gray-300 text-sm whitespace-pre-wrap font-sans">

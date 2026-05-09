@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import DOMPurify from "dompurify";
 
 interface ComposeModalProps {
   onClose: () => void;
@@ -29,7 +30,10 @@ export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModal
 
     try {
       // Build HTML body
-      let htmlBody = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">${body.replace(/\n/g, "<br>")}</div>`;
+      function escapeHtml(str: string) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+      let htmlBody = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">${escapeHtml(body).replace(/\n/g, "<br>")}</div>`;
 
       // Append reply quote if replying
       if (replyTo?.bodyHtml) {
@@ -148,7 +152,7 @@ export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModal
             <div className="text-xs text-gray-500 mb-1">Quoted text:</div>
             <div
               className="text-xs text-gray-400 line-clamp-3"
-              dangerouslySetInnerHTML={{ __html: replyTo.bodyHtml }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(replyTo.bodyHtml) }}
             />
           </div>
         )}
