@@ -22,6 +22,10 @@ export async function GET(
   });
 
   if (!event) return Response.json({ error: 'Event not found' }, { status: 404 });
+  // Personal events only visible to owner
+  if (event.calendarType === 'personal' && event.ownerId !== session.user.id) {
+    return Response.json({ error: 'Event not found' }, { status: 404 });
+  }
   return Response.json(event);
 }
 

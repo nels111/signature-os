@@ -53,15 +53,12 @@ export function TasksPage() {
       const params = new URLSearchParams({ page: String(page), limit: '20', sortBy: 'dueDate', sortDir: 'asc' });
       if (search) params.set('search', search);
       if (filterStatus) params.set('status', filterStatus);
-      params.set('taskType', activeTab === 'personal' ? 'personal' : '');
+      params.set('taskType', activeTab === 'personal' ? 'personal' : 'NOT_personal');
 
       const res = await fetch('/api/tasks?' + params.toString());
       const json = await res.json();
 
-      let data = json.data || [];
-      if (activeTab === 'business') {
-        data = data.filter((t: TaskItem) => t.taskType !== 'personal');
-      }
+      const data = json.data || [];
 
       if (!cancelled) {
         setTasks(data);

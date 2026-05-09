@@ -1,7 +1,7 @@
 # Signature Cleans OS — Build Progress
 
-**Last Updated:** 2026-05-09 10:30 UTC
-**Current Phase:** Phase 3 — Pipeline (Leads, Deals, Kanban)
+**Last Updated:** 2026-05-09 11:30 UTC
+**Current Phase:** Phase 5 — Email Client
 **Status:** 🟢 Building
 
 ---
@@ -13,8 +13,8 @@
 | 0. Spec & Tooling | ✅ done | main | 2026-05-09 | 2026-05-09 | SPEC.md, CLAUDE.md, Codex auth, git repo |
 | 1. Foundation | ✅ done | main | 2026-05-09 | 2026-05-09 | Schema, auth, layout, dashboard, UI components. Codex audited. |
 | 2. CRM Core | ✅ done | main | 2026-05-09 | 2026-05-09 | Contacts + Accounts CRUD, API + UI, DataTable, soft-delete |
-| 3. Pipeline | 🟡 in progress | main | 2026-05-09 | — | Leads, Deals, Kanban |
-| 4. Tasks & Calendar | ⬜ not started | — | — | — | Task manager, 3-layer calendar |
+| 3. Pipeline | ✅ done | main | 2026-05-09 | 2026-05-09 | Leads, Deals, Kanban with drag-drop, auto lead→deal conversion |
+| 4. Tasks & Calendar | ✅ done | main | 2026-05-09 | 2026-05-09 | Tasks CRUD, Calendar month view, invites, personal/shared |
 | 5. Email Client | ⬜ not started | — | — | — | IMAP/SMTP, multi-mailbox |
 | 6. Quote Generator | ⬜ not started | — | — | — | Pricing engine, templates |
 | 7. Integrations | ⬜ not started | — | — | — | Fireflies, Notifications, Activity log |

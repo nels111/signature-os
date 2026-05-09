@@ -26,7 +26,16 @@ export async function GET(request: Request) {
   const where: Record<string, unknown> = { deletedAt: null };
   if (status) where.status = status;
   if (priority) where.priority = priority;
-  if (taskType) where.taskType = taskType;
+  if (taskType) {
+    if (taskType === 'NOT_personal') {
+      // Business tab: all types except personal
+      where.taskType = { not: 'personal' };
+    } else {
+      where.taskType = taskType;
+      // Personal tasks are only visible to the owner
+      if (taskType === 'personal') where.ownerId = session.user.id;
+    }
+  }
   if (ownerId) where.ownerId = ownerId;
   if (search) {
     where.OR = [

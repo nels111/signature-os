@@ -41,6 +41,10 @@ export async function PATCH(
 
   const existing = await prisma.task.findFirst({ where: { id, deletedAt: null } });
   if (!existing) return Response.json({ error: 'Task not found' }, { status: 404 });
+  // Only owner can edit personal tasks
+  if (existing.taskType === 'personal' && existing.ownerId !== session.user.id) {
+    return Response.json({ error: 'Cannot edit another user\'s personal task' }, { status: 403 });
+  }
 
   const updateData: Record<string, unknown> = {};
   const fields = ['subject', 'dueDate', 'priority', 'status', 'taskType', 'description',
@@ -84,6 +88,9 @@ export async function DELETE(
   const { id } = await params;
   const existing = await prisma.task.findFirst({ where: { id, deletedAt: null } });
   if (!existing) return Response.json({ error: 'Task not found' }, { status: 404 });
+  if (existing.taskType === 'personal' && existing.ownerId !== session.user.id) {
+    return Response.json({ error: 'Cannot delete another user\'s personal task' }, { status: 403 });
+  }
 
   await prisma.task.update({ where: { id }, data: { deletedAt: new Date() } });
   return Response.json({ success: true });

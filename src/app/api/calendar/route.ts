@@ -17,8 +17,9 @@ export async function GET(request: Request) {
   const where: Record<string, unknown> = { deletedAt: null };
 
   if (start && end) {
-    where.startDate = { gte: new Date(start) };
-    where.endDate = { lte: new Date(end) };
+    // Overlap: event starts before range ends AND event ends after range starts
+    where.startDate = { lte: new Date(end) };
+    where.endDate = { gte: new Date(start) };
   }
 
   if (calendarType === 'personal') {
@@ -46,7 +47,14 @@ export async function GET(request: Request) {
   });
 
   // Also fetch tasks with due dates in range for calendar rendering
-  const taskWhere: Record<string, unknown> = { deletedAt: null, status: { not: 'completed' } };
+  const taskWhere: Record<string, unknown> = {
+    deletedAt: null,
+    status: { not: 'completed' },
+    OR: [
+      { taskType: { not: 'personal' } },
+      { taskType: 'personal', ownerId: session.user.id },
+    ],
+  };
   if (start && end) {
     taskWhere.dueDate = { gte: new Date(start), lte: new Date(end) };
   }
