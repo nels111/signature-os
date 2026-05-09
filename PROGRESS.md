@@ -10,8 +10,8 @@
 
 | Phase | Status | Branch | Started | Completed | Notes |
 |-------|--------|--------|---------|-----------|-------|
-| 0. Spec & Tooling | 🟡 in progress | main | 2026-05-09 | — | SPEC.md committed, Codex auth done, Conductor setup pending |
-| 1. Foundation | ⬜ not started | — | — | — | Next.js, DB, Auth, Layout |
+| 0. Spec & Tooling | ✅ done | main | 2026-05-09 | 2026-05-09 | SPEC.md, CLAUDE.md, Codex auth, git repo |
+| 1. Foundation | ✅ done | main | 2026-05-09 | 2026-05-09 | Schema, auth, layout, dashboard, UI components. Codex audited. |
 | 2. CRM Core | ⬜ not started | — | — | — | Contacts, Accounts |
 | 3. Pipeline | ⬜ not started | — | — | — | Leads, Deals, Kanban |
 | 4. Tasks & Calendar | ⬜ not started | — | — | — | Task manager, 3-layer calendar |
@@ -24,11 +24,23 @@
 ## Current Work Item
 
 **What's happening right now:**
-- Setting up Conductor for multi-agent orchestration
-- Codex authenticated for review/audit duties
-- Claude Code CLI available for parallel builds
+- Phase 1 complete and Codex-audited
+- Moving to Phase 2: CRM Core (Contacts + Accounts CRUD)
 
-**Next action:** Start Phase 1 (Foundation)
+**Next action:** Build Contacts and Accounts modules (CRUD + API + UI)
+
+## Codex Audit Results (Phase 1)
+
+| Severity | Finding | Status |
+|----------|---------|--------|
+| critical | Hardcoded seed passwords (admin123/sales123) | Accepted — dev only, change before prod |
+| critical | Middleware checks cookie existence not validity | Noted — server pages use auth() for real validation |
+| warning | No rate limiting on login | Deferred to Phase 9 (deploy) |
+| warning | ionosPassword stored as plaintext | Deferred to Phase 5 (email client) |
+| warning | Login form missing try/catch | Will fix |
+| warning | Auth DB errors unhandled | Will fix |
+| info | SQL injection risk low (parameterised queries) | ✅ |
+| info | DataTable key stability | Will fix |
 
 ## Build Team
 
