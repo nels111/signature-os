@@ -65,11 +65,11 @@ export function CalendarPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
-  const [view, setView] = useState<'month' | 'week'>('month');
   const [filter, setFilter] = useState<'all' | 'shared' | 'personal'>('all');
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [tasks, setTasks] = useState<CalTask[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [editEvent, setEditEvent] = useState<CalEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -106,6 +106,16 @@ export function CalendarPage() {
     if (res.ok) { setShowCreate(false); setRefreshKey(k => k + 1); }
   };
 
+  const handleEdit = async (data: Record<string, unknown>) => {
+    if (!editEvent) return;
+    setSaving(true);
+    const res = await fetch(`/api/calendar/${editEvent.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+    });
+    setSaving(false);
+    if (res.ok) { setEditEvent(null); setRefreshKey(k => k + 1); }
+  };
+
   const days = getMonthDays(year, month);
   const todayKey = dateKey(now);
 
@@ -136,10 +146,6 @@ export function CalendarPage() {
             <option value="shared">Shared Only</option>
             <option value="personal">Personal Only</option>
           </select>
-          <button onClick={() => setView(view === 'month' ? 'week' : 'month')}
-            className="px-3 py-1.5 text-sm border rounded-md" style={{ borderColor: '#e2e8f0' }}>
-            {view === 'month' ? 'Week View' : 'Month View'}
-          </button>
           <button onClick={() => { setSelectedDate(''); setShowCreate(true); }}
             className="px-4 py-1.5 text-sm text-white rounded-md" style={{ backgroundColor: '#2c5f2d' }}>
             + New Event
@@ -186,14 +192,16 @@ export function CalendarPage() {
                   </div>
                   <div className="space-y-0.5 mt-1">
                     {dayEvents.slice(0, 3).map(ev => (
-                      <div key={ev.id} className="text-xs px-1 py-0.5 rounded truncate text-white"
-                        style={{ backgroundColor: EVENT_COLORS[ev.eventType] || '#6b7280' }}>
+                      <div key={ev.id} className="text-xs px-1 py-0.5 rounded truncate text-white cursor-pointer hover:opacity-80"
+                        style={{ backgroundColor: EVENT_COLORS[ev.eventType] || '#6b7280' }}
+                        onClick={(e) => { e.stopPropagation(); setEditEvent(ev); }}>
                         {ev.title}
                       </div>
                     ))}
                     {dayTasks.slice(0, 2).map(t => (
-                      <div key={t.id} className="text-xs px-1 py-0.5 rounded truncate border border-dashed"
-                        style={{ borderColor: '#6b7280', color: '#6b7280' }}>
+                      <div key={t.id} className="text-xs px-1 py-0.5 rounded truncate border border-dashed cursor-pointer hover:opacity-80"
+                        style={{ borderColor: '#6b7280', color: '#6b7280' }}
+                        onClick={(e) => { e.stopPropagation(); window.location.href = `/dashboard/tasks/${t.id}`; }}>
                         ✓ {t.subject}
                       </div>
                     ))}
@@ -210,6 +218,17 @@ export function CalendarPage() {
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New Event">
         <CalendarForm defaultDate={selectedDate} onSubmit={handleCreate} onCancel={() => setShowCreate(false)} loading={saving} />
+      </Modal>
+
+      <Modal open={!!editEvent} onClose={() => setEditEvent(null)} title="Edit Event">
+        {editEvent && (
+          <CalendarForm
+            initialData={editEvent as unknown as Record<string, unknown>}
+            onSubmit={handleEdit}
+            onCancel={() => setEditEvent(null)}
+            loading={saving}
+          />
+        )}
       </Modal>
     </div>
   );

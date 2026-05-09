@@ -20,11 +20,20 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
   const [eventType, setEventType] = useState((initialData?.eventType as string) || 'meeting');
   const [calendarType, setCalendarType] = useState((initialData?.calendarType as string) || 'shared');
   const [allDay, setAllDay] = useState((initialData?.allDay as boolean) || false);
+  function toLocalInput(dateStr: string): string {
+    const d = new Date(dateStr);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${mo}-${da}T${h}:${mi}`;
+  }
   const startInit = initialData?.startDate
-    ? new Date(initialData.startDate as string).toISOString().slice(0, 16)
+    ? toLocalInput(initialData.startDate as string)
     : defaultDate ? defaultDate + 'T09:00' : '';
   const endInit = initialData?.endDate
-    ? new Date(initialData.endDate as string).toISOString().slice(0, 16)
+    ? toLocalInput(initialData.endDate as string)
     : defaultDate ? defaultDate + 'T10:00' : '';
   const [startDate, setStartDate] = useState(startInit);
   const [endDate, setEndDate] = useState(endInit);
