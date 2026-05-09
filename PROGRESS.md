@@ -1,8 +1,8 @@
 # Signature Cleans OS — Build Progress
 
-**Last Updated:** 2026-05-09 09:30 UTC
-**Current Phase:** Pre-build (Spec complete, tooling setup)
-**Status:** 🟡 Setting up build infrastructure
+**Last Updated:** 2026-05-09 10:30 UTC
+**Current Phase:** Phase 3 — Pipeline (Leads, Deals, Kanban)
+**Status:** 🟢 Building
 
 ---
 
@@ -12,8 +12,8 @@
 |-------|--------|--------|---------|-----------|-------|
 | 0. Spec & Tooling | ✅ done | main | 2026-05-09 | 2026-05-09 | SPEC.md, CLAUDE.md, Codex auth, git repo |
 | 1. Foundation | ✅ done | main | 2026-05-09 | 2026-05-09 | Schema, auth, layout, dashboard, UI components. Codex audited. |
-| 2. CRM Core | ⬜ not started | — | — | — | Contacts, Accounts |
-| 3. Pipeline | ⬜ not started | — | — | — | Leads, Deals, Kanban |
+| 2. CRM Core | ✅ done | main | 2026-05-09 | 2026-05-09 | Contacts + Accounts CRUD, API + UI, DataTable, soft-delete |
+| 3. Pipeline | 🟡 in progress | main | 2026-05-09 | — | Leads, Deals, Kanban |
 | 4. Tasks & Calendar | ⬜ not started | — | — | — | Task manager, 3-layer calendar |
 | 5. Email Client | ⬜ not started | — | — | — | IMAP/SMTP, multi-mailbox |
 | 6. Quote Generator | ⬜ not started | — | — | — | Pricing engine, templates |
@@ -24,10 +24,10 @@
 ## Current Work Item
 
 **What's happening right now:**
-- Phase 1 complete and Codex-audited
-- Moving to Phase 2: CRM Core (Contacts + Accounts CRUD)
+- Phase 2 complete — Contacts + Accounts fully working
+- Building Phase 3: Pipeline (Leads + Deals CRUD, Kanban board)
 
-**Next action:** Build Contacts and Accounts modules (CRUD + API + UI)
+**Next action:** Build Leads/Deals modules with Kanban board, stage transitions, lead-to-deal conversion
 
 ## Codex Audit Results (Phase 1)
 

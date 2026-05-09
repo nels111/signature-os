@@ -1,0 +1,440 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+import { LeadForm } from '../LeadForm';
+import type { LeadFormData } from '../LeadForm';
+
+interface Lead {
+  id: string;
+  companyName: string;
+  contactName: string;
+  email: string | null;
+  phone: string | null;
+  source: string;
+  stage: string;
+  meetingOutcome: string | null;
+  ownerId: string;
+  notes: string | null;
+  contactId: string | null;
+  accountId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  stageChangedAt: string;
+  owner: { id: string; name: string | null } | null;
+  contact: { id: string; firstName: string; lastName: string } | null;
+  account: { id: string; name: string } | null;
+  deals: Array<{ id: string; name: string; stage: string; value: string | null }>;
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  cold_call: 'Cold Call',
+  cold_email: 'Cold Email',
+  referral: 'Referral',
+  website: 'Website',
+  mark_walker: 'Mark Walker',
+  direct_mail: 'Direct Mail',
+  other: 'Other',
+};
+
+const SOURCE_VARIANTS: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
+  cold_call: 'info',
+  cold_email: 'info',
+  referral: 'success',
+  website: 'warning',
+  mark_walker: 'success',
+  direct_mail: 'default',
+  other: 'default',
+};
+
+const STAGE_LABELS: Record<string, string> = {
+  cold_call: 'Cold Call',
+  cold_email: 'Cold Email',
+  follow_up_sequence: 'Follow-up Sequence',
+  meeting_scheduled: 'Meeting Scheduled',
+  meeting_attended: 'Meeting Attended',
+  quote_delivered: 'Quote Delivered',
+};
+
+const STAGE_COLOURS: Record<string, string> = {
+  cold_call: '#6b7280',
+  cold_email: '#3b82f6',
+  follow_up_sequence: '#f59e0b',
+  meeting_scheduled: '#8b5cf6',
+  meeting_attended: '#10b981',
+  quote_delivered: '#2c5f2d',
+};
+
+const DEAL_STAGE_LABELS: Record<string, string> = {
+  quote_sent: 'Quote Sent',
+  follow_up_from_quote: 'Follow-up from Quote',
+  closed_won: 'Closed Won',
+  closed_lost: 'Closed Lost',
+};
+
+const MEETING_OUTCOME_LABELS: Record<string, string> = {
+  good: 'Good',
+  bad: 'Bad',
+  not_interested: 'Not Interested',
+};
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = d.getDate().toString().padStart(2, '0');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatCurrency(val: string | number | null | undefined): string {
+  if (val === null || val === undefined) return '';
+  const num = typeof val === 'string' ? parseFloat(val) : val;
+  if (isNaN(num)) return '';
+  return `£${num.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+export function LeadDetailClient({ id }: { id: string }) {
+  const router = useRouter();
+  const [lead, setLead] = useState<Lead | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'details' | 'deals' | 'activity'>('details');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const mountRef = useRef(true);
+
+  useEffect(() => {
+    mountRef.current = true;
+    fetch(`/api/leads/${id}`)
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('Not found');
+      })
+      .then((data) => {
+        if (mountRef.current) {
+          setLead(data);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mountRef.current) router.push('/dashboard/leads');
+      });
+    return () => { mountRef.current = false; };
+  }, [id, router]);
+
+  const refetchLead = () => {
+    fetch(`/api/leads/${id}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data) setLead(data); })
+      .catch(() => {});
+  };
+
+  const handleUpdate = async (data: LeadFormData) => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/leads/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        setShowEditModal(false);
+        refetchLead();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    const res = await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      router.push('/dashboard/leads');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center" style={{ color: '#64748b' }}>
+        Loading lead...
+      </div>
+    );
+  }
+
+  if (!lead) return null;
+
+  const tabs = [
+    { key: 'details' as const, label: 'Details' },
+    { key: 'deals' as const, label: `Linked Deals (${lead.deals?.length || 0})` },
+    { key: 'activity' as const, label: 'Activity' },
+  ];
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={() => router.push('/dashboard/leads')}
+          className="p-1 hover:bg-gray-100 rounded"
+          style={{ color: '#64748b' }}
+        >
+          ← Back
+        </button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+            {lead.companyName}
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
+            {lead.contactName}
+          </p>
+        </div>
+        <span
+          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white"
+          style={{ backgroundColor: STAGE_COLOURS[lead.stage] || '#6b7280' }}
+        >
+          {STAGE_LABELS[lead.stage] || lead.stage}
+        </span>
+        <button
+          onClick={() => setShowEditModal(true)}
+          className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
+          style={{ backgroundColor: '#2c5f2d' }}
+        >
+          Edit
+        </button>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="px-4 py-2 text-sm border rounded-md hover:bg-red-50 text-red-600"
+          style={{ borderColor: '#fca5a5' }}
+        >
+          Delete
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 border-b mb-6" style={{ borderColor: '#e2e8f0' }}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === tab.key
+                ? 'border-green-700 text-green-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Details Tab */}
+      {activeTab === 'details' && (
+        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DetailField label="Company Name" value={lead.companyName} />
+            <DetailField label="Contact Name" value={lead.contactName} />
+            <DetailField label="Email" value={lead.email} />
+            <DetailField label="Phone" value={lead.phone} />
+            <div>
+              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+                Source
+              </span>
+              <Badge
+                label={SOURCE_LABELS[lead.source] || lead.source}
+                variant={SOURCE_VARIANTS[lead.source] || 'default'}
+              />
+            </div>
+            <div>
+              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+                Stage
+              </span>
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                style={{ backgroundColor: STAGE_COLOURS[lead.stage] || '#6b7280' }}
+              >
+                {STAGE_LABELS[lead.stage] || lead.stage}
+              </span>
+            </div>
+            {lead.meetingOutcome && (
+              <DetailField
+                label="Meeting Outcome"
+                value={MEETING_OUTCOME_LABELS[lead.meetingOutcome] || lead.meetingOutcome}
+              />
+            )}
+            <DetailField label="Owner" value={lead.owner?.name} />
+            <DetailField
+              label="Account"
+              value={lead.account?.name}
+              link={lead.account ? `/dashboard/accounts/${lead.account.id}` : undefined}
+            />
+            {lead.contact && (
+              <DetailField
+                label="Contact"
+                value={`${lead.contact.firstName} ${lead.contact.lastName}`}
+                link={`/dashboard/contacts/${lead.contact.id}`}
+              />
+            )}
+            <DetailField label="Created" value={formatDate(lead.createdAt)} />
+            <DetailField label="Stage Changed" value={formatDate(lead.stageChangedAt)} />
+          </div>
+          {lead.notes && (
+            <div className="mt-6 pt-6 border-t" style={{ borderColor: '#e2e8f0' }}>
+              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+                Notes
+              </span>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: '#1a1a1a' }}>
+                {lead.notes}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Linked Deals Tab */}
+      {activeTab === 'deals' && (
+        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
+          <h3 className="text-sm font-semibold mb-3" style={{ color: '#1a1a1a' }}>
+            Linked Deals ({lead.deals?.length || 0})
+          </h3>
+          {lead.deals && lead.deals.length > 0 ? (
+            <div className="space-y-2">
+              {lead.deals.map((deal) => (
+                <div
+                  key={deal.id}
+                  className="flex items-center justify-between p-3 rounded border hover:bg-gray-50 cursor-pointer"
+                  style={{ borderColor: '#e2e8f0' }}
+                  onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
+                >
+                  <div>
+                    <span className="text-sm font-medium" style={{ color: '#1a1a1a' }}>
+                      {deal.name}
+                    </span>
+                    {deal.value && (
+                      <span className="text-sm ml-2" style={{ color: '#2c5f2d' }}>
+                        {formatCurrency(deal.value)}
+                      </span>
+                    )}
+                  </div>
+                  <Badge
+                    label={DEAL_STAGE_LABELS[deal.stage] || deal.stage}
+                    variant={deal.stage === 'closed_won' ? 'success' : deal.stage === 'closed_lost' ? 'danger' : 'warning'}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm" style={{ color: '#94a3b8' }}>
+              No deals linked to this lead yet.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Activity Tab */}
+      {activeTab === 'activity' && (
+        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
+          <p className="text-sm" style={{ color: '#94a3b8' }}>
+            Activity timeline coming soon.
+          </p>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      <Modal
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Lead"
+        maxWidth="600px"
+      >
+        <LeadForm
+          initialData={{
+            companyName: lead.companyName,
+            contactName: lead.contactName,
+            email: lead.email || '',
+            phone: lead.phone || '',
+            source: lead.source,
+            stage: lead.stage,
+            meetingOutcome: lead.meetingOutcome || '',
+            ownerId: lead.ownerId,
+            contactId: lead.contactId || '',
+            accountId: lead.accountId || '',
+            notes: lead.notes || '',
+          }}
+          onSubmit={handleUpdate}
+          onCancel={() => setShowEditModal(false)}
+          loading={saving}
+          isEdit
+        />
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <Modal
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete Lead"
+      >
+        <p className="text-sm mb-6" style={{ color: '#64748b' }}>
+          Are you sure you want to delete{' '}
+          <strong style={{ color: '#1a1a1a' }}>{lead.companyName}</strong>
+          ? This action can be undone by an administrator.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setShowDeleteConfirm(false)}
+            className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
+            style={{ borderColor: '#e2e8f0', color: '#64748b' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
+            style={{ backgroundColor: '#dc2626' }}
+          >
+            Delete Lead
+          </button>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function DetailField({
+  label,
+  value,
+  link,
+}: {
+  label: string;
+  value: string | null | undefined;
+  link?: string;
+}) {
+  const router = useRouter();
+  return (
+    <div>
+      <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+        {label}
+      </span>
+      {value ? (
+        link ? (
+          <button
+            onClick={() => router.push(link)}
+            className="text-sm hover:underline"
+            style={{ color: '#2c5f2d' }}
+          >
+            {value}
+          </button>
+        ) : (
+          <span className="text-sm" style={{ color: '#1a1a1a' }}>
+            {value}
+          </span>
+        )
+      ) : (
+        <span className="text-sm" style={{ color: '#94a3b8' }}>
+          —
+        </span>
+      )}
+    </div>
+  );
+}

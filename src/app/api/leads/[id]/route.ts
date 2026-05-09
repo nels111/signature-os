@@ -1,0 +1,137 @@
+export const runtime = 'nodejs';
+
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db';
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const lead = await prisma.lead.findFirst({
+    where: { id, deletedAt: null },
+    include: {
+      owner: true,
+      contact: true,
+      account: true,
+      deals: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+      },
+    },
+  });
+
+  if (!lead) {
+    return Response.json({ error: 'Lead not found' }, { status: 404 });
+  }
+
+  return Response.json(lead);
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const body = await request.json();
+
+  const existing = await prisma.lead.findFirst({
+    where: { id, deletedAt: null },
+  });
+
+  if (!existing) {
+    return Response.json({ error: 'Lead not found' }, { status: 404 });
+  }
+
+  const allowedFields = [
+    'companyName', 'contactName', 'email', 'phone', 'source', 'stage',
+    'meetingOutcome', 'ownerId', 'notes', 'contactId', 'accountId', 'cadenceStatus',
+  ];
+  const updateData: Record<string, unknown> = {};
+
+  for (const field of allowedFields) {
+    if (body[field] !== undefined) {
+      updateData[field] = body[field] || null;
+    }
+  }
+
+  // Keep required fields non-null
+  if (updateData.companyName === null) delete updateData.companyName;
+  if (updateData.contactName === null) delete updateData.contactName;
+  if (updateData.source === null) delete updateData.source;
+  if (updateData.ownerId === null) delete updateData.ownerId;
+
+  // If stage is explicitly set, keep it even if falsy-looking
+  if (body.stage !== undefined) {
+    updateData.stage = body.stage;
+  }
+
+  // Track stage changes
+  const stageChanged = body.stage && body.stage !== existing.stage;
+  if (stageChanged) {
+    updateData.stageChangedAt = new Date();
+  }
+
+  const lead = await prisma.lead.update({
+    where: { id },
+    data: updateData,
+    include: { owner: true, contact: true, account: true },
+  });
+
+  // Auto-create deal when stage changes to quote_delivered
+  if (stageChanged && body.stage === 'quote_delivered') {
+    const deal = await prisma.deal.create({
+      data: {
+        name: lead.companyName,
+        stage: 'quote_sent',
+        ownerId: lead.ownerId,
+        contactId: lead.contactId,
+        accountId: lead.accountId,
+        convertedFromId: lead.id,
+      },
+      include: { owner: true, contact: true, account: true },
+    });
+
+    return Response.json({ lead, deal });
+  }
+
+  return Response.json(lead);
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const existing = await prisma.lead.findFirst({
+    where: { id, deletedAt: null },
+  });
+
+  if (!existing) {
+    return Response.json({ error: 'Lead not found' }, { status: 404 });
+  }
+
+  await prisma.lead.update({
+    where: { id },
+    data: { deletedAt: new Date() },
+  });
+
+  return Response.json({ success: true });
+}
