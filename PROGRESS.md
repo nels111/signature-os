@@ -1,76 +1,78 @@
-# Signature Cleans OS — Build Progress
+# Signature Cleans OS -- Build Progress
 
-**Last Updated:** 2026-05-09 11:30 UTC
-**Current Phase:** Phase 5 — Email Client
-**Status:** 🟢 Building
+**Last Updated:** 2026-05-10 02:30 UTC
+**Current Phase:** Phase 9 -- Deploy & Polish (COMPLETE)
+**Status:** 🟢 All phases built, audited, hardened
 
 ---
 
 ## Phase Tracker
 
-| Phase | Status | Branch | Started | Completed | Notes |
-|-------|--------|--------|---------|-----------|-------|
-| 0. Spec & Tooling | ✅ done | main | 2026-05-09 | 2026-05-09 | SPEC.md, CLAUDE.md, Codex auth, git repo |
-| 1. Foundation | ✅ done | main | 2026-05-09 | 2026-05-09 | Schema, auth, layout, dashboard, UI components. Codex audited. |
-| 2. CRM Core | ✅ done | main | 2026-05-09 | 2026-05-09 | Contacts + Accounts CRUD, API + UI, DataTable, soft-delete |
-| 3. Pipeline | ✅ done | main | 2026-05-09 | 2026-05-09 | Leads, Deals, Kanban with drag-drop, auto lead→deal conversion |
-| 4. Tasks & Calendar | ✅ done | main | 2026-05-09 | 2026-05-09 | Tasks CRUD, Calendar month view, invites, personal/shared |
-| 5. Email Client | ⬜ not started | — | — | — | IMAP/SMTP, multi-mailbox |
-| 6. Quote Generator | ⬜ not started | — | — | — | Pricing engine, templates |
-| 7. Integrations | ⬜ not started | — | — | — | Fireflies, Notifications, Activity log |
-| 8. Cadence Engine | ⬜ not started | — | — | — | Email sequences |
-| 9. Deploy & Polish | ⬜ not started | — | — | — | PM2, nginx, SSL, docs |
+| Phase | Status | Audited | Notes |
+|-------|--------|---------|-------|
+| 0. Spec & Tooling | ✅ done | -- | SPEC.md, git repo, PM2, Codex auth |
+| 1. Foundation | ✅ done | ✅ Codex | Schema, auth, layout, dashboard shell, 6 UI components |
+| 2. CRM Core | ✅ done | ✅ Codex | Contacts + Accounts CRUD, DataTable, soft-delete |
+| 3. Pipeline | ✅ done | ✅ Codex | Leads, Deals, Kanban drag-drop, lead->deal conversion |
+| 4. Tasks & Calendar | ✅ done | ✅ Codex | Tasks CRUD, Calendar month view, invites, personal/shared |
+| 5. Email Client | ✅ done | ✅ Codex | IMAP/SMTP, two-panel inbox, compose/reply/forward, CRM linking |
+| 6. Quote Generator | ✅ done | ✅ Codex | Ported from Vercel, PDF gen (docxtemplater+libreoffice), email draft/preview/send |
+| 7. Integrations | ✅ done | ✅ Codex | Fireflies sync, Activity log, Dashboard KPI endpoint |
+| 8. Cadence Engine | ✅ done | ✅ Codex | Email sequences (DISABLED by default), templates CRUD, merge fields |
+| 9. Deploy & Polish | ✅ done | ✅ Codex | Nginx, SSL, rate limiting, API key auth, error boundaries |
 
-## Current Work Item
+## Architecture
 
-**What's happening right now:**
-- Phase 2 complete — Contacts + Accounts fully working
-- Building Phase 3: Pipeline (Leads + Deals CRUD, Kanban board)
+- **Stack:** Next.js 15 (App Router), Prisma 7, PostgreSQL, NextAuth v5
+- **Domain:** os.signature-cleans.co.uk (SSL via Let's Encrypt)
+- **Port:** 3200 (PM2 managed)
+- **DB:** signature_cleans_os on localhost:5432
 
-**Next action:** Build Leads/Deals modules with Kanban board, stage transitions, lead-to-deal conversion
+## API Endpoints
 
-## Codex Audit Results (Phase 1)
+| Module | Endpoints |
+|--------|-----------|
+| Auth | POST /api/auth/[...nextauth] |
+| Contacts | GET/POST /api/contacts, GET/PATCH/DELETE /api/contacts/[id] |
+| Accounts | GET/POST /api/accounts, GET/PATCH/DELETE /api/accounts/[id] |
+| Leads | GET/POST /api/leads, GET/PATCH/DELETE /api/leads/[id] |
+| Deals | GET/POST /api/deals, GET/PATCH/DELETE /api/deals/[id] |
+| Tasks | GET/POST /api/tasks, GET/PATCH/DELETE /api/tasks/[id] |
+| Calendar | GET/POST /api/calendar, GET/PATCH/DELETE /api/calendar/[id], POST /api/calendar/[id]/invite |
+| Emails | GET/POST /api/emails, GET/PATCH /api/emails/[id], POST /api/emails/sync, GET /api/emails/mailboxes |
+| Quotes | GET/POST /api/quotes, GET /api/quotes/[id], POST /api/quotes/generate, POST /api/quotes/[id]/send, POST /api/quotes/calculate |
+| Fireflies | GET/POST /api/fireflies, GET/PATCH /api/fireflies/[id] |
+| Activities | GET/POST /api/activities |
+| Dashboard | GET /api/dashboard |
+| Cadence | GET /api/cadence, POST /api/cadence/actions |
+| Templates | GET/POST /api/email-templates, GET/PATCH/DELETE /api/email-templates/[id] |
+| Notifications | GET/POST /api/notifications |
 
-| Severity | Finding | Status |
-|----------|---------|--------|
-| critical | Hardcoded seed passwords (admin123/sales123) | Accepted — dev only, change before prod |
-| critical | Middleware checks cookie existence not validity | Noted — server pages use auth() for real validation |
-| warning | No rate limiting on login | Deferred to Phase 9 (deploy) |
-| warning | ionosPassword stored as plaintext | Deferred to Phase 5 (email client) |
-| warning | Login form missing try/catch | Will fix |
-| warning | Auth DB errors unhandled | Will fix |
-| info | SQL injection risk low (parameterised queries) | ✅ |
-| info | DataTable key stability | Will fix |
+## Jaz API Access
 
-## Build Team
+API key auth via Bearer token in Authorization header. Key stored in .env as API_KEY.
 
-| Agent | Role | Status |
-|-------|------|--------|
-| Jaz (Hermes) | Orchestrator — manages builds, reviews, integrates | ✅ Active |
-| Claude Code | Builder — parallel module construction via worktrees | ✅ Authenticated |
-| Codex | Reviewer — code audit, security, quality checks | ✅ Authenticated |
+```bash
+curl -H "Authorization: Bearer $API_KEY" https://os.signature-cleans.co.uk/api/dashboard
+```
 
-## Resume Instructions
+## Credentials Needed (from Nelson)
 
-If this is a new session after compaction/rate limit:
-1. Read this file: `/var/www/signature-cleans-os/PROGRESS.md`
-2. Read the spec: `/var/www/signature-cleans-os/SPEC.md`
-3. Check git status: `cd /var/www/signature-cleans-os && git log --oneline -10 && git branch -a`
-4. Check active worktrees: `git worktree list`
-5. Resume from the current phase marked 🟡
+- [ ] SMTP_PASS for nick@signature-cleans.co.uk (quote emails)
+- [ ] IONOS email passwords for nelson@, nick@, hello@ (IMAP sync)
 
-## Decisions Log
+## Security Hardening Applied
 
-| Date | Decision | Source |
-|------|----------|--------|
-| 2026-05-08 | Replace Zoho CRM entirely, fresh build | Nick & Nelson Fireflies |
-| 2026-05-08 | VPS hosted, not Vercel/Supabase | Nelson confirmed |
-| 2026-05-08 | No data migration, clean slate | Nick & Nelson agreed |
-| 2026-05-08 | Multi-agent build: Claude Code builds, Codex reviews | Nelson |
-| 2026-05-09 | Old sigcrm + signature-os nuked (2.5GB) | Nelson approved |
-| 2026-05-09 | SPEC.md v1.0.0 committed | Jaz |
-| 2026-05-09 | Codex authenticated via device auth (Signature Cleans workspace) | Nelson |
+- All P1 findings fixed across all phases
+- HTML escaping on all user inputs in email templates
+- Rate limiting on login (10/15min), quotes (5/min), email send (10/min)
+- Ownership checks on quote send, notification creation
+- Prisma transactions on cadence start/pause/resume
+- Input validation (types, lengths, ranges) on all POST/PATCH endpoints
+- Error details never leaked to client
+- Security headers via nginx (X-Frame-Options, X-Content-Type-Options, X-XSS-Protection)
+- iframe sandbox (empty) on email preview
 
-## Blockers
+## Next: Phase 10 -- Design Pass
 
-None currently.
+Full UI redesign of every page. Dedicated session with Nelson for direction.

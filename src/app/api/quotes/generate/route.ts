@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { prisma } from '@/lib/db';
 import { generateQuotePdf, calculateQuotePricing } from '@/lib/quotes/pdf-generator';
 import {
@@ -31,6 +32,12 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limit: 5 quotes per minute
+    const rl = checkRateLimit(`quote:${session.user.id}`, RATE_LIMITS.quoteGenerate);
+    if (rl.limited) {
+      return NextResponse.json({ error: 'Too many quotes. Try again shortly.' }, { status: 429 });
     }
 
     const body = await request.json();
