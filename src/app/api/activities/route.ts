@@ -66,11 +66,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
+    let body;
+    try { body = await request.json(); }
+    catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
     const { activityType, description, metadata, entityType, entityId } = body;
 
     if (!activityType || !description) {
       return NextResponse.json({ error: 'activityType and description are required' }, { status: 400 });
+    }
+
+    if (typeof description !== 'string' || description.length > 5000) {
+      return NextResponse.json({ error: 'description must be a string under 5000 chars' }, { status: 400 });
+    }
+
+    if (metadata && JSON.stringify(metadata).length > 10000) {
+      return NextResponse.json({ error: 'metadata too large' }, { status: 400 });
     }
 
     if (!VALID_ACTIVITY_TYPES.includes(activityType)) {

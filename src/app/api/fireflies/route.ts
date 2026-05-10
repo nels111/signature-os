@@ -64,6 +64,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Sync lock to prevent concurrent syncs
+let isSyncing = false;
+
 // POST /api/fireflies - Trigger sync (admin only)
 export async function POST() {
   try {
@@ -76,7 +79,17 @@ export async function POST() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const result = await syncTranscripts();
+    if (isSyncing) {
+      return NextResponse.json({ error: 'Sync already in progress' }, { status: 429 });
+    }
+
+    isSyncing = true;
+    let result;
+    try {
+      result = await syncTranscripts();
+    } finally {
+      isSyncing = false;
+    }
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     console.error('Fireflies sync error:', error);

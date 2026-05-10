@@ -59,7 +59,9 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = await request.json();
+    let body;
+    try { body = await request.json(); }
+    catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
     const { linkedLeadId, linkedDealId, linkedContactId } = body;
 
     // Verify transcript exists
@@ -77,7 +79,7 @@ export async function PATCH(
 
     if (linkedLeadId !== undefined) {
       if (linkedLeadId) {
-        const lead = await prisma.lead.findUnique({ where: { id: linkedLeadId }, select: { id: true } });
+        const lead = await prisma.lead.findFirst({ where: { id: linkedLeadId, deletedAt: null }, select: { id: true } });
         if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 400 });
       }
       data.linkedLeadId = linkedLeadId;
@@ -85,7 +87,7 @@ export async function PATCH(
 
     if (linkedDealId !== undefined) {
       if (linkedDealId) {
-        const deal = await prisma.deal.findUnique({ where: { id: linkedDealId }, select: { id: true } });
+        const deal = await prisma.deal.findFirst({ where: { id: linkedDealId, deletedAt: null }, select: { id: true } });
         if (!deal) return NextResponse.json({ error: 'Deal not found' }, { status: 400 });
       }
       data.linkedDealId = linkedDealId;
@@ -93,7 +95,7 @@ export async function PATCH(
 
     if (linkedContactId !== undefined) {
       if (linkedContactId) {
-        const contact = await prisma.contact.findUnique({ where: { id: linkedContactId }, select: { id: true } });
+        const contact = await prisma.contact.findFirst({ where: { id: linkedContactId, deletedAt: null }, select: { id: true } });
         if (!contact) return NextResponse.json({ error: 'Contact not found' }, { status: 400 });
       }
       data.linkedContactId = linkedContactId;

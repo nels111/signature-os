@@ -24,6 +24,7 @@ async function firefliesRequest<T>(query: string, variables?: Record<string, unk
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!res.ok) {
@@ -124,38 +125,35 @@ export async function syncTranscripts(): Promise<{ synced: number; matched: numb
     // Auto-match by participant name/email against Contacts, Leads, Deals
     const matchResult = await autoMatchParticipants(participants);
 
-    const existing = await prisma.firefliesTranscript.findUnique({
+    // Upsert to avoid race conditions on concurrent syncs
+    const result = await prisma.firefliesTranscript.upsert({
       where: { firefliesId: t.id },
-      select: { id: true },
+      create: {
+        firefliesId: t.id,
+        title: t.title,
+        date,
+        summary,
+        participants,
+        linkedLeadId: matchResult.linkedLeadId,
+        linkedDealId: matchResult.linkedDealId,
+        linkedContactId: matchResult.linkedContactId,
+      },
+      update: {
+        title: t.title,
+        date,
+        summary,
+        participants,
+        // Only set linked IDs if not already set (don't overwrite manual links)
+        ...(matchResult.linkedLeadId ? { linkedLeadId: matchResult.linkedLeadId } : {}),
+        ...(matchResult.linkedDealId ? { linkedDealId: matchResult.linkedDealId } : {}),
+        ...(matchResult.linkedContactId ? { linkedContactId: matchResult.linkedContactId } : {}),
+      },
+      select: { createdAt: true },
     });
 
-    if (existing) {
-      // Update existing record
-      await prisma.firefliesTranscript.update({
-        where: { firefliesId: t.id },
-        data: {
-          title: t.title,
-          date,
-          summary,
-          participants,
-          ...(matchResult.linkedLeadId && !existing ? { linkedLeadId: matchResult.linkedLeadId } : {}),
-          ...(matchResult.linkedDealId && !existing ? { linkedDealId: matchResult.linkedDealId } : {}),
-          ...(matchResult.linkedContactId && !existing ? { linkedContactId: matchResult.linkedContactId } : {}),
-        },
-      });
-    } else {
-      await prisma.firefliesTranscript.create({
-        data: {
-          firefliesId: t.id,
-          title: t.title,
-          date,
-          summary,
-          participants,
-          linkedLeadId: matchResult.linkedLeadId,
-          linkedDealId: matchResult.linkedDealId,
-          linkedContactId: matchResult.linkedContactId,
-        },
-      });
+    // Count as synced if just created (createdAt is very recent)
+    const justCreated = (Date.now() - result.createdAt.getTime()) < 5000;
+    if (justCreated) {
       synced++;
       if (matchResult.linkedLeadId || matchResult.linkedDealId || matchResult.linkedContactId) {
         matched++;
