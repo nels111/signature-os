@@ -607,7 +607,7 @@ export default function QuotesPage() {
               srcDoc={quoteResult.email.html}
               style={{ width: "100%", height: 700, border: "none" }}
               title="Email Preview"
-              sandbox="allow-same-origin"
+              sandbox=""
             />
           </div>
         </div>

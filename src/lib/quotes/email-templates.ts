@@ -8,6 +8,10 @@ function fmt(n: number): string {
   return (Math.round(n * 100) / 100).toFixed(2);
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 export interface QuoteEmailData {
   companyName: string;
   contactName: string;
@@ -60,8 +64,8 @@ body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0}
 <div class="header">
 <img src="https://signature-cleans.co.uk/wp-content/uploads/2024/01/Final-agreed-Logos.png" alt="Signature Cleans" style="max-width:250px;height:auto;margin-bottom:15px">
 </div>
-<p>Dear <strong>${d.contactName}</strong>,</p>
-<p>Thank you for your interest in Signature Cleans. We're delighted to provide you with a comprehensive cleaning quote for <strong>${d.companyName}</strong>.</p>
+<p>Dear <strong>${escapeHtml(d.contactName)}</strong>,</p>
+<p>Thank you for your interest in Signature Cleans. We're delighted to provide you with a comprehensive cleaning quote for <strong>${escapeHtml(d.companyName)}</strong>.</p>
 <div class="quote-box ${isPilot ? 'pilot-box' : ''}">
 ${isPilot ? '<div style="display:inline-block;background:#ffc107;color:#000;padding:5px 15px;border-radius:20px;font-size:12px;font-weight:bold;margin-bottom:10px">SPECIAL PILOT OFFER - 25% OFF</div>' : ''}
 <h2 style="margin-top:0;color:${isPilot ? '#856404' : '#2c5f2d'}">${isPilot ? 'Your 30-Day Pilot Pricing' : 'Your Quote'}</h2>
@@ -72,7 +76,7 @@ ${isPilot ? `<p style="color:#856404"><strong>Try our service risk-free with 25%
 <div class="pilot-price">\u00A3${calc.pilotPerVisit} per visit</div>
 <div class="savings">You Save: \u00A3${calc.perVisitSavings} per visit for 30 days!</div>` : `<div class="price">\u00A3${calc.perVisitCharge} per visit (excl. VAT)</div>`}
 <p><strong>Service Frequency:</strong> ${calc.frequencyDisplay}</p>
-<p><strong>Site Type:</strong> ${d.siteType}</p>
+<p><strong>Site Type:</strong> ${escapeHtml(d.siteType)}</p>
 ${isPilot ? `<p style="margin-top:20px;font-size:13px;color:#856404"><strong>Pilot Period:</strong> 30 days from agreed start date<br><strong>Standard pricing begins:</strong> 30 days following pilot commencement</p>` : ''}
 </div>
 <div style="background:#f8f9fa;padding:20px;border-radius:8px;margin:25px 0;text-align:center">
@@ -121,12 +125,12 @@ ${isPilot ? '<div style="background:#ffc107;color:#000;padding:15px;text-align:c
 <div class="content">
 <div class="section">
 <div class="section-title">Client Information</div>
-<p><strong>Company:</strong> ${d.companyName}<br>
-<strong>Contact:</strong> ${d.contactName}<br>
-<strong>Email:</strong> ${d.contactEmail}<br>
-<strong>Phone:</strong> ${d.contactPhone}<br>
-<strong>Address:</strong> ${d.address}<br>
-<strong>Site Type:</strong> ${d.siteType}</p>
+<p><strong>Company:</strong> ${escapeHtml(d.companyName)}<br>
+<strong>Contact:</strong> ${escapeHtml(d.contactName)}<br>
+<strong>Email:</strong> ${escapeHtml(d.contactEmail)}<br>
+<strong>Phone:</strong> ${escapeHtml(d.contactPhone)}<br>
+<strong>Address:</strong> ${escapeHtml(d.address)}<br>
+<strong>Site Type:</strong> ${escapeHtml(d.siteType)}</p>
 </div>
 <div class="section">
 <div class="section-title">Pricing Summary</div>
@@ -159,7 +163,7 @@ ${isPilot ? `<div style="background:#fff3cd;padding:20px;border-left:5px solid #
 <div style="background:#e3f2fd;padding:20px;border-left:4px solid #2196f3;margin:20px 0;border-radius:5px">
 <div class="section-title">Next Actions</div>
 <ul>
-<li>Quote sent to client at <strong>${d.contactEmail}</strong></li>
+<li>Quote sent to client at <strong>${escapeHtml(d.contactEmail)}</strong></li>
 <li>Quote reference: <strong>${calc.quoteRef}</strong></li>
 ${isPilot ? `<li style="color:#856404"><strong>PILOT PRICING:</strong> Set calendar reminder for <strong>${calc.pilotReviewDate}</strong></li>` : ''}
 <li>Follow up within 24-48 hours</li>

@@ -19,8 +19,8 @@ export async function POST(
     const { id } = await params;
     const body = await request.json();
 
-    // Allow overriding subject and HTML from the preview editor
-    const { subject: overrideSubject, html: overrideHtml } = body;
+    // Allow overriding subject from the preview editor (HTML is always server-generated)
+    const { subject: overrideSubject } = body;
 
     // Fetch the quote
     const quote = await prisma.quote.findUnique({
@@ -36,6 +36,7 @@ export async function POST(
         pdfPath: true,
         trackingId: true,
         isPilot: true,
+        createdBy: true,
       },
     });
 
@@ -43,7 +44,11 @@ export async function POST(
       return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
     }
 
-    if (quote.status === 'sent') {
+    if (quote.createdBy !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (quote.status !== 'draft') {
       return NextResponse.json({ error: 'Quote already sent' }, { status: 400 });
     }
 
@@ -52,18 +57,18 @@ export async function POST(
     }
 
     const emailSubject = overrideSubject || quote.emailSubject;
-    const emailHtml = overrideHtml || quote.emailHtml;
+    const emailHtml = quote.emailHtml;  // Always use server-generated HTML
 
     if (!emailSubject || !emailHtml) {
       return NextResponse.json({ error: 'Quote has no email content. Regenerate the quote.' }, { status: 400 });
     }
 
-    // Read PDF attachment
-    let pdfBuffer: Buffer | null = null;
+    // Read PDF attachment (required)
     const pdfFilename = `Signature Cleans T&C's and quote letter (${quote.companyName}).pdf`;
-    if (quote.pdfPath && existsSync(quote.pdfPath)) {
-      pdfBuffer = readFileSync(quote.pdfPath);
+    if (!quote.pdfPath || !existsSync(quote.pdfPath)) {
+      return NextResponse.json({ error: 'PDF not found. Please regenerate the quote.' }, { status: 400 });
     }
+    const pdfBuffer = readFileSync(quote.pdfPath);
 
     // SMTP config - use nick@signature-cleans.co.uk
     // For now, use env vars. In production, pull from DB email accounts.
@@ -135,6 +140,6 @@ export async function POST(
     });
   } catch (error) {
     console.error('Quote send error:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to send quote' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to send quote' }, { status: 500 });
   }
 }

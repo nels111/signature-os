@@ -1,6 +1,8 @@
 import { renameSync, readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
-import { execSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+const execFileAsync = promisify(execFile);
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 
@@ -244,12 +246,11 @@ export async function generateQuotePdf(data: QuotePdfData): Promise<{ pdfPath: s
   const docxPath = join(OUTPUT_DIR, docxFilename);
   writeFileSync(docxPath, buf);
 
-  // Convert to PDF via LibreOffice
+  // Convert to PDF via LibreOffice (async, no shell)
   try {
-    execSync(`libreoffice --headless --convert-to pdf --outdir "${OUTPUT_DIR}" "${docxPath}"`, {
-      timeout: 30000,
-      stdio: 'pipe',
-    });
+    await execFileAsync('libreoffice', [
+      '--headless', '--convert-to', 'pdf', '--outdir', OUTPUT_DIR, docxPath
+    ], { timeout: 30000 });
   } catch (e) {
     console.error('LibreOffice conversion error:', e);
     throw new Error('PDF conversion failed');

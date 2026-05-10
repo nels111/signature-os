@@ -45,6 +45,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contact_email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    }
+
     const pdfData = {
       companyName: company_name,
       address,
@@ -154,6 +160,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Quote generate error:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to generate quote' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to generate quote' }, { status: 500 });
   }
 }

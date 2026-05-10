@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const mailbox = searchParams.get('mailbox');
     const folder = searchParams.get('folder') || 'INBOX';
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50') || 50, 100);
     const search = searchParams.get('search') || '';
     const dbOnly = searchParams.get('dbOnly') === 'true';
 

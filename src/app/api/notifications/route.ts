@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/notifications - Create notification (internal / Jaz use)
+// POST /api/notifications - Create notification (admin only)
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -43,15 +43,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Only admins can create notifications for other users
     const body = await request.json();
     const { userId, type, title, message, entityType, entityId } = body;
 
-    if (!userId || !type || !title || !message) {
-      return NextResponse.json({ error: 'userId, type, title, and message are required' }, { status: 400 });
+    const targetUserId = userId || session.user.id;
+
+    // Non-admins can only create notifications for themselves
+    if (targetUserId !== session.user.id && (session.user as { role?: string }).role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!type || !title || !message) {
+      return NextResponse.json({ error: 'type, title, and message are required' }, { status: 400 });
     }
 
     const notification = await prisma.notification.create({
-      data: { userId, type, title, message, entityType, entityId },
+      data: { userId: targetUserId, type, title, message, entityType, entityId },
     });
 
     return NextResponse.json({ notification });
