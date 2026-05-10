@@ -38,6 +38,17 @@ export async function POST(request: NextRequest) {
         if (!steps || !Array.isArray(steps) || steps.length === 0) {
           return NextResponse.json({ error: 'steps array is required (templateId + delayDays)' }, { status: 400 });
         }
+        if (steps.length > 20) {
+          return NextResponse.json({ error: 'Maximum 20 steps per cadence' }, { status: 400 });
+        }
+        for (const step of steps) {
+          if (typeof step.templateId !== 'string' || !step.templateId) {
+            return NextResponse.json({ error: 'Each step requires a valid templateId' }, { status: 400 });
+          }
+          if (typeof step.delayDays !== 'number' || step.delayDays < 1 || step.delayDays > 365) {
+            return NextResponse.json({ error: 'delayDays must be between 1 and 365' }, { status: 400 });
+          }
+        }
         const id = await startCadence(leadId, steps);
         return NextResponse.json({ success: true, cadenceId: id }, { status: 201 });
       }

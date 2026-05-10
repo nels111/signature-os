@@ -70,10 +70,22 @@ export async function PATCH(
 
     const { name, subject, bodyHtml, mergeFields } = body;
     const data: Record<string, unknown> = {};
-    if (name !== undefined) data.name = name;
-    if (subject !== undefined) data.subject = subject;
-    if (bodyHtml !== undefined) data.bodyHtml = bodyHtml;
-    if (mergeFields !== undefined) data.mergeFields = mergeFields;
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.length > 200) return NextResponse.json({ error: 'name must be under 200 chars' }, { status: 400 });
+      data.name = name;
+    }
+    if (subject !== undefined) {
+      if (typeof subject !== 'string' || subject.length > 500) return NextResponse.json({ error: 'subject must be under 500 chars' }, { status: 400 });
+      data.subject = subject;
+    }
+    if (bodyHtml !== undefined) {
+      if (typeof bodyHtml !== 'string' || bodyHtml.length > 100_000) return NextResponse.json({ error: 'bodyHtml must be under 100KB' }, { status: 400 });
+      data.bodyHtml = bodyHtml;
+    }
+    if (mergeFields !== undefined) {
+      if (!Array.isArray(mergeFields) || !mergeFields.every((f: unknown) => typeof f === 'string')) return NextResponse.json({ error: 'mergeFields must be string[]' }, { status: 400 });
+      data.mergeFields = mergeFields;
+    }
 
     const updated = await prisma.emailTemplate.update({
       where: { id },

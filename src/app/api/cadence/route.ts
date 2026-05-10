@@ -26,8 +26,14 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const leadId = searchParams.get('leadId');
 
-    const where: Record<string, unknown> = {};
-    if (status) where.status = status;
+    const validStatuses = ['active', 'paused_replied', 'paused_meeting', 'stopped_active_client', 'completed', 'long_term_nurture'];
+    const where: Record<string, unknown> = { lead: { deletedAt: null } };
+    if (status) {
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+      }
+      where.status = status;
+    }
     if (leadId) where.leadId = leadId;
 
     const [cadences, total] = await Promise.all([

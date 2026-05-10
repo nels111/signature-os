@@ -30,9 +30,14 @@ export function replaceMergeFields(html: string, lead: LeadData): string {
 export function replaceMergeFieldsPlain(text: string, lead: LeadData): string {
   let result = text;
   for (const [field, resolver] of Object.entries(MERGE_FIELDS)) {
-    result = result.replaceAll(field, resolver(lead));
+    // Strip any HTML tags from plain-text context (subjects, etc)
+    result = result.replaceAll(field, stripTags(resolver(lead)));
   }
   return result;
+}
+
+function stripTags(s: string): string {
+  return s.replace(/<[^>]*>/g, '');
 }
 
 function escapeHtml(s: string): string {
@@ -47,40 +52,53 @@ export async function startCadence(
   leadId: string,
   templateIds: { templateId: string; delayDays: number }[]
 ): Promise<string> {
-  // Verify lead exists and has email
-  const lead = await prisma.lead.findUnique({
-    where: { id: leadId },
-    select: { id: true, email: true, cadenceStatus: true, deletedAt: true },
-  });
+  const MS_PER_DAY = 86_400_000;
 
-  if (!lead || lead.deletedAt) throw new Error('Lead not found');
-  if (!lead.email) throw new Error('Lead has no email address');
-  if (lead.cadenceStatus === 'active') throw new Error('Lead already in active cadence');
+  // Atomic transaction to prevent race conditions
+  const cadence = await prisma.$transaction(async (tx) => {
+    // Verify lead exists and has email
+    const lead = await tx.lead.findUnique({
+      where: { id: leadId },
+      select: { id: true, email: true, cadenceStatus: true, deletedAt: true },
+    });
 
-  // Create cadence with steps
-  const firstDelay = templateIds[0]?.delayDays ?? 1;
-  const nextSendAt = new Date(Date.now() + firstDelay * 24 * 60 * 60 * 1000);
+    if (!lead || lead.deletedAt) throw new Error('Lead not found');
+    if (!lead.email) throw new Error('Lead has no email address');
+    if (lead.cadenceStatus === 'active') throw new Error('Lead already in active cadence');
 
-  const cadence = await prisma.cadence.create({
-    data: {
-      leadId,
-      status: 'active',
-      currentStep: 0,
-      nextSendAt,
-      steps: {
-        create: templateIds.map((t, i) => ({
-          stepNumber: i,
-          templateId: t.templateId,
-          delayDays: t.delayDays,
-        })),
+    // Validate all template IDs exist
+    const templateCount = await tx.emailTemplate.count({
+      where: { id: { in: templateIds.map(t => t.templateId) } },
+    });
+    if (templateCount !== templateIds.length) throw new Error('One or more template IDs are invalid');
+
+    // Create cadence with steps
+    const firstDelay = templateIds[0]?.delayDays ?? 1;
+    const nextSendAt = new Date(Date.now() + firstDelay * MS_PER_DAY);
+
+    const created = await tx.cadence.create({
+      data: {
+        leadId,
+        status: 'active',
+        currentStep: 0,
+        nextSendAt,
+        steps: {
+          create: templateIds.map((t, i) => ({
+            stepNumber: i,
+            templateId: t.templateId,
+            delayDays: t.delayDays,
+          })),
+        },
       },
-    },
-  });
+    });
 
-  // Update lead cadence status
-  await prisma.lead.update({
-    where: { id: leadId },
-    data: { cadenceStatus: 'active' },
+    // Update lead cadence status
+    await tx.lead.update({
+      where: { id: leadId },
+      data: { cadenceStatus: 'active' },
+    });
+
+    return created;
   });
 
   return cadence.id;
@@ -93,27 +111,29 @@ export async function pauseCadence(
   cadenceId: string,
   reason: 'paused_replied' | 'paused_meeting' | 'stopped_active_client'
 ): Promise<void> {
-  const cadence = await prisma.cadence.findUnique({
-    where: { id: cadenceId },
-    select: { id: true, leadId: true, status: true },
-  });
+  await prisma.$transaction(async (tx) => {
+    const cadence = await tx.cadence.findUnique({
+      where: { id: cadenceId },
+      select: { id: true, leadId: true, status: true },
+    });
 
-  if (!cadence) throw new Error('Cadence not found');
-  if (cadence.status !== 'active') throw new Error('Cadence is not active');
+    if (!cadence) throw new Error('Cadence not found');
+    if (cadence.status !== 'active') throw new Error('Cadence is not active');
 
-  await prisma.cadence.update({
-    where: { id: cadenceId },
-    data: {
-      status: reason,
-      pausedAt: new Date(),
-      pauseReason: reason,
-      nextSendAt: null,
-    },
-  });
+    await tx.cadence.update({
+      where: { id: cadenceId },
+      data: {
+        status: reason,
+        pausedAt: new Date(),
+        pauseReason: reason,
+        nextSendAt: null,
+      },
+    });
 
-  await prisma.lead.update({
-    where: { id: cadence.leadId },
-    data: { cadenceStatus: reason },
+    await tx.lead.update({
+      where: { id: cadence.leadId },
+      data: { cadenceStatus: reason },
+    });
   });
 }
 
@@ -121,34 +141,38 @@ export async function pauseCadence(
  * Resume a paused cadence.
  */
 export async function resumeCadence(cadenceId: string): Promise<void> {
-  const cadence = await prisma.cadence.findUnique({
-    where: { id: cadenceId },
-    select: { id: true, leadId: true, status: true, currentStep: true, steps: { select: { delayDays: true, stepNumber: true }, orderBy: { stepNumber: 'asc' } } },
-  });
+  const MS_PER_DAY = 86_400_000;
 
-  if (!cadence) throw new Error('Cadence not found');
-  if (cadence.status === 'active') throw new Error('Cadence is already active');
-  if (cadence.status === 'completed' || cadence.status === 'stopped_active_client') {
-    throw new Error('Cadence cannot be resumed');
-  }
+  await prisma.$transaction(async (tx) => {
+    const cadence = await tx.cadence.findUnique({
+      where: { id: cadenceId },
+      select: { id: true, leadId: true, status: true, currentStep: true, steps: { select: { delayDays: true, stepNumber: true }, orderBy: { stepNumber: 'asc' } } },
+    });
 
-  const nextStep = cadence.steps.find(s => s.stepNumber === cadence.currentStep);
-  const delayDays = nextStep?.delayDays ?? 1;
-  const nextSendAt = new Date(Date.now() + delayDays * 24 * 60 * 60 * 1000);
+    if (!cadence) throw new Error('Cadence not found');
+    if (cadence.status === 'active') throw new Error('Cadence is already active');
+    if (cadence.status === 'completed' || cadence.status === 'stopped_active_client') {
+      throw new Error('Cadence cannot be resumed');
+    }
 
-  await prisma.cadence.update({
-    where: { id: cadenceId },
-    data: {
-      status: 'active',
-      pausedAt: null,
-      pauseReason: null,
-      nextSendAt,
-    },
-  });
+    const nextStep = cadence.steps.find(s => s.stepNumber === cadence.currentStep);
+    const delayDays = nextStep?.delayDays ?? 1;
+    const nextSendAt = new Date(Date.now() + delayDays * MS_PER_DAY);
 
-  await prisma.lead.update({
-    where: { id: cadence.leadId },
-    data: { cadenceStatus: 'active' },
+    await tx.cadence.update({
+      where: { id: cadenceId },
+      data: {
+        status: 'active',
+        pausedAt: null,
+        pauseReason: null,
+        nextSendAt,
+      },
+    });
+
+    await tx.lead.update({
+      where: { id: cadence.leadId },
+      data: { cadenceStatus: 'active' },
+    });
   });
 }
 
@@ -157,7 +181,10 @@ export async function resumeCadence(cadenceId: string): Promise<void> {
  */
 export async function getCadenceOverview() {
   return prisma.cadence.findMany({
-    where: { status: { in: ['active', 'paused_replied', 'paused_meeting', 'long_term_nurture'] } },
+    where: {
+      status: { in: ['active', 'paused_replied', 'paused_meeting', 'long_term_nurture'] },
+      lead: { deletedAt: null },
+    },
     orderBy: { nextSendAt: 'asc' },
     select: {
       id: true,

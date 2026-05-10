@@ -73,6 +73,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'name must be under 200 chars' }, { status: 400 });
     }
 
+    if (typeof subject !== 'string' || subject.length > 500) {
+      return NextResponse.json({ error: 'subject must be a string under 500 chars' }, { status: 400 });
+    }
+
+    if (typeof bodyHtml !== 'string' || bodyHtml.length > 100_000) {
+      return NextResponse.json({ error: 'bodyHtml must be under 100KB' }, { status: 400 });
+    }
+
+    if (mergeFields !== undefined && (!Array.isArray(mergeFields) || !mergeFields.every((f: unknown) => typeof f === 'string'))) {
+      return NextResponse.json({ error: 'mergeFields must be a string array' }, { status: 400 });
+    }
+
     const template = await prisma.emailTemplate.create({
       data: {
         name,
