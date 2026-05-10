@@ -119,6 +119,7 @@ enum NotificationType {
   cadence_reply
   audit_due
   shift_alert
+  quote_sent
 }
 
 enum ActivityType {
@@ -399,6 +400,21 @@ model Quote {
   accountId     String?
   contactId     String?
   status        QuoteStatus @default(draft)
+
+  // Form data (stored for PDF generation and email preview)
+  companyName   String?
+  address       String?
+  contactName   String?
+  contactEmail  String?
+  contactPhone  String?
+  siteType      String?
+  hoursPerDay   Decimal?
+  frequency     Int?
+  days          String[]
+  productCost   Decimal?    @default(0)
+  overheadCost  Decimal?    @default(0)
+
+  // Calculated pricing
   weeklyHours   Decimal
   sellRate      Decimal
   labourRate    Decimal     @default(17)
@@ -408,6 +424,13 @@ model Quote {
   monthlyTotal  Decimal
   annualTotal   Decimal
   margin        Decimal
+
+  // PDF and email
+  pdfPath       String?
+  emailSubject  String?
+  emailHtml     String?
+
+  // Tracking
   sentAt        DateTime?
   acceptedAt    DateTime?
   rejectedAt    DateTime?

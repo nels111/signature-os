@@ -1,7 +1,29 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
+// ---- Types ----
+interface QuoteResult {
+  success: boolean;
+  quote_id: string;
+  quote_ref: string;
+  pricing: {
+    perVisit: number;
+    pilotPerVisit: number | null;
+    weeklyCharge: number;
+    monthlyTotal: number;
+    annualTotal: number;
+    margin: number;
+  };
+  email: {
+    subject: string;
+    html: string;
+    to: string;
+    pdfFilename: string;
+  };
+}
+
+// ---- Quote Form HTML (same as before, ported from Vercel) ----
 const QUOTE_HTML = `
 <style>
   .qg-wrap * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -240,7 +262,7 @@ const QUOTE_HTML = `
         <div class="calc-card" id="calc-card">
           <div class="calc-title">Per Visit Rate</div>
           <div class="calc-price" id="calc-pervisit">--</div>
-          <div class="calc-subtitle">per visit (excl. VAT) — client sees this</div>
+          <div class="calc-subtitle">per visit (excl. VAT) -- client sees this</div>
           <div style="margin-top:8px;opacity:0.7;font-size:13px;">Monthly: <span id="calc-monthly">--</span></div>
           <div class="calc-pilot" id="calc-pilot" style="display:none;">
             <div class="pilot-label">Pilot Rate (30 days)</div>
@@ -272,27 +294,7 @@ const QUOTE_HTML = `
     <div class="section">
       <div class="spinner"></div>
       <div class="status-title">Generating Quote...</div>
-      <div class="status-text">Creating documents, sending emails, and logging to CRM.</div>
-    </div>
-  </div>
-
-  <div class="status-screen" id="success-screen">
-    <div class="section">
-      <div class="status-icon">✓</div>
-      <div class="status-title">Quote Sent!</div>
-      <div class="status-text" id="success-text">Quote emailed to the client and logged.</div>
-      <div class="status-ref" id="success-ref"></div>
-      <br>
-      <button class="reset-btn" id="reset-btn">New Quote</button>
-    </div>
-  </div>
-
-  <div class="status-screen" id="error-screen">
-    <div class="section">
-      <div class="status-icon">⚠</div>
-      <div class="status-title" style="color:#c4302b;">Something Went Wrong</div>
-      <div class="status-text" id="error-text">Please try again or contact Nelson.</div>
-      <button class="reset-btn" id="reset-error-btn">Try Again</button>
+      <div class="status-text">Creating PDF and preparing email draft.</div>
     </div>
   </div>
 </div>
@@ -300,9 +302,15 @@ const QUOTE_HTML = `
 
 export default function QuotesPage() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [screen, setScreen] = useState<"form" | "loading" | "preview" | "sent" | "error">("form");
+  const [quoteResult, setQuoteResult] = useState<QuoteResult | null>(null);
+  const [editableSubject, setEditableSubject] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || screen !== "form") return;
 
     const LABOUR_RATE = 17;
     const WEEKS_PER_MONTH = 4.33;
@@ -338,7 +346,6 @@ export default function QuotesPage() {
       });
     }
 
-    // Calculator
     function recalc() {
       const hours = parseFloat((form.elements.namedItem("hours_per_day") as HTMLInputElement)?.value) || 0;
       const freq = parseInt((form.elements.namedItem("frequency") as HTMLSelectElement)?.value) || 0;
@@ -352,7 +359,7 @@ export default function QuotesPage() {
       const monthlyTotal = Math.round(weeklyCharge * WEEKS_PER_MONTH);
       const weeklyProfit = weeklyCharge - weeklySpend;
 
-      const fmt = (n: number) => "£" + n.toFixed(2);
+      const fmt = (n: number) => "\u00A3" + n.toFixed(2);
 
       getEl("calc-labour").textContent = fmt(weeklyLabour);
       getEl("calc-products").textContent = fmt(products);
@@ -363,35 +370,26 @@ export default function QuotesPage() {
       getEl("calc-margin").textContent = (margin * 100).toFixed(0) + "%";
 
       const perVisit = freq > 0 ? weeklyCharge / freq : 0;
-      getEl("calc-pervisit").textContent = perVisit > 0 ? "£" + perVisit.toFixed(2) : "--";
-      getEl("calc-monthly").textContent = monthlyTotal > 0 ? "£" + monthlyTotal : "--";
+      getEl("calc-pervisit").textContent = perVisit > 0 ? "\u00A3" + perVisit.toFixed(2) : "--";
+      getEl("calc-monthly").textContent = monthlyTotal > 0 ? "\u00A3" + monthlyTotal : "--";
 
       if (pilotActive && perVisit > 0) {
         const pilotPerVisit = perVisit * 0.75;
         const visitSavings = perVisit - pilotPerVisit;
         getEl("calc-pilot").style.display = "block";
-        getEl("calc-pilot-price").textContent = "£" + pilotPerVisit.toFixed(2) + "/visit";
-        getEl("calc-pilot-save").textContent = "Save £" + visitSavings.toFixed(2) + "/visit for 30 days";
+        getEl("calc-pilot-price").textContent = "\u00A3" + pilotPerVisit.toFixed(2) + "/visit";
+        getEl("calc-pilot-save").textContent = "Save \u00A3" + visitSavings.toFixed(2) + "/visit for 30 days";
       } else {
         getEl("calc-pilot").style.display = "none";
       }
     }
 
-    // Wire up recalc on input changes
     ["hours_per_day", "margin", "product_cost", "overhead_cost"].forEach((name) => {
       const input = form.elements.namedItem(name) as HTMLInputElement;
       if (input) input.addEventListener("input", recalc);
     });
     const freqSelect = form.elements.namedItem("frequency") as HTMLSelectElement;
     if (freqSelect) freqSelect.addEventListener("change", recalc);
-
-    function showScreen(screen: string) {
-      const formContainer = getEl("form-container");
-      if (formContainer) formContainer.classList.toggle("hidden", screen !== "form");
-      getEl("loading-screen")?.classList.toggle("visible", screen === "loading");
-      getEl("success-screen")?.classList.toggle("visible", screen === "success");
-      getEl("error-screen")?.classList.toggle("visible", screen === "error");
-    }
 
     function showError(msg: string) {
       const box = getEl("error-box");
@@ -400,17 +398,7 @@ export default function QuotesPage() {
       setTimeout(() => { box.style.display = "none"; }, 4000);
     }
 
-    function resetForm() {
-      form.reset();
-      selectedDays = [];
-      pilotActive = false;
-      el.querySelectorAll(".day-btn").forEach((b) => b.classList.remove("active"));
-      pilotToggle?.classList.remove("active");
-      recalc();
-      showScreen("form");
-    }
-
-    // Submit handler
+    // Submit handler - now generates draft, not sends
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
@@ -435,7 +423,7 @@ export default function QuotesPage() {
         pilot_pricing: pilotActive,
       };
 
-      showScreen("loading");
+      setScreen("loading");
 
       try {
         const res = await fetch("/api/quotes/generate", {
@@ -447,26 +435,236 @@ export default function QuotesPage() {
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || "Quote generation failed");
 
-        getEl("success-ref").textContent = result.quote_ref || "";
-        getEl("success-text").textContent = "Quote emailed to " + data.contact_email + " and logged.";
-        showScreen("success");
+        setQuoteResult(result);
+        setEditableSubject(result.email.subject);
+        setScreen("preview");
       } catch (err: unknown) {
-        getEl("error-text").textContent = err instanceof Error ? err.message : "Unknown error";
-        showScreen("error");
+        setErrorMessage(err instanceof Error ? err.message : "Unknown error");
+        setScreen("error");
       }
     });
 
-    // Reset buttons
-    getEl("reset-btn")?.addEventListener("click", resetForm);
-    getEl("reset-error-btn")?.addEventListener("click", resetForm);
-
-    // Initial calc
     recalc();
-  }, []);
+  }, [screen]);
+
+  // Send the quote
+  const handleSend = async () => {
+    if (!quoteResult) return;
+    setSending(true);
+    setSendError("");
+
+    try {
+      const res = await fetch(`/api/quotes/${quoteResult.quote_id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: editableSubject,
+        }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to send");
+
+      setScreen("sent");
+    } catch (err: unknown) {
+      setSendError(err instanceof Error ? err.message : "Send failed");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const resetAll = () => {
+    setQuoteResult(null);
+    setEditableSubject("");
+    setSendError("");
+    setErrorMessage("");
+    setScreen("form");
+  };
 
   return (
     <div className="h-[calc(100vh-64px)] overflow-y-auto">
-      <div ref={containerRef} dangerouslySetInnerHTML={{ __html: QUOTE_HTML }} />
+      {/* Form Screen */}
+      {screen === "form" && (
+        <div ref={containerRef} dangerouslySetInnerHTML={{ __html: QUOTE_HTML }} />
+      )}
+
+      {/* Loading Screen */}
+      {screen === "loading" && (
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: 40, textAlign: "center" }}>
+          <div style={{
+            width: 48, height: 48, border: "4px solid #e0e0e0", borderTopColor: "#2c5f2d",
+            borderRadius: "50%", animation: "qg-spin 0.8s linear infinite", margin: "0 auto 16px"
+          }} />
+          <style>{`@keyframes qg-spin { to { transform: rotate(360deg); } }`}</style>
+          <h2 style={{ color: "#2c5f2d", marginBottom: 8 }}>Generating Quote...</h2>
+          <p style={{ color: "#666" }}>Creating PDF and preparing email draft.</p>
+        </div>
+      )}
+
+      {/* Email Preview Screen */}
+      {screen === "preview" && quoteResult && (
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: 16, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
+          {/* Header bar */}
+          <div style={{
+            background: "linear-gradient(135deg, #2c5f2d 0%, #1e4520 100%)",
+            borderRadius: "12px 12px 0 0", padding: "16px 20px", color: "white",
+            display: "flex", justifyContent: "space-between", alignItems: "center"
+          }}>
+            <div>
+              <div style={{ fontSize: 13, opacity: 0.8, textTransform: "uppercase", letterSpacing: 1 }}>Email Draft Preview</div>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>{quoteResult.quote_ref}</div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={resetAll}
+                style={{
+                  padding: "8px 16px", background: "rgba(255,255,255,0.15)", color: "white",
+                  border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, cursor: "pointer",
+                  fontSize: 14, fontWeight: 600
+                }}
+              >
+                Back to Form
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={sending}
+                style={{
+                  padding: "8px 24px", background: "#f9a825", color: "#000",
+                  border: "none", borderRadius: 8, cursor: sending ? "not-allowed" : "pointer",
+                  fontSize: 14, fontWeight: 700, opacity: sending ? 0.6 : 1
+                }}
+              >
+                {sending ? "Sending..." : "Send Quote"}
+              </button>
+            </div>
+          </div>
+
+          {/* Email metadata */}
+          <div style={{
+            background: "#f8f9fa", padding: "16px 20px", borderBottom: "1px solid #e0e0e0",
+            fontSize: 14
+          }}>
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ fontWeight: 600, color: "#555", width: 60, display: "inline-block" }}>From:</span>
+              <span>Nick Stentiford &lt;nick@signature-cleans.co.uk&gt;</span>
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ fontWeight: 600, color: "#555", width: 60, display: "inline-block" }}>To:</span>
+              <span>{quoteResult.email.to}</span>
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ fontWeight: 600, color: "#555", width: 60, display: "inline-block" }}>Subject:</span>
+              <input
+                type="text"
+                value={editableSubject}
+                onChange={(e) => setEditableSubject(e.target.value)}
+                style={{
+                  border: "1px solid #ddd", borderRadius: 4, padding: "4px 8px",
+                  fontSize: 14, width: "calc(100% - 70px)", fontFamily: "inherit"
+                }}
+              />
+            </div>
+            <div>
+              <span style={{ fontWeight: 600, color: "#555", width: 60, display: "inline-block" }}>Attach:</span>
+              <span style={{
+                background: "#e8f0e8", padding: "2px 8px", borderRadius: 4,
+                fontSize: 13, color: "#2c5f2d"
+              }}>
+                📎 {quoteResult.email.pdfFilename}
+              </span>
+            </div>
+          </div>
+
+          {/* Pricing summary bar */}
+          <div style={{
+            background: "#fff", padding: "12px 20px", borderBottom: "1px solid #e0e0e0",
+            display: "flex", gap: 24, fontSize: 13, color: "#555"
+          }}>
+            <span><strong>Per Visit:</strong> £{quoteResult.pricing.perVisit.toFixed(2)}</span>
+            {quoteResult.pricing.pilotPerVisit && (
+              <span><strong>Pilot:</strong> £{quoteResult.pricing.pilotPerVisit.toFixed(2)}</span>
+            )}
+            <span><strong>Monthly:</strong> £{quoteResult.pricing.monthlyTotal.toFixed(2)}</span>
+            <span><strong>Annual:</strong> £{quoteResult.pricing.annualTotal.toFixed(2)}</span>
+            <span><strong>Margin:</strong> {quoteResult.pricing.margin.toFixed(0)}%</span>
+          </div>
+
+          {sendError && (
+            <div style={{
+              background: "#fef2f2", border: "1px solid #fecaca", padding: "10px 20px",
+              color: "#991b1b", fontSize: 14
+            }}>
+              {sendError}
+            </div>
+          )}
+
+          {/* Email HTML preview */}
+          <div style={{
+            background: "#fff", border: "1px solid #e0e0e0", borderRadius: "0 0 12px 12px",
+            overflow: "hidden"
+          }}>
+            <iframe
+              srcDoc={quoteResult.email.html}
+              style={{ width: "100%", height: 700, border: "none" }}
+              title="Email Preview"
+              sandbox="allow-same-origin"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Sent Success Screen */}
+      {screen === "sent" && quoteResult && (
+        <div style={{
+          maxWidth: 500, margin: "80px auto", padding: 40, textAlign: "center",
+          background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+        }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>✓</div>
+          <h2 style={{ color: "#2c5f2d", marginBottom: 8 }}>Quote Sent!</h2>
+          <p style={{ color: "#666", marginBottom: 16 }}>
+            Quote emailed to {quoteResult.email.to} with PDF attached.
+          </p>
+          <div style={{
+            background: "#e8f0e8", padding: "8px 16px", borderRadius: 8,
+            display: "inline-block", fontFamily: "monospace", fontSize: 14, color: "#2c5f2d"
+          }}>
+            {quoteResult.quote_ref}
+          </div>
+          <br />
+          <button
+            onClick={resetAll}
+            style={{
+              marginTop: 24, padding: "12px 32px", background: "white", color: "#2c5f2d",
+              border: "2px solid #2c5f2d", borderRadius: 8, fontSize: 15,
+              fontWeight: 600, cursor: "pointer"
+            }}
+          >
+            New Quote
+          </button>
+        </div>
+      )}
+
+      {/* Error Screen */}
+      {screen === "error" && (
+        <div style={{
+          maxWidth: 500, margin: "80px auto", padding: 40, textAlign: "center",
+          background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+        }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>⚠</div>
+          <h2 style={{ color: "#c4302b", marginBottom: 8 }}>Something Went Wrong</h2>
+          <p style={{ color: "#666", marginBottom: 16 }}>{errorMessage}</p>
+          <button
+            onClick={resetAll}
+            style={{
+              marginTop: 8, padding: "12px 32px", background: "white", color: "#2c5f2d",
+              border: "2px solid #2c5f2d", borderRadius: 8, fontSize: 15,
+              fontWeight: 600, cursor: "pointer"
+            }}
+          >
+            Try Again
+          </button>
+        </div>
+      )}
     </div>
   );
 }

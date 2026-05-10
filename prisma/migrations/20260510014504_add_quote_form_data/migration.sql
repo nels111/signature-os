@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "quotes" ADD COLUMN     "address" TEXT,
+ADD COLUMN     "companyName" TEXT,
+ADD COLUMN     "contactEmail" TEXT,
+ADD COLUMN     "contactName" TEXT,
+ADD COLUMN     "contactPhone" TEXT,
+ADD COLUMN     "days" TEXT[],
+ADD COLUMN     "emailHtml" TEXT,
+ADD COLUMN     "emailSubject" TEXT,
+ADD COLUMN     "frequency" INTEGER,
+ADD COLUMN     "hoursPerDay" DECIMAL(65,30),
+ADD COLUMN     "overheadCost" DECIMAL(65,30) DEFAULT 0,
+ADD COLUMN     "pdfPath" TEXT,
+ADD COLUMN     "productCost" DECIMAL(65,30) DEFAULT 0,
+ADD COLUMN     "siteType" TEXT;
