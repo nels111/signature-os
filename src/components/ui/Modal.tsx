@@ -23,16 +23,26 @@ export function Modal({ open, onClose, title, children, maxWidth = '500px' }: Mo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative bg-white rounded-lg shadow-xl w-full mx-4"
-        style={{ maxWidth }}
+        className="relative w-full mx-4 rounded-xl overflow-hidden"
+        style={{
+          maxWidth,
+          background: 'var(--surface)',
+          boxShadow: 'var(--shadow-modal)',
+        }}
       >
-        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: '#e2e8f0' }}>
-          <h2 className="text-lg font-semibold" style={{ color: '#1a1a1a' }}>{title}</h2>
+        <div
+          className="flex items-center justify-between p-4"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {title}
+          </h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded text-gray-500"
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-sm"
+            style={{ color: 'var(--text-muted)' }}
           >
             ✕
           </button>

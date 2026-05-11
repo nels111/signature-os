@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { EmailList } from "./EmailList";
+import { EmailList, groupIntoThreads } from "./EmailList";
+import type { EmailSummary } from "./EmailList";
 import { EmailDetail } from "./EmailDetail";
 import { ComposeModal } from "./ComposeModal";
+import { Search, RefreshCw, Plus, Mail } from "lucide-react";
 
 interface Mailbox {
   email: string;
@@ -12,26 +14,12 @@ interface Mailbox {
   configured?: boolean;
 }
 
-interface EmailSummary {
-  id: string;
-  messageId: string;
-  mailbox: string;
-  from: string;
-  to: string[];
-  subject: string;
-  date: string;
-  isRead: boolean;
-  folder: string;
-  linkedLeadId: string | null;
-  linkedDealId: string | null;
-  linkedContactId: string | null;
-}
-
 export default function EmailsPage() {
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [activeMailbox, setActiveMailbox] = useState<string>("");
   const [emails, setEmails] = useState<EmailSummary[]>([]);
-  const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
@@ -45,37 +33,61 @@ export default function EmailsPage() {
     references: string;
     bodyHtml: string;
   } | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Fetch mailboxes
   useEffect(() => {
-    fetch("/api/emails/mailboxes")
-      .then((r) => r.json())
-      .then((data) => {
-        setMailboxes(data.mailboxes || []);
-        if (data.mailboxes?.length > 0) {
-          setActiveMailbox(data.mailboxes[0].email);
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/emails/mailboxes");
+        const data = await res.json();
+        if (!cancelled) {
+          setMailboxes(data.mailboxes || []);
+          if (data.mailboxes?.length > 0) {
+            setActiveMailbox(data.mailboxes[0].email);
+          }
         }
-      })
-      .catch(console.error);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
   }, []);
 
-  // Fetch emails from DB only
-  const fetchEmailsRef = useCallback(async () => {
+  // Fetch emails from DB
+  useEffect(() => {
     if (!activeMailbox) return;
-    const params = new URLSearchParams({
-      mailbox: activeMailbox,
-      page: page.toString(),
-      limit: "50",
-      dbOnly: "true",
-    });
-    if (search) params.set("search", search);
+    let cancelled = false;
+    setLoading(true);
 
-    const res = await fetch(`/api/emails?${params}`);
-    const data = await res.json();
-    return { emails: data.emails || [], pages: data.pagination?.pages || 1 };
-  }, [activeMailbox, page, search]);
+    async function load() {
+      const params = new URLSearchParams({
+        mailbox: activeMailbox,
+        page: page.toString(),
+        limit: "50",
+        dbOnly: "true",
+      });
+      if (search) params.set("search", search);
+      try {
+        const res = await fetch(`/api/emails?${params}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setEmails(data.emails || []);
+          setTotalPages(data.pagination?.pages || 1);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [activeMailbox, page, search, refreshKey]);
 
-  // Sync from IMAP then refresh list
+  // Sync from IMAP
   const syncAndRefresh = useCallback(async () => {
     if (!activeMailbox) return;
     setSyncing(true);
@@ -90,28 +102,8 @@ export default function EmailsPage() {
     } finally {
       setSyncing(false);
     }
-    // Refresh from DB
-    const result = await fetchEmailsRef();
-    if (result) {
-      setEmails(result.emails);
-      setTotalPages(result.pages);
-    }
-    setLoading(false);
-  }, [activeMailbox, fetchEmailsRef]);
-
-  // Load emails on mount / mailbox or page change
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetchEmailsRef().then((result) => {
-      if (!cancelled && result) {
-        setEmails(result.emails);
-        setTotalPages(result.pages);
-        setLoading(false);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [fetchEmailsRef]);
+    setRefreshKey((k) => k + 1);
+  }, [activeMailbox]);
 
   // Auto-sync on mailbox change
   useEffect(() => {
@@ -119,14 +111,42 @@ export default function EmailsPage() {
     syncAndRefresh();
   }, [activeMailbox, syncAndRefresh]);
 
-  // Auto-poll every 60 seconds
+  // Auto-poll DB every 5 seconds
   useEffect(() => {
     if (!activeMailbox) return;
-    const interval = setInterval(syncAndRefresh, 60000);
+    const interval = setInterval(() => setRefreshKey((k) => k + 1), 5000);
+    return () => clearInterval(interval);
+  }, [activeMailbox]);
+
+  // Background IMAP sync every 30 seconds
+  useEffect(() => {
+    if (!activeMailbox) return;
+    const interval = setInterval(syncAndRefresh, 30000);
     return () => clearInterval(interval);
   }, [activeMailbox, syncAndRefresh]);
 
-  const handleSync = () => syncAndRefresh();
+  // Mark read/unread
+  const handleMarkRead = useCallback(async (id: string, read: boolean) => {
+    setEmails((prev) => prev.map((e) => (e.id === id ? { ...e, isRead: read } : e)));
+    try {
+      await fetch(`/api/emails/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead: read }),
+      });
+    } catch (err) {
+      console.error("Mark read failed:", err);
+    }
+  }, []);
+
+  // Delete
+  const handleDelete = useCallback((id: string) => {
+    setEmails((prev) => prev.filter((e) => e.id !== id));
+    if (selectedEmailIds.includes(id)) {
+      setSelectedThreadId(null);
+      setSelectedEmailIds([]);
+    }
+  }, [selectedEmailIds]);
 
   const handleReply = (data: { to: string; subject: string; inReplyTo: string; references: string; bodyHtml: string }) => {
     setReplyTo(data);
@@ -139,99 +159,170 @@ export default function EmailsPage() {
     syncAndRefresh();
   };
 
-  const unreadCount = emails.filter((e) => !e.isRead).length;
+  const threads = groupIntoThreads(emails);
+  const unreadCount = threads.filter((t) => !t.isRead).length;
+  const showingDetail = selectedThreadId !== null;
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col">
+    <div
+      className="h-[calc(100vh-56px)] flex flex-col overflow-hidden sm:rounded-2xl"
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700 bg-gray-800">
-        <div className="flex items-center gap-2">
-          {/* Mailbox tabs */}
+      <div
+        className="flex items-center justify-between px-3 sm:px-4 py-2.5 flex-shrink-0"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
+        <div className="flex items-center gap-1.5 overflow-x-auto">
           {mailboxes.map((mb) => (
             <button
               key={mb.email}
               onClick={() => {
                 setActiveMailbox(mb.email);
-                setSelectedEmailId(null);
+                setSelectedThreadId(null);
+                setSelectedEmailIds([]);
                 setPage(1);
               }}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                activeMailbox === mb.email
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-              }`}
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-150 flex-shrink-0"
+              style={{
+                background: activeMailbox === mb.email ? "var(--brand-blue)" : "transparent",
+                color: activeMailbox === mb.email ? "white" : "var(--text-secondary)",
+                border: activeMailbox === mb.email ? "none" : "1px solid var(--border)",
+              }}
             >
-              {mb.name}
-              {mb.type === "shared" && " (Shared)"}
+              {mb.type === "personal" ? mb.name.split(" ")[0] : "Shared"}
+              <span className="hidden sm:inline">
+                {mb.type === "shared" && " Inbox"}
+              </span>
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">
-            {unreadCount > 0 && `${unreadCount} unread`}
-          </span>
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          {unreadCount > 0 && (
+            <span
+              className="text-[10px] sm:text-[11px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full hidden sm:inline"
+              style={{ background: "var(--brand-blue-subtle)", color: "var(--brand-blue)" }}
+            >
+              {unreadCount} unread
+            </span>
+          )}
           <button
-            onClick={handleSync}
+            onClick={() => syncAndRefresh()}
             disabled={syncing}
-            className="px-3 py-1.5 bg-gray-700 text-gray-300 rounded text-sm hover:bg-gray-600 disabled:opacity-50"
+            className="p-2 rounded-lg transition-all duration-150 disabled:opacity-50"
+            style={{ color: "var(--text-secondary)" }}
           >
-            {syncing ? "Syncing..." : "Sync"}
+            <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
           </button>
           <button
             onClick={() => {
               setReplyTo(null);
               setShowCompose(true);
             }}
-            className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-white"
+            style={{ background: "var(--brand-blue)" }}
           >
-            Compose
+            <Plus size={14} />
+            <span className="hidden sm:inline">Compose</span>
           </button>
         </div>
       </div>
 
-      {/* Search bar */}
-      <div className="px-4 py-2 border-b border-gray-700 bg-gray-850">
-        <input
-          type="text"
-          placeholder="Search emails..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-        />
-      </div>
-
       {/* Two-panel layout */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Email list - left panel */}
-        <div className="w-[350px] border-r border-gray-700 overflow-y-auto bg-gray-900">
-          <EmailList
-            emails={emails}
-            loading={loading}
-            selectedId={selectedEmailId}
-            onSelect={(id) => {
-              setSelectedEmailId(id);
-              // Optimistically mark as read in local state
-              setEmails(prev => prev.map(e => e.id === id ? { ...e, isRead: true } : e));
-            }}
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Left panel — Mail list */}
+        <div
+          className={`${
+            showingDetail ? "hidden sm:flex" : "flex"
+          } w-full sm:w-[360px] flex-col overflow-hidden flex-shrink-0`}
+          style={{
+            borderRight: "1px solid var(--border)",
+            background: "var(--surface)",
+          }}
+        >
+          {/* Search */}
+          <div className="px-3 sm:px-4 py-2 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+              style={{ background: "var(--background)", border: "1px solid var(--border)" }}
+            >
+              <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+              <input
+                type="text"
+                placeholder="Search emails..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="w-full text-sm focus:outline-none"
+                style={{ background: "transparent", color: "var(--text-primary)" }}
+              />
+            </div>
+          </div>
+
+          {/* Loading bar */}
+          <div className="px-4">
+            <div
+              className="h-0.5 w-full rounded-full transition-opacity duration-300"
+              style={{
+                background: "var(--brand-blue)",
+                opacity: syncing ? 1 : 0,
+              }}
+            />
+          </div>
+
+          {/* Email list */}
+          <div className="flex-1 overflow-y-auto">
+            <EmailList
+              emails={emails}
+              loading={loading}
+              selectedThreadId={selectedThreadId}
+              onSelectThread={(threadId, emailIds) => {
+                setSelectedThreadId(threadId);
+                setSelectedEmailIds(emailIds);
+                // Mark all thread emails as read
+                emailIds.forEach((eid) => handleMarkRead(eid, true));
+              }}
+              onMarkRead={handleMarkRead}
+              onDelete={handleDelete}
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+          </div>
         </div>
 
-        {/* Email detail - right panel */}
-        <div className="flex-1 overflow-y-auto bg-gray-900">
-          {selectedEmailId ? (
+        {/* Right panel — Email detail */}
+        <div
+          className={`${
+            showingDetail ? "flex" : "hidden sm:flex"
+          } flex-1 flex-col overflow-hidden`}
+          style={{ background: "var(--surface)" }}
+        >
+          {selectedThreadId && selectedEmailIds.length > 0 ? (
             <EmailDetail
-              emailId={selectedEmailId}
+              emailIds={selectedEmailIds}
               onReply={handleReply}
+              onBack={() => {
+                setSelectedThreadId(null);
+                setSelectedEmailIds([]);
+              }}
+              onDelete={handleDelete}
+              onMarkRead={handleMarkRead}
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              Select an email to read
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                style={{ background: "var(--background)", color: "var(--text-muted)" }}
+              >
+                <Mail size={24} />
+              </div>
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                Select an email to read
+              </p>
             </div>
           )}
         </div>
@@ -240,10 +331,7 @@ export default function EmailsPage() {
       {/* Compose Modal */}
       {showCompose && (
         <ComposeModal
-          onClose={() => {
-            setShowCompose(false);
-            setReplyTo(null);
-          }}
+          onClose={() => { setShowCompose(false); setReplyTo(null); }}
           onSent={handleComposeSent}
           replyTo={replyTo}
           mailbox={activeMailbox}

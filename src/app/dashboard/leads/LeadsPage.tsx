@@ -49,7 +49,7 @@ const STAGE_COLOURS: Record<string, string> = {
   follow_up_sequence: '#f59e0b',
   meeting_scheduled: '#8b5cf6',
   meeting_attended: '#10b981',
-  quote_delivered: '#2c5f2d',
+  quote_delivered: 'var(--status-success)',
 };
 
 const SOURCE_VARIANTS: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
@@ -232,17 +232,17 @@ export function LeadsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Leads
           </h1>
-          <p className="text-sm mt-1" style={{ color: '#64748b' }}>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
             {total} lead{total !== 1 ? 's' : ''} total
           </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
-          style={{ backgroundColor: '#2c5f2d' }}
+          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
+          style={{ backgroundColor: 'var(--brand-blue)' }}
         >
           + New Lead
         </button>
@@ -255,8 +255,8 @@ export function LeadsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search leads..."
-            className="w-full pl-9 pr-4 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600"
-            style={{ borderColor: '#e2e8f0' }}
+            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30"
+            style={{ borderColor: 'var(--border)' }}
           />
           <svg
             className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
@@ -276,7 +276,7 @@ export function LeadsPage() {
           value={stageFilter}
           onChange={(e) => { setStageFilter(e.target.value); setPage(1); }}
           className="border rounded px-2 py-1 text-sm"
-          style={{ borderColor: '#e2e8f0' }}
+          style={{ borderColor: 'var(--border)' }}
         >
           <option value="">All Stages</option>
           <option value="cold_call">Cold Call</option>
@@ -292,7 +292,7 @@ export function LeadsPage() {
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="border rounded px-2 py-1 text-sm"
-            style={{ borderColor: '#e2e8f0' }}
+            style={{ borderColor: 'var(--border)' }}
           >
             <option value="createdAt">Date Created</option>
             <option value="companyName">Company Name</option>
@@ -301,8 +301,8 @@ export function LeadsPage() {
           </select>
           <button
             onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
-            className="border rounded px-2 py-1 text-sm hover:bg-gray-50"
-            style={{ borderColor: '#e2e8f0' }}
+            className="border rounded px-2 py-1 text-sm hover:"
+            style={{ borderColor: 'var(--border)' }}
           >
             {sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
           </button>
@@ -310,7 +310,7 @@ export function LeadsPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-lg border p-8 text-center" style={{ borderColor: '#e2e8f0', color: '#64748b' }}>
+        <div className="rounded-xl border p-8 text-center" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
           Loading leads...
         </div>
       ) : (

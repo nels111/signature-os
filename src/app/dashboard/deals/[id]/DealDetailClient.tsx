@@ -144,7 +144,7 @@ export function DealDetailClient({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <div className="p-8 text-center" style={{ color: '#64748b' }}>
+      <div className="p-8 text-center" style={{ color: 'var(--text-secondary)' }}>
         Loading deal...
       </div>
     );
@@ -167,16 +167,16 @@ export function DealDetailClient({ id }: { id: string }) {
         <button
           onClick={() => router.push('/dashboard/deals')}
           className="p-1 hover:bg-gray-100 rounded"
-          style={{ color: '#64748b' }}
+          style={{ color: 'var(--text-secondary)' }}
         >
           ← Back
         </button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {deal.name}
           </h1>
           {deal.value && (
-            <p className="text-sm mt-0.5 font-semibold" style={{ color: '#2c5f2d' }}>
+            <p className="text-sm mt-0.5 font-semibold" style={{ color: 'var(--brand-blue)' }}>
               {formatCurrency(deal.value)}
             </p>
           )}
@@ -189,14 +189,14 @@ export function DealDetailClient({ id }: { id: string }) {
         </span>
         <button
           onClick={() => setShowEditModal(true)}
-          className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
-          style={{ backgroundColor: '#2c5f2d' }}
+          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
+          style={{ backgroundColor: 'var(--brand-blue)' }}
         >
           Edit
         </button>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="px-4 py-2 text-sm border rounded-md hover:bg-red-50 text-red-600"
+          className="px-4 py-2 text-sm border rounded-lg hover:bg-red-50 text-red-600"
           style={{ borderColor: '#fca5a5' }}
         >
           Delete
@@ -204,7 +204,7 @@ export function DealDetailClient({ id }: { id: string }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b mb-6" style={{ borderColor: '#e2e8f0' }}>
+      <div className="flex gap-1 border-b mb-6" style={{ borderColor: 'var(--border)' }}>
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -222,11 +222,11 @@ export function DealDetailClient({ id }: { id: string }) {
 
       {/* Details Tab */}
       {activeTab === 'details' && (
-        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
+        <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DetailField label="Deal Name" value={deal.name} />
             <div>
-              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+              <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Stage
               </span>
               <span
@@ -260,7 +260,7 @@ export function DealDetailClient({ id }: { id: string }) {
             )}
             {deal.lossReason && (
               <div className="col-span-2">
-                <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+                <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                   Loss Reason
                 </span>
                 <p className="text-sm" style={{ color: '#ef4444' }}>
@@ -270,11 +270,11 @@ export function DealDetailClient({ id }: { id: string }) {
             )}
           </div>
           {deal.notes && (
-            <div className="mt-6 pt-6 border-t" style={{ borderColor: '#e2e8f0' }}>
-              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+            <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+              <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Notes
               </span>
-              <p className="text-sm whitespace-pre-wrap" style={{ color: '#1a1a1a' }}>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
                 {deal.notes}
               </p>
             </div>
@@ -284,21 +284,21 @@ export function DealDetailClient({ id }: { id: string }) {
 
       {/* Converted From Tab */}
       {activeTab === 'converted' && deal.convertedFrom && (
-        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
-          <h3 className="text-sm font-semibold mb-4" style={{ color: '#1a1a1a' }}>
+        <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Converted from Lead
           </h3>
           <div
-            className="p-4 rounded-lg border hover:bg-gray-50 cursor-pointer"
-            style={{ borderColor: '#e2e8f0' }}
+            className="p-4 rounded-xl border hover:bg-gray-50 cursor-pointer"
+            style={{ borderColor: 'var(--border)' }}
             onClick={() => router.push(`/dashboard/leads/${deal.convertedFrom!.id}`)}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium" style={{ color: '#1a1a1a' }}>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                   {deal.convertedFrom.companyName}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                   {deal.convertedFrom.contactName}
                 </p>
               </div>
@@ -319,8 +319,8 @@ export function DealDetailClient({ id }: { id: string }) {
 
       {/* Activity Tab */}
       {activeTab === 'activity' && (
-        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
-          <p className="text-sm" style={{ color: '#94a3b8' }}>
+        <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Activity timeline coming soon.
           </p>
         </div>
@@ -357,22 +357,22 @@ export function DealDetailClient({ id }: { id: string }) {
         onClose={() => setShowDeleteConfirm(false)}
         title="Delete Deal"
       >
-        <p className="text-sm mb-6" style={{ color: '#64748b' }}>
+        <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
           Are you sure you want to delete{' '}
-          <strong style={{ color: '#1a1a1a' }}>{deal.name}</strong>
+          <strong style={{ color: 'var(--text-primary)' }}>{deal.name}</strong>
           ? This action can be undone by an administrator.
         </p>
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setShowDeleteConfirm(false)}
-            className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
-            style={{ borderColor: '#e2e8f0', color: '#64748b' }}
+            className="px-4 py-2 text-sm border rounded-lg hover:"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           >
             Cancel
           </button>
           <button
             onClick={handleDelete}
-            className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
+            className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
             style={{ backgroundColor: '#dc2626' }}
           >
             Delete Deal
@@ -395,7 +395,7 @@ function DetailField({
   const router = useRouter();
   return (
     <div>
-      <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+      <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
         {label}
       </span>
       {value ? (
@@ -403,17 +403,17 @@ function DetailField({
           <button
             onClick={() => router.push(link)}
             className="text-sm hover:underline"
-            style={{ color: '#2c5f2d' }}
+            style={{ color: 'var(--brand-blue)' }}
           >
             {value}
           </button>
         ) : (
-          <span className="text-sm" style={{ color: '#1a1a1a' }}>
+          <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
             {value}
           </span>
         )
       ) : (
-        <span className="text-sm" style={{ color: '#94a3b8' }}>
+        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
           —
         </span>
       )}

@@ -3,6 +3,8 @@
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { ArrowRight, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -32,49 +34,123 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-lg p-8">
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ background: 'var(--sidebar-bg)' }}
+    >
+      {/* Subtle gradient overlay */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(32, 86, 164, 0.15) 0%, transparent 60%)',
+        }}
+      />
+
+      <div className="w-full max-w-[400px] relative z-10 px-4">
+        <div
+          className="rounded-2xl p-8"
+          style={{
+            background: 'var(--surface)',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
+          }}
+        >
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold" style={{ color: '#1a1a1a' }}>
+            <div className="flex justify-center mb-5">
+              <Image
+                src="/logo-badge.jpg"
+                alt="Signature Cleans"
+                width={56}
+                height={56}
+                className="rounded-full"
+              />
+            </div>
+            <h1
+              className="text-xl font-bold"
+              style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}
+            >
               Signature Cleans
             </h1>
-            <p className="text-sm mt-1" style={{ color: '#64748b' }}>
-              PEACE OF MIND, EVERY TIME
+            <p
+              className="text-[10px] mt-1.5 uppercase font-semibold"
+              style={{
+                color: 'var(--text-muted)',
+                letterSpacing: '0.15em',
+              }}
+            >
+              Peace of Mind, Every Time
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded">
+              <div
+                className="text-sm p-3 rounded-xl flex items-center gap-2"
+                style={{
+                  background: 'var(--status-danger-bg)',
+                  color: 'var(--status-danger)',
+                }}
+              >
+                <div className="w-1 h-8 rounded-full flex-shrink-0" style={{ background: 'var(--status-danger)' }} />
                 {error}
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>
+              <label
+                className="block text-[11px] font-semibold uppercase mb-1.5"
+                style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}
+              >
                 Email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2"
-                style={{ borderColor: '#e2e8f0' }}
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl transition-all duration-200"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--brand-blue)';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(32, 86, 164, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>
+              <label
+                className="block text-[11px] font-semibold uppercase mb-1.5"
+                style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}
+              >
                 Password
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2"
-                style={{ borderColor: '#e2e8f0' }}
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl transition-all duration-200"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--brand-blue)';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(32, 86, 164, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 required
               />
             </div>
@@ -82,13 +158,31 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2 px-4 rounded-md text-white font-medium transition-colors disabled:opacity-50"
-              style={{ backgroundColor: '#2c5f2d' }}
+              className="w-full py-3 px-4 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-50"
+              style={{
+                background: 'var(--brand-blue)',
+              }}
+              onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = 'var(--brand-blue-hover)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--brand-blue)'; }}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  Sign In
+                  <ArrowRight size={14} />
+                </>
+              )}
             </button>
           </form>
         </div>
+
+        <p
+          className="text-center mt-6 text-[11px]"
+          style={{ color: 'var(--sidebar-text-muted)' }}
+        >
+          Signature Cleans OS v1.0
+        </p>
       </div>
     </div>
   );

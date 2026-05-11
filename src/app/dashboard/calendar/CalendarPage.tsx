@@ -137,17 +137,17 @@ export function CalendarPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>Calendar</h1>
+          <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Calendar</h1>
         </div>
         <div className="flex gap-2">
           <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)}
-            className="px-3 py-1.5 text-sm border rounded-md" style={{ borderColor: '#e2e8f0' }}>
+            className="px-3 py-1.5 text-sm border rounded-lg" style={{ borderColor: 'var(--border)' }}>
             <option value="all">All</option>
             <option value="shared">Shared Only</option>
             <option value="personal">Personal Only</option>
           </select>
           <button onClick={() => { setSelectedDate(''); setShowCreate(true); }}
-            className="px-4 py-1.5 text-sm text-white rounded-md" style={{ backgroundColor: '#2c5f2d' }}>
+            className="px-4 py-1.5 text-sm text-white rounded-lg" style={{ backgroundColor: 'var(--brand-blue)' }}>
             + New Event
           </button>
         </div>
@@ -155,25 +155,25 @@ export function CalendarPage() {
 
       {/* Month Navigation */}
       <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="px-3 py-1 text-sm border rounded hover:bg-gray-50" style={{ borderColor: '#e2e8f0' }}>←</button>
+        <button onClick={prevMonth} className="px-3 py-1 text-sm border rounded hover:" style={{ borderColor: 'var(--border)' }}>←</button>
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-medium" style={{ color: '#1a1a1a' }}>{MONTHS[month]} {year}</h2>
-          <button onClick={goToday} className="px-2 py-0.5 text-xs border rounded" style={{ borderColor: '#e2e8f0', color: '#2c5f2d' }}>Today</button>
+          <h2 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>{MONTHS[month]} {year}</h2>
+          <button onClick={goToday} className="px-2 py-0.5 text-xs border rounded" style={{ borderColor: 'var(--border)', color: 'var(--brand-blue)' }}>Today</button>
         </div>
-        <button onClick={nextMonth} className="px-3 py-1 text-sm border rounded hover:bg-gray-50" style={{ borderColor: '#e2e8f0' }}>→</button>
+        <button onClick={nextMonth} className="px-3 py-1 text-sm border rounded hover:" style={{ borderColor: 'var(--border)' }}>→</button>
       </div>
 
       {/* Month Grid */}
-      <div className="bg-white border rounded-lg overflow-hidden" style={{ borderColor: '#e2e8f0' }}>
+      <div className="border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
         {/* Day headers */}
-        <div className="grid grid-cols-7 border-b" style={{ borderColor: '#e2e8f0' }}>
+        <div className="grid grid-cols-7 border-b" style={{ borderColor: 'var(--border)' }}>
           {DAYS.map(d => (
-            <div key={d} className="px-2 py-2 text-center text-xs font-medium" style={{ color: '#64748b' }}>{d}</div>
+            <div key={d} className="px-2 py-2 text-center text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{d}</div>
           ))}
         </div>
         {/* Weeks */}
         {Array.from({ length: days.length / 7 }, (_, weekIdx) => (
-          <div key={weekIdx} className="grid grid-cols-7 border-b last:border-b-0" style={{ borderColor: '#e2e8f0' }}>
+          <div key={weekIdx} className="grid grid-cols-7 border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
             {days.slice(weekIdx * 7, weekIdx * 7 + 7).map((day, i) => {
               const key = dateKey(day.date);
               const isToday = key === todayKey;
@@ -181,32 +181,32 @@ export function CalendarPage() {
               const dayTasks = tasksByDate[key] || [];
               return (
                 <div key={i}
-                  className="min-h-[100px] p-1 border-r last:border-r-0 cursor-pointer hover:bg-gray-50"
-                  style={{ borderColor: '#e2e8f0', backgroundColor: isToday ? '#f0fdf4' : day.inMonth ? '#fff' : '#f9fafb' }}
+                  className="min-h-[100px] p-1 border-r last:border-r-0 cursor-pointer"
+                  style={{ borderColor: 'var(--border)', backgroundColor: isToday ? '#f0fdf4' : day.inMonth ? '#fff' : '#f9fafb' }}
                   onClick={() => { setSelectedDate(key); setShowCreate(true); }}>
                   <div className="text-right">
                     <span className={`text-xs ${isToday ? 'bg-green-600 text-white rounded-full px-1.5 py-0.5' : ''}`}
-                      style={{ color: day.inMonth ? '#1a1a1a' : '#cbd5e1' }}>
+                      style={{ color: day.inMonth ? 'var(--text-primary)' : '#cbd5e1' }}>
                       {day.date.getDate()}
                     </span>
                   </div>
                   <div className="space-y-0.5 mt-1">
                     {dayEvents.slice(0, 3).map(ev => (
-                      <div key={ev.id} className="text-xs px-1 py-0.5 rounded truncate text-white cursor-pointer hover:opacity-80"
+                      <div key={ev.id} className="text-xs px-1 py-0.5 rounded truncate text-white cursor-pointeropacity-80"
                         style={{ backgroundColor: EVENT_COLORS[ev.eventType] || '#6b7280' }}
                         onClick={(e) => { e.stopPropagation(); setEditEvent(ev); }}>
                         {ev.title}
                       </div>
                     ))}
                     {dayTasks.slice(0, 2).map(t => (
-                      <div key={t.id} className="text-xs px-1 py-0.5 rounded truncate border border-dashed cursor-pointer hover:opacity-80"
+                      <div key={t.id} className="text-xs px-1 py-0.5 rounded truncate border border-dashed cursor-pointeropacity-80"
                         style={{ borderColor: '#6b7280', color: '#6b7280' }}
                         onClick={(e) => { e.stopPropagation(); window.location.href = `/dashboard/tasks/${t.id}`; }}>
                         ✓ {t.subject}
                       </div>
                     ))}
                     {(dayEvents.length + dayTasks.length > 5) && (
-                      <div className="text-xs" style={{ color: '#64748b' }}>+{dayEvents.length + dayTasks.length - 5} more</div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>+{dayEvents.length + dayTasks.length - 5} more</div>
                     )}
                   </div>
                 </div>

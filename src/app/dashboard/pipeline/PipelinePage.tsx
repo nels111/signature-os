@@ -32,7 +32,7 @@ const LEAD_STAGES = [
   { id: 'follow_up_sequence', label: 'Follow-up Sequence', color: '#f59e0b' },
   { id: 'meeting_scheduled', label: 'Meeting Scheduled', color: '#8b5cf6' },
   { id: 'meeting_attended', label: 'Meeting Attended', color: '#10b981' },
-  { id: 'quote_delivered', label: 'Quote Delivered', color: '#2c5f2d' },
+  { id: 'quote_delivered', label: 'Quote Delivered', color: 'var(--brand-blue)' },
 ];
 
 const DEAL_STAGES = [
@@ -291,7 +291,7 @@ export function PipelinePage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center" style={{ color: '#64748b' }}>
+      <div className="p-8 text-center" style={{ color: 'var(--text-secondary)' }}>
         Loading pipeline...
       </div>
     );
@@ -300,16 +300,16 @@ export function PipelinePage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           Pipeline
         </h1>
-        <p className="text-sm mt-1" style={{ color: '#64748b' }}>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
           Drag cards between columns to update stages
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b mb-6" style={{ borderColor: '#e2e8f0' }}>
+      <div className="flex gap-1 border-b mb-6" style={{ borderColor: 'var(--border)' }}>
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -348,21 +348,21 @@ export function PipelinePage() {
           {/* Summary cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div
-              className="bg-white rounded-lg border p-4"
-              style={{ borderColor: '#e2e8f0' }}
+              className="rounded-xl border p-4"
+              style={{ borderColor: 'var(--border)' }}
             >
-              <p className="text-xs font-medium" style={{ color: '#64748b' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Total Pipeline Value
               </p>
-              <p className="text-2xl font-bold mt-1" style={{ color: '#1a1a1a' }}>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
                 {formatCurrency(pipelineValue)}
               </p>
-              <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                 {pipelineDeals.length} active deal{pipelineDeals.length !== 1 ? 's' : ''}
               </p>
             </div>
             <div
-              className="bg-white rounded-lg border p-4"
+              className="rounded-xl border p-4"
               style={{ borderColor: '#dcfce7' }}
             >
               <p className="text-xs font-medium" style={{ color: '#166534' }}>
@@ -371,12 +371,12 @@ export function PipelinePage() {
               <p className="text-2xl font-bold mt-1" style={{ color: '#10b981' }}>
                 {formatCurrency(wonValue)}
               </p>
-              <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                 {wonDeals.length} deal{wonDeals.length !== 1 ? 's' : ''} won
               </p>
             </div>
             <div
-              className="bg-white rounded-lg border p-4"
+              className="rounded-xl border p-4"
               style={{ borderColor: '#fce4e4' }}
             >
               <p className="text-xs font-medium" style={{ color: '#991b1b' }}>
@@ -385,7 +385,7 @@ export function PipelinePage() {
               <p className="text-2xl font-bold mt-1" style={{ color: '#ef4444' }}>
                 {lostCount}
               </p>
-              <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                 deal{lostCount !== 1 ? 's' : ''} lost
               </p>
             </div>
@@ -396,8 +396,8 @@ export function PipelinePage() {
       {/* Toast notification */}
       {toast && (
         <div
-          className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg text-sm text-white"
-          style={{ backgroundColor: '#2c5f2d' }}
+          className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm text-white"
+          style={{ backgroundColor: 'var(--brand-blue)' }}
         >
           {toast}
         </div>
@@ -413,7 +413,7 @@ export function PipelinePage() {
         title="Mark Deal as Lost"
       >
         <div className="space-y-4">
-          <p className="text-sm" style={{ color: '#64748b' }}>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Optionally provide a reason for losing this deal.
           </p>
           <textarea
@@ -421,8 +421,8 @@ export function PipelinePage() {
             onChange={(e) => setLossReason(e.target.value)}
             placeholder="Why was this deal lost? (optional)"
             rows={3}
-            className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600"
-            style={{ borderColor: '#e2e8f0' }}
+            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30"
+            style={{ borderColor: 'var(--border)' }}
           />
           <div className="flex justify-end gap-3">
             <button
@@ -430,14 +430,14 @@ export function PipelinePage() {
                 setShowLossModal(false);
                 setPendingLossDealId(null);
               }}
-              className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
-              style={{ borderColor: '#e2e8f0', color: '#64748b' }}
+              className="px-4 py-2 text-sm border rounded-lg hover:"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
             >
               Cancel
             </button>
             <button
               onClick={handleConfirmLoss}
-              className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
+              className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
               style={{ backgroundColor: '#ef4444' }}
             >
               Mark as Lost
@@ -456,14 +456,14 @@ export function PipelinePage() {
         title="Meeting Outcome"
       >
         <div className="space-y-4">
-          <p className="text-sm" style={{ color: '#64748b' }}>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             How did the meeting go?
           </p>
           <select
             value={meetingOutcome}
             onChange={(e) => setMeetingOutcome(e.target.value)}
-            className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600"
-            style={{ borderColor: '#e2e8f0' }}
+            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30"
+            style={{ borderColor: 'var(--border)' }}
           >
             <option value="">Select outcome...</option>
             <option value="good">Good</option>
@@ -476,16 +476,16 @@ export function PipelinePage() {
                 setShowOutcomeModal(false);
                 setPendingOutcomeLeadId(null);
               }}
-              className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
-              style={{ borderColor: '#e2e8f0', color: '#64748b' }}
+              className="px-4 py-2 text-sm border rounded-lg hover:"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
             >
               Cancel
             </button>
             <button
               onClick={handleConfirmOutcome}
               disabled={!meetingOutcome}
-              className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: '#2c5f2d' }}
+              className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: 'var(--brand-blue)' }}
             >
               Confirm
             </button>

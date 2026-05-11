@@ -94,11 +94,11 @@ export function TasksPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>Tasks</h1>
-          <p className="text-sm mt-1" style={{ color: '#64748b' }}>{total} tasks total</p>
+          <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Tasks</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{total} tasks total</p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          className="px-4 py-2 text-sm text-white rounded-md" style={{ backgroundColor: '#2c5f2d' }}>
+          className="px-4 py-2 text-sm text-white rounded-lg" style={{ backgroundColor: 'var(--brand-blue)' }}>
           + New Task
         </button>
       </div>
@@ -109,8 +109,8 @@ export function TasksPage() {
           <button key={tab} onClick={() => { setActiveTab(tab); setPage(1); }}
             className="px-4 py-2 text-sm rounded-t-md font-medium"
             style={activeTab === tab
-              ? { backgroundColor: '#2c5f2d', color: '#fff' }
-              : { backgroundColor: '#f1f5f9', color: '#64748b' }}>
+              ? { backgroundColor: 'var(--brand-blue)', color: '#fff' }
+              : { backgroundColor: '#f1f5f9', color: 'var(--text-secondary)' }}>
             {tab === 'business' ? 'Business' : 'Personal'}
           </button>
         ))}
@@ -120,9 +120,9 @@ export function TasksPage() {
       <div className="flex gap-3 mb-4">
         <input type="text" placeholder="Search tasks..." value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="px-3 py-2 border rounded-md text-sm flex-1" style={{ borderColor: '#e2e8f0' }} />
+          className="px-3 py-2 border rounded-lg text-sm flex-1" style={{ borderColor: 'var(--border)' }} />
         <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
-          className="px-3 py-2 border rounded-md text-sm" style={{ borderColor: '#e2e8f0' }}>
+          className="px-3 py-2 border rounded-lg text-sm" style={{ borderColor: 'var(--border)' }}>
           <option value="">All Statuses</option>
           {STATUS_ORDER.map(s => <option key={s} value={s}>{formatLabel(s)}</option>)}
         </select>
@@ -130,20 +130,20 @@ export function TasksPage() {
 
       {/* Table */}
       {loading ? (
-        <p className="text-sm" style={{ color: '#64748b' }}>Loading...</p>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading...</p>
       ) : tasks.length === 0 ? (
-        <p className="text-sm" style={{ color: '#64748b' }}>No tasks found.</p>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No tasks found.</p>
       ) : (
-        <div className="bg-white border rounded-lg overflow-hidden" style={{ borderColor: '#e2e8f0' }}>
+        <div className="border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b" style={{ borderColor: '#e2e8f0' }}>
-                <th className="text-left px-4 py-3 font-medium" style={{ color: '#64748b' }}>Subject</th>
-                <th className="text-left px-4 py-3 font-medium" style={{ color: '#64748b' }}>Due Date</th>
-                <th className="text-left px-4 py-3 font-medium" style={{ color: '#64748b' }}>Priority</th>
-                <th className="text-left px-4 py-3 font-medium" style={{ color: '#64748b' }}>Status</th>
-                <th className="text-left px-4 py-3 font-medium" style={{ color: '#64748b' }}>Type</th>
-                <th className="text-left px-4 py-3 font-medium" style={{ color: '#64748b' }}>Owner</th>
+              <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+                <th className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-secondary)' }}>Subject</th>
+                <th className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-secondary)' }}>Due Date</th>
+                <th className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-secondary)' }}>Priority</th>
+                <th className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-secondary)' }}>Status</th>
+                <th className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-secondary)' }}>Type</th>
+                <th className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-secondary)' }}>Owner</th>
               </tr>
             </thead>
             <tbody>
@@ -151,12 +151,12 @@ export function TasksPage() {
                 <tr key={task.id}
                   className="border-b hover:bg-gray-50 cursor-pointer"
                   style={{
-                    borderColor: '#e2e8f0',
+                    borderColor: 'var(--border)',
                     borderLeft: isOverdue(task.dueDate, task.status) ? '3px solid #ef4444' : undefined,
                   }}
                   onClick={() => router.push('/dashboard/tasks/' + task.id)}>
-                  <td className="px-4 py-3 font-medium" style={{ color: '#1a1a1a' }}>{task.subject}</td>
-                  <td className="px-4 py-3" style={{ color: isOverdue(task.dueDate, task.status) ? '#ef4444' : '#64748b' }}>
+                  <td className="px-4 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>{task.subject}</td>
+                  <td className="px-4 py-3" style={{ color: isOverdue(task.dueDate, task.status) ? '#ef4444' : 'var(--text-secondary)' }}>
                     {formatDate(task.dueDate)}
                   </td>
                   <td className="px-4 py-3">
@@ -167,8 +167,8 @@ export function TasksPage() {
                       <Badge color={STATUS_COLORS[task.status] || '#6b7280'}>{formatLabel(task.status)}</Badge>
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#64748b' }}>{formatLabel(task.taskType)}</td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#64748b' }}>{task.owner?.name || '—'}</td>
+                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{formatLabel(task.taskType)}</td>
+                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{task.owner?.name || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -180,10 +180,10 @@ export function TasksPage() {
       {total > 20 && (
         <div className="flex gap-2 mt-4 justify-center">
           <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-            className="px-3 py-1 text-sm border rounded disabled:opacity-50" style={{ borderColor: '#e2e8f0' }}>Prev</button>
-          <span className="px-3 py-1 text-sm" style={{ color: '#64748b' }}>Page {page}</span>
+            className="px-3 py-1 text-sm border rounded disabled:opacity-50" style={{ borderColor: 'var(--border)' }}>Prev</button>
+          <span className="px-3 py-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Page {page}</span>
           <button disabled={page * 20 >= total} onClick={() => setPage(p => p + 1)}
-            className="px-3 py-1 text-sm border rounded disabled:opacity-50" style={{ borderColor: '#e2e8f0' }}>Next</button>
+            className="px-3 py-1 text-sm border rounded disabled:opacity-50" style={{ borderColor: 'var(--border)' }}>Next</button>
         </div>
       )}
 

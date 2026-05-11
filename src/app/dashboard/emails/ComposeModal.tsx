@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { Send, X, Loader2 } from "lucide-react";
 import DOMPurify from "dompurify";
 
 interface ComposeModalProps {
@@ -16,6 +17,14 @@ interface ComposeModalProps {
   mailbox: string;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModalProps) {
   const [to, setTo] = useState(replyTo?.to || "");
   const [cc, setCc] = useState("");
@@ -24,18 +33,26 @@ export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModal
   const [sending, setSending] = useState(false);
   const [showCc, setShowCc] = useState(false);
 
+  // Close on Escape key
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    },
+    [onClose],
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
   const handleSend = async () => {
     if (!to || !subject) return;
     setSending(true);
 
     try {
-      // Build HTML body
-      function escapeHtml(str: string) {
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      }
       let htmlBody = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">${escapeHtml(body).replace(/\n/g, "<br>")}</div>`;
 
-      // Append reply quote if replying
       if (replyTo?.bodyHtml) {
         htmlBody += replyTo.bodyHtml;
       }
@@ -70,108 +87,179 @@ export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModal
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-      <div className="w-full max-w-2xl bg-gray-800 rounded-t-lg shadow-2xl flex flex-col max-h-[80vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-          <h3 className="text-sm font-semibold text-white">
-            {replyTo ? (replyTo.to ? "Reply" : "Forward") : "New Email"}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-lg"
-          >
-            ×
-          </button>
-        </div>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+    >
+      {/* Container to align close button and card */}
+      <div className="flex w-full max-w-[750px] flex-col items-start gap-2 px-4">
+        {/* Close button - above the card, left-aligned */}
+        <button
+          onClick={onClose}
+          className="flex items-center gap-1 rounded-lg px-2 py-1"
+          style={{ background: "var(--background, #f5f5f7)" }}
+        >
+          <X size={14} style={{ color: "var(--text-muted, #aeaeb2)" }} />
+          <span className="text-sm" style={{ color: "var(--text-muted, #aeaeb2)" }}>
+            esc
+          </span>
+        </button>
 
-        {/* Fields */}
-        <div className="px-4 py-2 space-y-2 border-b border-gray-700">
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500 w-10">To:</label>
-            <input
-              type="text"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              placeholder="recipient@example.com"
-              className="flex-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-            />
-            {!showCc && (
-              <button
-                onClick={() => setShowCc(true)}
-                className="text-xs text-blue-400 hover:text-blue-300"
+        {/* Composer card */}
+        <div
+          className="flex w-full flex-col overflow-hidden rounded-2xl shadow-sm"
+          style={{
+            maxHeight: "500px",
+            background: "var(--background, #f5f5f7)",
+            border: "1px solid var(--border, #e5e5ea)",
+          }}
+        >
+          {/* Fields section */}
+          <div style={{ borderBottom: "1px solid var(--border, #e5e5ea)" }}>
+            {/* To row */}
+            <div
+              className="flex items-center gap-2 px-3 py-2"
+              style={{ borderBottom: "1px solid var(--border, #e5e5ea)" }}
+            >
+              <label
+                className="text-sm font-medium"
+                style={{ color: "var(--text-muted, #aeaeb2)" }}
               >
-                CC
-              </button>
-            )}
-          </div>
-
-          {showCc && (
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500 w-10">CC:</label>
+                To:
+              </label>
               <input
                 type="text"
-                value={cc}
-                onChange={(e) => setCc(e.target.value)}
-                placeholder="cc@example.com"
-                className="flex-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                placeholder="recipient@example.com"
+                className="flex-1 bg-transparent text-sm outline-none"
+                style={{ color: "var(--text-primary, #1d1d1f)" }}
+              />
+              <div className="flex items-center gap-1">
+                {!showCc && (
+                  <button
+                    onClick={() => setShowCc(true)}
+                    className="text-sm hover:opacity-70"
+                    style={{ color: "var(--text-muted, #aeaeb2)" }}
+                  >
+                    CC
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* CC row (conditional) */}
+            {showCc && (
+              <div
+                className="flex items-center gap-2 px-3 py-2"
+                style={{ borderBottom: "1px solid var(--border, #e5e5ea)" }}
+              >
+                <label
+                  className="text-sm font-medium"
+                  style={{ color: "var(--text-muted, #aeaeb2)" }}
+                >
+                  CC:
+                </label>
+                <input
+                  type="text"
+                  value={cc}
+                  onChange={(e) => setCc(e.target.value)}
+                  placeholder="cc@example.com"
+                  className="flex-1 bg-transparent text-sm outline-none"
+                  style={{ color: "var(--text-primary, #1d1d1f)" }}
+                />
+              </div>
+            )}
+
+            {/* Subject row */}
+            <div
+              className="flex items-center gap-2 px-3 py-2"
+              style={{ borderBottom: "1px solid var(--border, #e5e5ea)" }}
+            >
+              <label
+                className="text-sm font-medium"
+                style={{ color: "var(--text-muted, #aeaeb2)" }}
+              >
+                Subject:
+              </label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Subject"
+                className="flex-1 bg-transparent text-sm outline-none"
+                style={{ color: "var(--text-primary, #1d1d1f)" }}
+              />
+            </div>
+
+            {/* Sending as */}
+            <div className="px-3 py-1.5">
+              <span className="text-xs" style={{ color: "var(--text-secondary, #6e6e73)" }}>
+                Sending as: {mailbox}
+              </span>
+            </div>
+          </div>
+
+          {/* Body textarea */}
+          <div className="flex-1">
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Write your email..."
+              className="w-full resize-none px-3 py-3 text-sm outline-none"
+              style={{
+                minHeight: "200px",
+                background: "var(--surface, #ffffff)",
+                color: "var(--text-primary, #1d1d1f)",
+              }}
+            />
+          </div>
+
+          {/* Reply quote (conditional) */}
+          {replyTo?.bodyHtml && (
+            <div
+              className="max-h-24 overflow-y-auto px-3 py-2"
+              style={{ borderTop: "1px solid var(--border, #e5e5ea)" }}
+            >
+              <div
+                className="text-xs"
+                style={{ color: "var(--text-secondary, #6e6e73)" }}
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(replyTo.bodyHtml),
+                }}
               />
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500 w-10">Subj:</label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Subject"
-              className="flex-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div className="text-xs text-gray-500">
-            Sending as: {mailbox}
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 px-4 py-2 overflow-y-auto">
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Write your email..."
-            rows={10}
-            className="w-full h-full px-2 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
-          />
-        </div>
-
-        {/* Reply quote preview */}
-        {replyTo?.bodyHtml && (
-          <div className="px-4 py-2 border-t border-gray-700 max-h-24 overflow-y-auto">
-            <div className="text-xs text-gray-500 mb-1">Quoted text:</div>
-            <div
-              className="text-xs text-gray-400 line-clamp-3"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(replyTo.bodyHtml) }}
-            />
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-700">
-          <button
-            onClick={onClose}
-            className="px-3 py-1.5 text-sm text-gray-400 hover:text-white"
+          {/* Bottom toolbar */}
+          <div
+            className="flex items-center justify-between px-3 py-2"
+            style={{ borderTop: "1px solid var(--border, #e5e5ea)" }}
           >
-            Discard
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={sending || !to || !subject}
-            className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
-          >
-            {sending ? "Sending..." : "Send"}
-          </button>
+            {/* Left: Discard */}
+            <button
+              onClick={onClose}
+              className="text-sm hover:opacity-70"
+              style={{ color: "var(--text-muted, #aeaeb2)" }}
+            >
+              Discard
+            </button>
+
+            {/* Right: Send */}
+            <button
+              onClick={handleSend}
+              disabled={sending || !to || !subject}
+              className="flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm text-white disabled:opacity-50"
+              style={{ background: "var(--brand-blue, #2056A4)" }}
+            >
+              {sending ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Send size={14} />
+              )}
+              {sending ? "Sending..." : "Send"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

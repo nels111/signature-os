@@ -121,16 +121,16 @@ export function DealForm({ initialData, onSubmit, onCancel, loading, isEdit }: D
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
-          style={{ borderColor: '#e2e8f0', color: '#64748b' }}
+          className="px-4 py-2 text-sm border rounded-lg hover:"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90 disabled:opacity-50"
-          style={{ backgroundColor: '#2c5f2d' }}
+          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+          style={{ backgroundColor: 'var(--brand-blue)' }}
         >
           {loading ? 'Saving...' : isEdit ? 'Update Deal' : 'Create Deal'}
         </button>

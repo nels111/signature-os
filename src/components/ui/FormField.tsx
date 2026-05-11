@@ -26,13 +26,22 @@ interface SelectFieldProps {
   placeholder?: string;
 }
 
+const inputStyle = {
+  border: '1px solid var(--border)',
+  background: 'var(--surface)',
+  color: 'var(--text-primary)',
+  borderRadius: 'var(--radius-sm)',
+};
+
+const inputFocusClass = 'w-full px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30 focus:border-[#2056A4] transition-shadow';
+
 export function FormField({
   label, type = 'text', value, onChange, required, placeholder, error,
 }: FormFieldProps) {
   return (
     <div>
-      <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>
-        {label} {required && <span className="text-red-500">*</span>}
+      <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>
+        {label} {required && <span style={{ color: 'var(--status-danger)' }}>*</span>}
       </label>
       <input
         type={type}
@@ -40,12 +49,15 @@ export function FormField({
         onChange={(e) => onChange(e.target.value)}
         required={required}
         placeholder={placeholder}
-        className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 ${
-          error ? 'border-red-300 focus:ring-red-500' : 'focus:ring-green-600'
-        }`}
-        style={{ borderColor: error ? undefined : '#e2e8f0' }}
+        className={inputFocusClass}
+        style={{
+          ...inputStyle,
+          ...(error ? { borderColor: 'var(--status-danger)' } : {}),
+        }}
       />
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      {error && (
+        <p className="text-xs mt-1" style={{ color: 'var(--status-danger)' }}>{error}</p>
+      )}
     </div>
   );
 }
@@ -55,8 +67,8 @@ export function TextareaField({
 }: TextareaFieldProps) {
   return (
     <div>
-      <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>
-        {label} {required && <span className="text-red-500">*</span>}
+      <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>
+        {label} {required && <span style={{ color: 'var(--status-danger)' }}>*</span>}
       </label>
       <textarea
         value={value}
@@ -64,8 +76,8 @@ export function TextareaField({
         required={required}
         placeholder={placeholder}
         rows={rows}
-        className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600"
-        style={{ borderColor: '#e2e8f0' }}
+        className={inputFocusClass}
+        style={inputStyle}
       />
     </div>
   );
@@ -76,15 +88,15 @@ export function SelectField({
 }: SelectFieldProps) {
   return (
     <div>
-      <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>
-        {label} {required && <span className="text-red-500">*</span>}
+      <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>
+        {label} {required && <span style={{ color: 'var(--status-danger)' }}>*</span>}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600"
-        style={{ borderColor: '#e2e8f0' }}
+        className={inputFocusClass}
+        style={inputStyle}
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((opt) => (

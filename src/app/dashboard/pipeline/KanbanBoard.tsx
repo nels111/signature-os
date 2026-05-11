@@ -75,11 +75,11 @@ export function KanbanBoard<T>({
       {columns.map((column) => (
         <div
           key={column.id}
-          className={`flex-shrink-0 w-72 rounded-lg border transition-colors ${
+          className={`flex-shrink-0 w-72 rounded-xl border transition-colors ${
             dragOverCol === column.id ? 'ring-2 ring-offset-1' : ''
           }`}
           style={{
-            borderColor: dragOverCol === column.id ? column.color : '#e2e8f0',
+            borderColor: dragOverCol === column.id ? column.color : 'var(--border)',
             backgroundColor: dragOverCol === column.id ? '#f8fafc' : '#f9fafb',
             outline: dragOverCol === column.id ? `2px solid ${column.color}` : 'none',
           }}
@@ -90,20 +90,20 @@ export function KanbanBoard<T>({
           {/* Column header */}
           <div
             className="px-3 py-2 rounded-t-lg border-b flex items-center justify-between"
-            style={{ borderColor: '#e2e8f0' }}
+            style={{ borderColor: 'var(--border)' }}
           >
             <div className="flex items-center gap-2">
               <div
                 className="w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: column.color }}
               />
-              <span className="text-sm font-semibold" style={{ color: '#1a1a1a' }}>
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {column.label}
               </span>
             </div>
             <span
               className="text-xs font-medium px-1.5 py-0.5 rounded-full"
-              style={{ backgroundColor: '#e2e8f0', color: '#64748b' }}
+              style={{ backgroundColor: 'var(--border)', color: 'var(--text-secondary)' }}
             >
               {column.items.length}
             </span>
@@ -132,7 +132,7 @@ export function KanbanBoard<T>({
             {column.items.length === 0 && (
               <div
                 className="text-center py-8 text-xs rounded border border-dashed"
-                style={{ color: '#94a3b8', borderColor: '#cbd5e1' }}
+                style={{ color: 'var(--text-muted)', borderColor: '#cbd5e1' }}
               >
                 Drop items here
               </div>

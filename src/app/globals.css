@@ -1,8 +1,63 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Page */
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-hover: #f9f9fb;
+  --surface-active: rgba(32, 86, 164, 0.06);
+
+  /* Borders */
+  --border: #e5e5ea;
+  --border-strong: #d1d1d6;
+
+  /* Text */
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-muted: #aeaeb2;
+
+  /* Brand */
+  --brand-blue: #2056A4;
+  --brand-blue-hover: #2a6bc7;
+  --brand-blue-subtle: rgba(32, 86, 164, 0.06);
+  --brand-green-bg: #A8C256;
+  --brand-green: #6B8E23;
+  --brand-green-subtle: rgba(107, 142, 35, 0.06);
+  --brand-gold: #D4900A;
+  --brand-gold-subtle: rgba(212, 144, 10, 0.06);
+
+  /* Status */
+  --status-success: #34C759;
+  --status-success-bg: rgba(52, 199, 89, 0.08);
+  --status-warning: #FF9F0A;
+  --status-warning-bg: rgba(255, 159, 10, 0.08);
+  --status-danger: #FF3B30;
+  --status-danger-bg: rgba(255, 59, 48, 0.06);
+  --status-info: #007AFF;
+  --status-info-bg: rgba(0, 122, 255, 0.06);
+
+  /* Shadows - Apple-style layered */
+  --shadow-card: 0 0 0 1px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-hover: 0 0 0 1px rgba(0,0,0,0.03), 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-modal: 0 24px 80px rgba(0,0,0,0.2);
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Sidebar - X/Twitter dark style */
+  --sidebar-bg: #0f1419;
+  --sidebar-hover: rgba(231, 233, 234, 0.08);
+  --sidebar-active: rgba(231, 233, 234, 0.12);
+  --sidebar-text: #e7e9ea;
+  --sidebar-text-muted: #71767b;
+  --sidebar-border: rgba(231, 233, 234, 0.08);
 }
 
 @theme inline {
@@ -12,15 +67,87 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  /* PWA safe areas for notch/Dynamic Island */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Focus ring utility */
+.focus-brand:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-blue) 25%, transparent);
+  border-color: var(--brand-blue);
+}
+
+/* Custom scrollbar - thin, subtle */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Sidebar scrollbar - dark variant */
+.sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+.sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* Transitions */
+* {
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Selection */
+::selection {
+  background: color-mix(in srgb, var(--brand-blue) 20%, transparent);
+}
+
+/* ── iOS Mail: slide transitions ── */
+@media (max-width: 639px) {
+  .email-nav-container {
+    position: relative;
+    overflow: hidden;
+  }
+  .email-nav-list,
+  .email-nav-detail {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    will-change: transform;
+    transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+  .email-nav-list {
+    z-index: 1;
+  }
+  .email-nav-list.pushed {
+    transform: translateX(-30%);
+    pointer-events: none;
+  }
+  .email-nav-detail {
+    z-index: 2;
+    transform: translateX(100%);
+    background: var(--surface);
+  }
+  .email-nav-detail.active {
+    transform: translateX(0);
+  }
+}
+@media (min-width: 640px) {
+  .email-nav-list {
+    position: static;
+    width: 360px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+  }
+  .email-nav-detail {
+    position: static;
+    flex: 1;
+    transform: none;
+  }
 }

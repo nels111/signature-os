@@ -53,54 +53,54 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>Title *</label>
+        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Title *</label>
         <input type="text" value={title} onChange={e => setTitle(e.target.value)} required
-          className="w-full px-3 py-2 border rounded-md text-sm" style={{ borderColor: '#e2e8f0' }}
+          className="w-full px-3 py-2 border rounded-lg text-sm" style={{ borderColor: 'var(--border)' }}
           placeholder="Event title" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>Event Type</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Event Type</label>
           <select value={eventType} onChange={e => setEventType(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md text-sm" style={{ borderColor: '#e2e8f0' }}>
+            className="w-full px-3 py-2 border rounded-lg text-sm" style={{ borderColor: 'var(--border)' }}>
             {EVENT_TYPES.map(t => <option key={t} value={t}>{formatLabel(t)}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>Calendar</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Calendar</label>
           <select value={calendarType} onChange={e => setCalendarType(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md text-sm" style={{ borderColor: '#e2e8f0' }}>
+            className="w-full px-3 py-2 border rounded-lg text-sm" style={{ borderColor: 'var(--border)' }}>
             {CALENDAR_TYPES.map(t => <option key={t} value={t}>{formatLabel(t)}</option>)}
           </select>
         </div>
       </div>
       <div className="flex items-center gap-2">
         <input type="checkbox" id="allDay" checked={allDay} onChange={e => setAllDay(e.target.checked)} />
-        <label htmlFor="allDay" className="text-sm" style={{ color: '#1a1a1a' }}>All day event</label>
+        <label htmlFor="allDay" className="text-sm" style={{ color: 'var(--text-primary)' }}>All day event</label>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>Start *</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Start *</label>
           <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} required
-            className="w-full px-3 py-2 border rounded-md text-sm" style={{ borderColor: '#e2e8f0' }} />
+            className="w-full px-3 py-2 border rounded-lg text-sm" style={{ borderColor: 'var(--border)' }} />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>End *</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>End *</label>
           <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} required
-            className="w-full px-3 py-2 border rounded-md text-sm" style={{ borderColor: '#e2e8f0' }} />
+            className="w-full px-3 py-2 border rounded-lg text-sm" style={{ borderColor: 'var(--border)' }} />
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>Notes</label>
+        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Notes</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-          className="w-full px-3 py-2 border rounded-md text-sm" style={{ borderColor: '#e2e8f0' }}
+          className="w-full px-3 py-2 border rounded-lg text-sm" style={{ borderColor: 'var(--border)' }}
           placeholder="Event notes..." />
       </div>
       <div className="flex gap-3 justify-end pt-2">
         <button type="button" onClick={onCancel}
-          className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50" style={{ borderColor: '#e2e8f0' }}>Cancel</button>
+          className="px-4 py-2 text-sm border rounded-lg hover:" style={{ borderColor: 'var(--border)' }}>Cancel</button>
         <button type="submit" disabled={loading}
-          className="px-4 py-2 text-sm text-white rounded-md disabled:opacity-50" style={{ backgroundColor: '#2c5f2d' }}>
+          className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ backgroundColor: 'var(--brand-blue)' }}>
           {loading ? 'Saving...' : 'Save Event'}
         </button>
       </div>

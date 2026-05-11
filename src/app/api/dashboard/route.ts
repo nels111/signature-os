@@ -1,10 +1,54 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { fetchHoursSheet } from '@/lib/dropbox-hours';
+import { fetchActualHours } from '@/lib/connecteam-hours';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-// GET /api/dashboard - KPI aggregation for Jaz morning briefings
+// In-memory cache: refresh every 15 minutes
+let hoursCache: { data: Awaited<ReturnType<typeof fetchHoursSheet>> | null; expires: number } = {
+  data: null,
+  expires: 0,
+};
+
+let actualHoursCache: { data: Awaited<ReturnType<typeof fetchActualHours>> | null; expires: number } = {
+  data: null,
+  expires: 0,
+};
+
+async function getCachedHoursSheet() {
+  if (hoursCache.data && Date.now() < hoursCache.expires) {
+    return hoursCache.data;
+  }
+  try {
+    const data = await fetchHoursSheet();
+    hoursCache = { data, expires: Date.now() + 15 * 60 * 1000 };
+    return data;
+  } catch (error) {
+    console.error('Hours sheet fetch error:', error);
+    if (hoursCache.data) return hoursCache.data;
+    return null;
+  }
+}
+
+async function getCachedActualHours() {
+  if (actualHoursCache.data && Date.now() < actualHoursCache.expires) {
+    return actualHoursCache.data;
+  }
+  try {
+    const data = await fetchActualHours();
+    actualHoursCache = { data, expires: Date.now() + 10 * 60 * 1000 };
+    return data;
+  } catch (error) {
+    console.error('Connecteam hours fetch error:', error);
+    if (actualHoursCache.data) return actualHoursCache.data;
+    return null;
+  }
+}
+
+// GET /api/dashboard
 export async function GET() {
   try {
     const session = await auth();
@@ -16,6 +60,7 @@ export async function GET() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+    // Fetch DB stats and hours sheet in parallel
     const [
       totalLeads,
       totalDeals,
@@ -28,20 +73,20 @@ export async function GET() {
       quotesThisMonth,
       unreadNotifications,
       pipelineDeals,
+      hoursSheet,
+      actualHours,
     ] = await Promise.all([
       prisma.lead.count({ where: { deletedAt: null } }),
       prisma.deal.count({ where: { deletedAt: null } }),
       prisma.contact.count({ where: { deletedAt: null } }),
       prisma.account.count({ where: { deletedAt: null } }),
 
-      // Deals grouped by stage
       prisma.deal.groupBy({
         by: ['stage'],
         where: { deletedAt: null },
         _count: { id: true },
       }),
 
-      // Recent activities (last 10)
       prisma.activity.findMany({
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -56,7 +101,6 @@ export async function GET() {
         },
       }),
 
-      // Overdue tasks
       prisma.task.count({
         where: {
           deletedAt: null,
@@ -65,7 +109,6 @@ export async function GET() {
         },
       }),
 
-      // Upcoming events (next 7 days)
       prisma.calendarEvent.count({
         where: {
           deletedAt: null,
@@ -73,21 +116,16 @@ export async function GET() {
         },
       }),
 
-      // Quotes this month
       prisma.quote.aggregate({
-        where: {
-          createdAt: { gte: startOfMonth },
-        },
+        where: { createdAt: { gte: startOfMonth } },
         _count: { id: true },
         _sum: { monthlyTotal: true },
       }),
 
-      // Unread notifications for current user
       prisma.notification.count({
         where: { userId: session.user.id, read: false },
       }),
 
-      // Pipeline value (deals with value, not closed)
       prisma.deal.groupBy({
         by: ['stage'],
         where: {
@@ -97,9 +135,14 @@ export async function GET() {
         _sum: { value: true },
         _count: { id: true },
       }),
+
+      getCachedHoursSheet(),
+
+      getCachedActualHours(),
     ]);
 
     return NextResponse.json({
+      // CRM stats
       totalLeads,
       totalDeals,
       totalContacts,
@@ -121,6 +164,32 @@ export async function GET() {
         count: d._count.id,
         value: d._sum.value ?? 0,
       })),
+
+      // Hours sheet (real ops data)
+      hoursSheet: hoursSheet
+        ? {
+            activeContracts: hoursSheet.totals.activeContracts,
+            pipelineContracts: hoursSheet.totals.pipelineContracts,
+            weeklyHours: hoursSheet.totals.weeklyHours,
+            weeklyEarnings: hoursSheet.totals.weeklyEarnings,
+            monthlyEarnings: hoursSheet.totals.monthlyEarnings,
+            annualValue: hoursSheet.totals.annualValue,
+            contracts: hoursSheet.contracts,
+            fetchedAt: hoursSheet.fetchedAt,
+          }
+        : null,
+
+      // Actual hours from Connecteam
+      actualHours: actualHours
+        ? {
+            weeklyActualHours: actualHours.weeklyActualHours,
+            clockedShifts: actualHours.clockedShifts,
+            uniqueOperatives: actualHours.uniqueOperatives,
+            weekStart: actualHours.weekStart,
+            weekEnd: actualHours.weekEnd,
+            fetchedAt: actualHours.fetchedAt,
+          }
+        : null,
     });
   } catch (error) {
     console.error('Dashboard KPI error:', error);

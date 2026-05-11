@@ -98,7 +98,7 @@ export function AccountDetailClient({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <div className="p-8 text-center" style={{ color: '#64748b' }}>
+      <div className="p-8 text-center" style={{ color: 'var(--text-secondary)' }}>
         Loading account...
       </div>
     );
@@ -119,30 +119,30 @@ export function AccountDetailClient({ id }: { id: string }) {
         <button
           onClick={() => router.push('/dashboard/accounts')}
           className="p-1 hover:bg-gray-100 rounded"
-          style={{ color: '#64748b' }}
+          style={{ color: 'var(--text-secondary)' }}
         >
           ← Back
         </button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {account.name}
           </h1>
           {account.industry && (
-            <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
               {account.industry}
             </p>
           )}
         </div>
         <button
           onClick={() => setShowEditModal(true)}
-          className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
-          style={{ backgroundColor: '#2c5f2d' }}
+          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
+          style={{ backgroundColor: 'var(--brand-blue)' }}
         >
           Edit
         </button>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="px-4 py-2 text-sm border rounded-md hover:bg-red-50 text-red-600"
+          className="px-4 py-2 text-sm border rounded-lg hover:bg-red-50 text-red-600"
           style={{ borderColor: '#fca5a5' }}
         >
           Delete
@@ -150,7 +150,7 @@ export function AccountDetailClient({ id }: { id: string }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b mb-6" style={{ borderColor: '#e2e8f0' }}>
+      <div className="flex gap-1 border-b mb-6" style={{ borderColor: 'var(--border)' }}>
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -168,13 +168,13 @@ export function AccountDetailClient({ id }: { id: string }) {
 
       {/* Details Tab */}
       {activeTab === 'details' && (
-        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
+        <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DetailField label="Account Name" value={account.name} />
             <DetailField label="Industry" value={account.industry} />
             <DetailField label="Phone" value={account.phone} />
             <div>
-              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+              <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Website
               </span>
               {account.website ? (
@@ -183,33 +183,33 @@ export function AccountDetailClient({ id }: { id: string }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm hover:underline"
-                  style={{ color: '#2c5f2d' }}
+                  style={{ color: 'var(--brand-blue)' }}
                 >
                   {account.website}
                 </a>
               ) : (
-                <span className="text-sm" style={{ color: '#94a3b8' }}>—</span>
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>—</span>
               )}
             </div>
             <DetailField label="Created" value={formatDate(account.createdAt)} />
             <DetailField label="Updated" value={formatDate(account.updatedAt)} />
           </div>
           {account.address && (
-            <div className="mt-6 pt-6 border-t" style={{ borderColor: '#e2e8f0' }}>
-              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+            <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+              <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Address
               </span>
-              <p className="text-sm whitespace-pre-wrap" style={{ color: '#1a1a1a' }}>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
                 {account.address}
               </p>
             </div>
           )}
           {account.notes && (
-            <div className="mt-6 pt-6 border-t" style={{ borderColor: '#e2e8f0' }}>
-              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+            <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+              <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Notes
               </span>
-              <p className="text-sm whitespace-pre-wrap" style={{ color: '#1a1a1a' }}>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
                 {account.notes}
               </p>
             </div>
@@ -219,8 +219,8 @@ export function AccountDetailClient({ id }: { id: string }) {
 
       {/* Contacts Tab */}
       {activeTab === 'contacts' && (
-        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
-          <h3 className="text-sm font-semibold mb-4" style={{ color: '#1a1a1a' }}>
+        <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Contacts
           </h3>
           {account.contacts && account.contacts.length > 0 ? (
@@ -229,21 +229,21 @@ export function AccountDetailClient({ id }: { id: string }) {
                 <div
                   key={contact.id}
                   className="flex items-center justify-between p-3 rounded border hover:bg-gray-50 cursor-pointer"
-                  style={{ borderColor: '#e2e8f0' }}
+                  style={{ borderColor: 'var(--border)' }}
                   onClick={() => router.push(`/dashboard/contacts/${contact.id}`)}
                 >
                   <div>
-                    <span className="text-sm font-medium" style={{ color: '#1a1a1a' }}>
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                       {contact.firstName} {contact.lastName}
                     </span>
                     {contact.email && (
-                      <span className="text-sm ml-3" style={{ color: '#64748b' }}>
+                      <span className="text-sm ml-3" style={{ color: 'var(--text-secondary)' }}>
                         {contact.email}
                       </span>
                     )}
                   </div>
                   {contact.phone && (
-                    <span className="text-sm" style={{ color: '#64748b' }}>
+                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                       {contact.phone}
                     </span>
                   )}
@@ -251,7 +251,7 @@ export function AccountDetailClient({ id }: { id: string }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm" style={{ color: '#94a3b8' }}>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               No contacts linked to this account.
             </p>
           )}
@@ -262,8 +262,8 @@ export function AccountDetailClient({ id }: { id: string }) {
       {activeTab === 'linked' && (
         <div className="space-y-6">
           {/* Leads */}
-          <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
-            <h3 className="text-sm font-semibold mb-3" style={{ color: '#1a1a1a' }}>
+          <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
               Leads ({account.leads?.length || 0})
             </h3>
             {account.leads && account.leads.length > 0 ? (
@@ -271,10 +271,10 @@ export function AccountDetailClient({ id }: { id: string }) {
                 {account.leads.map((lead) => (
                   <div
                     key={lead.id}
-                    className="flex items-center justify-between p-3 rounded border hover:bg-gray-50"
-                    style={{ borderColor: '#e2e8f0' }}
+                    className="flex items-center justify-between p-3 rounded border hover:"
+                    style={{ borderColor: 'var(--border)' }}
                   >
-                    <span className="text-sm" style={{ color: '#1a1a1a' }}>
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                       {lead.companyName}
                     </span>
                     <Badge label={lead.stage.replace(/_/g, ' ')} variant="info" />
@@ -282,15 +282,15 @@ export function AccountDetailClient({ id }: { id: string }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm" style={{ color: '#94a3b8' }}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 No leads linked to this account.
               </p>
             )}
           </div>
 
           {/* Deals */}
-          <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
-            <h3 className="text-sm font-semibold mb-3" style={{ color: '#1a1a1a' }}>
+          <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
               Deals ({account.deals?.length || 0})
             </h3>
             {account.deals && account.deals.length > 0 ? (
@@ -298,10 +298,10 @@ export function AccountDetailClient({ id }: { id: string }) {
                 {account.deals.map((deal) => (
                   <div
                     key={deal.id}
-                    className="flex items-center justify-between p-3 rounded border hover:bg-gray-50"
-                    style={{ borderColor: '#e2e8f0' }}
+                    className="flex items-center justify-between p-3 rounded border hover:"
+                    style={{ borderColor: 'var(--border)' }}
                   >
-                    <span className="text-sm" style={{ color: '#1a1a1a' }}>
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                       {deal.name}
                     </span>
                     <Badge
@@ -312,7 +312,7 @@ export function AccountDetailClient({ id }: { id: string }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm" style={{ color: '#94a3b8' }}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 No deals linked to this account.
               </p>
             )}
@@ -348,22 +348,22 @@ export function AccountDetailClient({ id }: { id: string }) {
         onClose={() => setShowDeleteConfirm(false)}
         title="Delete Account"
       >
-        <p className="text-sm mb-6" style={{ color: '#64748b' }}>
+        <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
           Are you sure you want to delete{' '}
-          <strong style={{ color: '#1a1a1a' }}>{account.name}</strong>?
+          <strong style={{ color: 'var(--text-primary)' }}>{account.name}</strong>?
           This action can be undone by an administrator.
         </p>
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setShowDeleteConfirm(false)}
-            className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
-            style={{ borderColor: '#e2e8f0', color: '#64748b' }}
+            className="px-4 py-2 text-sm border rounded-lg hover:"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           >
             Cancel
           </button>
           <button
             onClick={handleDelete}
-            className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
+            className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
             style={{ backgroundColor: '#dc2626' }}
           >
             Delete Account
@@ -383,15 +383,15 @@ function DetailField({
 }) {
   return (
     <div>
-      <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+      <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
         {label}
       </span>
       {value ? (
-        <span className="text-sm" style={{ color: '#1a1a1a' }}>
+        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
           {value}
         </span>
       ) : (
-        <span className="text-sm" style={{ color: '#94a3b8' }}>
+        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
           —
         </span>
       )}

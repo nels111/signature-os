@@ -49,7 +49,7 @@ const QUOTE_HTML = `
   .qg-wrap .section-title {
     font-size: 15px;
     font-weight: 700;
-    color: #2c5f2d;
+    color: var(--brand-blue);
     margin-bottom: 16px;
     padding-bottom: 8px;
     border-bottom: 2px solid #e8f0e8;
@@ -81,7 +81,7 @@ const QUOTE_HTML = `
     -webkit-appearance: none;
   }
   .qg-wrap input:focus, .qg-wrap select:focus {
-    border-color: #2c5f2d;
+    border-color: var(--brand-blue);
     outline: none;
     box-shadow: 0 0 0 3px rgba(44, 95, 45, 0.1);
   }
@@ -105,9 +105,9 @@ const QUOTE_HTML = `
     user-select: none;
   }
   .qg-wrap .day-btn.active {
-    background: #2c5f2d;
+    background: var(--brand-blue);
     color: white;
-    border-color: #2c5f2d;
+    border-color: var(--brand-blue);
   }
 
   .qg-wrap .pilot-toggle {
@@ -145,7 +145,7 @@ const QUOTE_HTML = `
   .qg-wrap .pilot-info span { display: block; font-size: 12px; color: #856404; opacity: 0.8; }
 
   .qg-wrap .calc-card {
-    background: linear-gradient(135deg, #2c5f2d 0%, #1e4520 100%);
+    background: linear-gradient(135deg, var(--brand-blue) 0%, #163c78 100%);
     border-radius: 12px;
     padding: 20px;
     color: white;
@@ -171,7 +171,7 @@ const QUOTE_HTML = `
   .qg-wrap .submit-btn {
     width: 100%;
     padding: 16px;
-    background: linear-gradient(135deg, #2c5f2d 0%, #1e4520 100%);
+    background: linear-gradient(135deg, var(--brand-blue) 0%, #163c78 100%);
     color: white;
     border: none;
     border-radius: 12px;
@@ -186,13 +186,13 @@ const QUOTE_HTML = `
   .qg-wrap .status-screen { display: none; text-align: center; padding: 40px 20px; }
   .qg-wrap .status-screen.visible { display: block; }
   .qg-wrap .status-icon { font-size: 64px; margin-bottom: 16px; }
-  .qg-wrap .status-title { font-size: 22px; font-weight: 700; color: #2c5f2d; margin-bottom: 8px; }
+  .qg-wrap .status-title { font-size: 22px; font-weight: 700; color: var(--brand-blue); margin-bottom: 8px; }
   .qg-wrap .status-text { font-size: 15px; color: #666; margin-bottom: 24px; }
-  .qg-wrap .status-ref { background: #e8f0e8; padding: 8px 16px; border-radius: 8px; display: inline-block; font-family: monospace; font-size: 14px; color: #2c5f2d; }
-  .qg-wrap .reset-btn { margin-top: 24px; padding: 12px 32px; background: white; color: #2c5f2d; border: 2px solid #2c5f2d; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .qg-wrap .status-ref { background: #e8f0e8; padding: 8px 16px; border-radius: 8px; display: inline-block; font-family: monospace; font-size: 14px; color: var(--brand-blue); }
+  .qg-wrap .reset-btn { margin-top: 24px; padding: 12px 32px; background: white; color: var(--brand-blue); border: 2px solid var(--brand-blue); border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
   .qg-wrap .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin-top: 12px; color: #991b1b; font-size: 13px; display: none; }
   .qg-wrap #form-container.hidden { display: none; }
-  .qg-wrap .spinner { width: 48px; height: 48px; border: 4px solid #e0e0e0; border-top-color: #2c5f2d; border-radius: 50%; animation: qg-spin 0.8s linear infinite; margin: 0 auto 16px; }
+  .qg-wrap .spinner { width: 48px; height: 48px; border: 4px solid #e0e0e0; border-top-color: var(--brand-blue); border-radius: 50%; animation: qg-spin 0.8s linear infinite; margin: 0 auto 16px; }
   @keyframes qg-spin { to { transform: rotate(360deg); } }
 </style>
 
@@ -308,6 +308,9 @@ export default function QuotesPage() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [savedFormData, setSavedFormData] = useState<Record<string, string> | null>(null);
+  const [savedDays, setSavedDays] = useState<string[]>([]);
+  const [savedPilot, setSavedPilot] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || screen !== "form") return;
@@ -425,6 +428,23 @@ export default function QuotesPage() {
 
       setScreen("loading");
 
+      // Save form data so we can restore if user clicks "Edit"
+      setSavedFormData({
+        company_name: data.company_name,
+        address: data.address,
+        contact_name: data.contact_name,
+        contact_email: data.contact_email,
+        contact_phone: data.contact_phone,
+        site_type: data.site_type,
+        hours_per_day: String(data.hours_per_day),
+        frequency: String(data.frequency),
+        margin: String(data.margin),
+        product_cost: String(data.product_cost),
+        overhead_cost: String(data.overhead_cost),
+      });
+      setSavedDays([...selectedDays]);
+      setSavedPilot(pilotActive);
+
       try {
         const res = await fetch("/api/quotes/generate", {
           method: "POST",
@@ -445,6 +465,36 @@ export default function QuotesPage() {
     });
 
     recalc();
+
+    // Restore saved form data if coming back from preview
+    if (savedFormData) {
+      const fields = ['company_name', 'address', 'contact_name', 'contact_email', 'contact_phone', 'hours_per_day', 'margin', 'product_cost', 'overhead_cost'];
+      fields.forEach(name => {
+        const input = form.elements.namedItem(name) as HTMLInputElement;
+        if (input && savedFormData[name]) input.value = savedFormData[name];
+      });
+      const siteType = form.elements.namedItem('site_type') as HTMLSelectElement;
+      if (siteType && savedFormData.site_type) siteType.value = savedFormData.site_type;
+      const freq = form.elements.namedItem('frequency') as HTMLSelectElement;
+      if (freq && savedFormData.frequency) freq.value = savedFormData.frequency;
+
+      // Restore days
+      savedDays.forEach(day => {
+        const btn = el.querySelector(`.day-btn[data-day="${day}"]`) as HTMLElement;
+        if (btn && !btn.classList.contains('active')) {
+          btn.classList.add('active');
+          if (!selectedDays.includes(day)) selectedDays.push(day);
+        }
+      });
+
+      // Restore pilot
+      if (savedPilot && !pilotActive) {
+        pilotActive = true;
+        if (pilotToggle) pilotToggle.classList.add('active');
+      }
+
+      recalc();
+    }
   }, [screen]);
 
   // Send the quote
@@ -492,49 +542,50 @@ export default function QuotesPage() {
       {screen === "loading" && (
         <div style={{ maxWidth: 600, margin: "0 auto", padding: 40, textAlign: "center" }}>
           <div style={{
-            width: 48, height: 48, border: "4px solid #e0e0e0", borderTopColor: "#2c5f2d",
+            width: 48, height: 48, border: "4px solid #e0e0e0", borderTopColor: "var(--brand-blue)",
             borderRadius: "50%", animation: "qg-spin 0.8s linear infinite", margin: "0 auto 16px"
           }} />
           <style>{`@keyframes qg-spin { to { transform: rotate(360deg); } }`}</style>
-          <h2 style={{ color: "#2c5f2d", marginBottom: 8 }}>Generating Quote...</h2>
+          <h2 style={{ color: "var(--brand-blue)", marginBottom: 8 }}>Generating Quote...</h2>
           <p style={{ color: "#666" }}>Creating PDF and preparing email draft.</p>
         </div>
       )}
 
       {/* Email Preview Screen */}
       {screen === "preview" && quoteResult && (
-        <div style={{ maxWidth: 800, margin: "0 auto", padding: 16, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-          {/* Header bar */}
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: "12px", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
+          {/* Header bar - mobile friendly */}
           <div style={{
-            background: "linear-gradient(135deg, #2c5f2d 0%, #1e4520 100%)",
-            borderRadius: "12px 12px 0 0", padding: "16px 20px", color: "white",
-            display: "flex", justifyContent: "space-between", alignItems: "center"
+            background: "linear-gradient(135deg, var(--brand-blue) 0%, #163c78 100%)",
+            borderRadius: "12px 12px 0 0", padding: "12px 16px", color: "white",
           }}>
-            <div>
-              <div style={{ fontSize: 13, opacity: 0.8, textTransform: "uppercase", letterSpacing: 1 }}>Email Draft Preview</div>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{quoteResult.quote_ref}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 11, opacity: 0.8, textTransform: "uppercase", letterSpacing: 1 }}>Email Draft Preview</div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{quoteResult.quote_ref}</div>
+              </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={resetAll}
+                onClick={() => setScreen("form")}
                 style={{
-                  padding: "8px 16px", background: "rgba(255,255,255,0.15)", color: "white",
+                  flex: 1, padding: "10px 16px", background: "rgba(255,255,255,0.15)", color: "white",
                   border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, cursor: "pointer",
                   fontSize: 14, fontWeight: 600
                 }}
               >
-                Back to Form
+                ← Edit Quote
               </button>
               <button
                 onClick={handleSend}
                 disabled={sending}
                 style={{
-                  padding: "8px 24px", background: "#f9a825", color: "#000",
+                  flex: 1, padding: "10px 24px", background: "var(--brand-gold)", color: "#000",
                   border: "none", borderRadius: 8, cursor: sending ? "not-allowed" : "pointer",
                   fontSize: 14, fontWeight: 700, opacity: sending ? 0.6 : 1
                 }}
               >
-                {sending ? "Sending..." : "Send Quote"}
+                {sending ? "Sending..." : "Send Quote →"}
               </button>
             </div>
           </div>
@@ -568,7 +619,7 @@ export default function QuotesPage() {
               <span style={{ fontWeight: 600, color: "#555", width: 60, display: "inline-block" }}>Attach:</span>
               <span style={{
                 background: "#e8f0e8", padding: "2px 8px", borderRadius: 4,
-                fontSize: 13, color: "#2c5f2d"
+                fontSize: 13, color: "var(--brand-blue)"
               }}>
                 📎 {quoteResult.email.pdfFilename}
               </span>
@@ -604,10 +655,10 @@ export default function QuotesPage() {
             overflow: "hidden"
           }}>
             <iframe
-              srcDoc={quoteResult.email.html}
-              style={{ width: "100%", height: 700, border: "none" }}
+              srcDoc={`<base target="_blank">${quoteResult.email.html}<style>a{pointer-events:auto!important;}</style>`}
+              style={{ width: "100%", height: "60vh", minHeight: 400, border: "none" }}
               title="Email Preview"
-              sandbox=""
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
             />
           </div>
         </div>
@@ -620,13 +671,13 @@ export default function QuotesPage() {
           background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
         }}>
           <div style={{ fontSize: 64, marginBottom: 16 }}>✓</div>
-          <h2 style={{ color: "#2c5f2d", marginBottom: 8 }}>Quote Sent!</h2>
+          <h2 style={{ color: "var(--brand-blue)", marginBottom: 8 }}>Quote Sent!</h2>
           <p style={{ color: "#666", marginBottom: 16 }}>
             Quote emailed to {quoteResult.email.to} with PDF attached.
           </p>
           <div style={{
             background: "#e8f0e8", padding: "8px 16px", borderRadius: 8,
-            display: "inline-block", fontFamily: "monospace", fontSize: 14, color: "#2c5f2d"
+            display: "inline-block", fontFamily: "monospace", fontSize: 14, color: "var(--brand-blue)"
           }}>
             {quoteResult.quote_ref}
           </div>
@@ -634,8 +685,8 @@ export default function QuotesPage() {
           <button
             onClick={resetAll}
             style={{
-              marginTop: 24, padding: "12px 32px", background: "white", color: "#2c5f2d",
-              border: "2px solid #2c5f2d", borderRadius: 8, fontSize: 15,
+              marginTop: 24, padding: "12px 32px", background: "white", color: "var(--brand-blue)",
+              border: "2px solid var(--brand-blue)", borderRadius: 8, fontSize: 15,
               fontWeight: 600, cursor: "pointer"
             }}
           >
@@ -656,8 +707,8 @@ export default function QuotesPage() {
           <button
             onClick={resetAll}
             style={{
-              marginTop: 8, padding: "12px 32px", background: "white", color: "#2c5f2d",
-              border: "2px solid #2c5f2d", borderRadius: 8, fontSize: 15,
+              marginTop: 8, padding: "12px 32px", background: "white", color: "var(--brand-blue)",
+              border: "2px solid var(--brand-blue)", borderRadius: 8, fontSize: 15,
               fontWeight: 600, cursor: "pointer"
             }}
           >

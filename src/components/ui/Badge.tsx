@@ -6,21 +6,25 @@ interface BadgeProps {
 }
 
 const variants: Record<string, { bg: string; color: string }> = {
-  default: { bg: '#f1f5f9', color: '#64748b' },
-  success: { bg: '#dcfce7', color: '#166534' },
-  warning: { bg: '#fef9c3', color: '#854d0e' },
-  danger: { bg: '#fce4e4', color: '#991b1b' },
-  info: { bg: '#dbeafe', color: '#1e40af' },
+  default: { bg: 'var(--background)', color: 'var(--text-muted)' },
+  success: { bg: 'var(--status-success-bg)', color: 'var(--status-success)' },
+  warning: { bg: 'var(--status-warning-bg)', color: 'var(--status-warning)' },
+  danger: { bg: 'var(--status-danger-bg)', color: 'var(--status-danger)' },
+  info: { bg: 'var(--status-info-bg)', color: 'var(--status-info)' },
 };
 
 export function Badge({ label, children, variant = 'default', color }: BadgeProps) {
   const style = color
-    ? { bg: color + '20', color }
+    ? { bg: color + '14', color }
     : variants[variant];
   return (
     <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-      style={{ backgroundColor: style.bg, color: style.color }}
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
+      style={{
+        backgroundColor: style.bg,
+        color: style.color,
+        letterSpacing: '0.01em',
+      }}
     >
       {children || label}
     </span>

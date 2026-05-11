@@ -105,17 +105,17 @@ export function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
       {/* Deal / Account linking */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#64748b" }}>Link to Deal</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Link to Deal</label>
           <select value={dealId} onChange={e => setDealId(e.target.value)}
-            className="w-full px-3 py-2 text-sm border rounded-md" style={{ borderColor: "#e2e8f0" }}>
+            className="w-full px-3 py-2 text-sm border rounded-lg" style={{ borderColor: "var(--border)" }}>
             <option value="">None</option>
             {deals.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#64748b" }}>Link to Account</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Link to Account</label>
           <select value={accountId} onChange={e => setAccountId(e.target.value)}
-            className="w-full px-3 py-2 text-sm border rounded-md" style={{ borderColor: "#e2e8f0" }}>
+            className="w-full px-3 py-2 text-sm border rounded-lg" style={{ borderColor: "var(--border)" }}>
             <option value="">None</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
@@ -125,12 +125,12 @@ export function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
       {/* Pricing inputs */}
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#64748b" }}>Weekly Hours</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Weekly Hours</label>
           <input type="number" step="0.5" min="1" value={weeklyHours} onChange={e => setWeeklyHours(e.target.value)}
-            className="w-full px-3 py-2 text-sm border rounded-md" style={{ borderColor: "#e2e8f0" }} />
+            className="w-full px-3 py-2 text-sm border rounded-lg" style={{ borderColor: "var(--border)" }} />
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#64748b" }}>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
             Sell Rate (£/hr)
             {preview && (
               <span className="ml-1 font-bold" style={{ color: rateColor }}>
@@ -139,55 +139,55 @@ export function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
             )}
           </label>
           <input type="number" step="0.5" min="20" value={sellRate} onChange={e => setSellRate(e.target.value)}
-            className="w-full px-3 py-2 text-sm border rounded-md"
-            style={{ borderColor: preview ? rateColor : "#e2e8f0" }} />
+            className="w-full px-3 py-2 text-sm border rounded-lg"
+            style={{ borderColor: preview ? rateColor : "var(--border)" }} />
         </div>
         <div className="flex items-end pb-1">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" checked={isPilot} onChange={e => setIsPilot(e.target.checked)}
               className="rounded" />
-            <span style={{ color: "#64748b" }}>Pilot (25% off)</span>
+            <span style={{ color: "var(--text-secondary)" }}>Pilot (25% off)</span>
           </label>
         </div>
       </div>
 
       {/* Live pricing preview */}
       {preview && (
-        <div className="rounded-lg p-4" style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0" }}>
-          <div className="text-xs font-medium mb-2" style={{ color: "#64748b" }}>PRICING PREVIEW</div>
+        <div className="rounded-xl p-4" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
+          <div className="text-xs font-medium mb-2" style={{ color: "var(--text-secondary)" }}>PRICING PREVIEW</div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <span style={{ color: "#64748b" }}>Effective Rate: </span>
+              <span style={{ color: "var(--text-secondary)" }}>Effective Rate: </span>
               <span className="font-medium" style={{ color: rateColor }}>
                 £{preview.effectiveRate.toFixed(2)}/hr
               </span>
               {isPilot && <span className="text-xs ml-1" style={{ color: "#d97706" }}>(-{preview.pilotDiscount}%)</span>}
             </div>
             <div>
-              <span style={{ color: "#64748b" }}>Labour: </span>
-              <span className="font-medium" style={{ color: "#1a1a1a" }}>£{preview.labourRate}/hr</span>
+              <span style={{ color: "var(--text-secondary)" }}>Labour: </span>
+              <span className="font-medium" style={{ color: "var(--text-primary)" }}>£{preview.labourRate}/hr</span>
             </div>
             <div>
-              <span style={{ color: "#64748b" }}>Monthly: </span>
-              <span className="font-bold" style={{ color: "#1a1a1a" }}>
+              <span style={{ color: "var(--text-secondary)" }}>Monthly: </span>
+              <span className="font-bold" style={{ color: "var(--text-primary)" }}>
                 £{preview.monthlyTotal.toLocaleString("en-GB", { minimumFractionDigits: 2 })}
               </span>
             </div>
             <div>
-              <span style={{ color: "#64748b" }}>Annual: </span>
-              <span className="font-medium" style={{ color: "#1a1a1a" }}>
+              <span style={{ color: "var(--text-secondary)" }}>Annual: </span>
+              <span className="font-medium" style={{ color: "var(--text-primary)" }}>
                 £{preview.annualTotal.toLocaleString("en-GB", { minimumFractionDigits: 2 })}
               </span>
             </div>
             <div>
-              <span style={{ color: "#64748b" }}>Margin: </span>
+              <span style={{ color: "var(--text-secondary)" }}>Margin: </span>
               <span className="font-bold" style={{ color: preview.margin >= 30 ? "#16a34a" : preview.margin >= 25 ? "#d97706" : "#dc2626" }}>
                 {preview.margin.toFixed(1)}%
               </span>
             </div>
             <div>
-              <span style={{ color: "#64748b" }}>Weekly Revenue: </span>
-              <span className="font-medium" style={{ color: "#1a1a1a" }}>
+              <span style={{ color: "var(--text-secondary)" }}>Weekly Revenue: </span>
+              <span className="font-medium" style={{ color: "var(--text-primary)" }}>
                 £{preview.weeklyRevenue.toFixed(2)}
               </span>
             </div>
@@ -214,12 +214,12 @@ export function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
 
       <div className="flex justify-end gap-2 pt-2">
         <button type="button" onClick={onCancel}
-          className="px-4 py-2 text-sm border rounded-md" style={{ borderColor: "#e2e8f0", color: "#64748b" }}>
+          className="px-4 py-2 text-sm border rounded-lg" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
           Cancel
         </button>
         <button type="submit" disabled={saving || preview?.blocked}
-          className="px-4 py-2 text-sm text-white rounded-md disabled:opacity-50"
-          style={{ backgroundColor: "#2c5f2d" }}>
+          className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50"
+          style={{ backgroundColor: "var(--brand-blue)" }}>
           {saving ? "Creating..." : "Create Quote"}
         </button>
       </div>

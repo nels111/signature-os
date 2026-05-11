@@ -52,52 +52,52 @@ export function CalendarEventDetail() {
     setEvent(await res.json());
   };
 
-  if (!event) return <p className="text-sm" style={{ color: '#64748b' }}>Loading...</p>;
+  if (!event) return <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading...</p>;
 
   const invites = (event.invites as Array<{ id: string; status: string; invitee: { id: string; name: string } }>) || [];
 
   return (
     <div>
       <button onClick={() => router.push('/dashboard/calendar')}
-        className="text-sm mb-4 hover:underline" style={{ color: '#2c5f2d' }}>← Back to Calendar</button>
+        className="text-sm mb-4 hover:underline" style={{ color: 'var(--brand-blue)' }}>← Back to Calendar</button>
 
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: '#1a1a1a' }}>{event.title as string}</h1>
+          <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{event.title as string}</h1>
           <div className="flex gap-2 mt-2">
             <Badge color={EVENT_COLORS[(event.eventType as string)] || '#6b7280'}>{formatLabel(event.eventType as string)}</Badge>
-            <Badge color={event.calendarType === 'personal' ? '#6b7280' : '#2c5f2d'}>{formatLabel(event.calendarType as string)}</Badge>
+            <Badge color={event.calendarType === 'personal' ? '#6b7280' : 'var(--brand-blue)'}>{formatLabel(event.calendarType as string)}</Badge>
           </div>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowEdit(true)}
-            className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50" style={{ borderColor: '#e2e8f0' }}>Edit</button>
+            className="px-3 py-1.5 text-sm border rounded-lg hover:" style={{ borderColor: 'var(--border)' }}>Edit</button>
           <button onClick={handleDelete}
-            className="px-3 py-1.5 text-sm text-white rounded-md" style={{ backgroundColor: '#ef4444' }}>Delete</button>
+            className="px-3 py-1.5 text-sm text-white rounded-lg" style={{ backgroundColor: '#ef4444' }}>Delete</button>
         </div>
       </div>
 
-      <div className="bg-white border rounded-lg p-6 space-y-3 mb-4" style={{ borderColor: '#e2e8f0' }}>
+      <div className="border rounded-xl p-6 space-y-3 mb-4" style={{ borderColor: 'var(--border)' }}>
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div><span style={{ color: '#64748b' }}>Start:</span> <span className="ml-2 font-medium">{formatDateTime(event.startDate as string)}</span></div>
-          <div><span style={{ color: '#64748b' }}>End:</span> <span className="ml-2 font-medium">{formatDateTime(event.endDate as string)}</span></div>
-          <div><span style={{ color: '#64748b' }}>All Day:</span> <span className="ml-2">{event.allDay ? 'Yes' : 'No'}</span></div>
-          <div><span style={{ color: '#64748b' }}>Owner:</span> <span className="ml-2">{String((event.owner as Record<string, unknown>)?.name || '—')}</span></div>
+          <div><span style={{ color: 'var(--text-secondary)' }}>Start:</span> <span className="ml-2 font-medium">{formatDateTime(event.startDate as string)}</span></div>
+          <div><span style={{ color: 'var(--text-secondary)' }}>End:</span> <span className="ml-2 font-medium">{formatDateTime(event.endDate as string)}</span></div>
+          <div><span style={{ color: 'var(--text-secondary)' }}>All Day:</span> <span className="ml-2">{event.allDay ? 'Yes' : 'No'}</span></div>
+          <div><span style={{ color: 'var(--text-secondary)' }}>Owner:</span> <span className="ml-2">{String((event.owner as Record<string, unknown>)?.name || '—')}</span></div>
         </div>
         {typeof event.notes === 'string' && event.notes && (
-          <div className="pt-2 border-t text-sm" style={{ borderColor: '#e2e8f0' }}>
-            <span style={{ color: '#64748b' }}>Notes:</span>
-            <p className="mt-1 whitespace-pre-wrap" style={{ color: '#1a1a1a' }}>{event.notes as string}</p>
+          <div className="pt-2 border-t text-sm" style={{ borderColor: 'var(--border)' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Notes:</span>
+            <p className="mt-1 whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{event.notes as string}</p>
           </div>
         )}
       </div>
 
       {/* Invites */}
       {event.calendarType === 'shared' && (
-        <div className="bg-white border rounded-lg p-6" style={{ borderColor: '#e2e8f0' }}>
-          <h3 className="text-sm font-medium mb-3" style={{ color: '#1a1a1a' }}>Invitees</h3>
+        <div className="border rounded-xl p-6" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Invitees</h3>
           {invites.length === 0 ? (
-            <p className="text-sm" style={{ color: '#64748b' }}>No invitees yet.</p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No invitees yet.</p>
           ) : (
             <div className="space-y-2">
               {invites.map(inv => (

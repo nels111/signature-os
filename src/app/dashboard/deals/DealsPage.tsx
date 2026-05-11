@@ -166,7 +166,7 @@ export function DealsPage() {
       sortable: false,
       render: (item: Deal) =>
         item.value ? (
-          <span className="text-sm font-medium" style={{ color: '#2c5f2d' }}>
+          <span className="text-sm font-medium" style={{ color: 'var(--brand-blue)' }}>
             {formatCurrency(item.value)}
           </span>
         ) : (
@@ -203,7 +203,7 @@ export function DealsPage() {
       sortable: false,
       render: (item: Deal) =>
         item.account ? (
-          <span className="text-sm" style={{ color: '#2c5f2d' }}>
+          <span className="text-sm" style={{ color: 'var(--brand-blue)' }}>
             {item.account.name}
           </span>
         ) : (
@@ -224,17 +224,17 @@ export function DealsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Deals
           </h1>
-          <p className="text-sm mt-1" style={{ color: '#64748b' }}>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
             {total} deal{total !== 1 ? 's' : ''} total
           </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
-          style={{ backgroundColor: '#2c5f2d' }}
+          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
+          style={{ backgroundColor: 'var(--brand-blue)' }}
         >
           + New Deal
         </button>
@@ -247,8 +247,8 @@ export function DealsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search deals..."
-            className="w-full pl-9 pr-4 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600"
-            style={{ borderColor: '#e2e8f0' }}
+            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30"
+            style={{ borderColor: 'var(--border)' }}
           />
           <svg
             className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
@@ -268,7 +268,7 @@ export function DealsPage() {
           value={stageFilter}
           onChange={(e) => { setStageFilter(e.target.value); setPage(1); }}
           className="border rounded px-2 py-1 text-sm"
-          style={{ borderColor: '#e2e8f0' }}
+          style={{ borderColor: 'var(--border)' }}
         >
           <option value="">All Stages</option>
           <option value="quote_sent">Quote Sent</option>
@@ -282,7 +282,7 @@ export function DealsPage() {
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="border rounded px-2 py-1 text-sm"
-            style={{ borderColor: '#e2e8f0' }}
+            style={{ borderColor: 'var(--border)' }}
           >
             <option value="createdAt">Date Created</option>
             <option value="name">Name</option>
@@ -291,8 +291,8 @@ export function DealsPage() {
           </select>
           <button
             onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
-            className="border rounded px-2 py-1 text-sm hover:bg-gray-50"
-            style={{ borderColor: '#e2e8f0' }}
+            className="border rounded px-2 py-1 text-sm hover:"
+            style={{ borderColor: 'var(--border)' }}
           >
             {sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
           </button>
@@ -300,7 +300,7 @@ export function DealsPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-lg border p-8 text-center" style={{ borderColor: '#e2e8f0', color: '#64748b' }}>
+        <div className="rounded-xl border p-8 text-center" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
           Loading deals...
         </div>
       ) : (

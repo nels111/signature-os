@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
           to: true,
           cc: true,
           subject: true,
+          bodyText: true,
           date: true,
           isRead: true,
           folder: true,

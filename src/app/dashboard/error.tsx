@@ -30,7 +30,7 @@ export default function DashboardError({
         onClick={reset}
         style={{
           padding: "10px 24px",
-          background: "#2c5f2d",
+          background: "var(--brand-blue)",
           color: "white",
           border: "none",
           borderRadius: 8,

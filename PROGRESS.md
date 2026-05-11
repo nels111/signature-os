@@ -1,8 +1,8 @@
 # Signature Cleans OS -- Build Progress
 
-**Last Updated:** 2026-05-10 02:30 UTC
-**Current Phase:** Phase 9 -- Deploy & Polish (COMPLETE)
-**Status:** 🟢 All phases built, audited, hardened
+**Last Updated:** 2026-05-10 13:15 UTC
+**Current Phase:** Phase 10 -- Design Pass & Mobile (IN PROGRESS)
+**Status:** 🟡 Design pass mostly done, mobile PWA live, functional fixes deployed
 
 ---
 
@@ -20,6 +20,59 @@
 | 7. Integrations | ✅ done | ✅ Codex | Fireflies sync, Activity log, Dashboard KPI endpoint |
 | 8. Cadence Engine | ✅ done | ✅ Codex | Email sequences (DISABLED by default), templates CRUD, merge fields |
 | 9. Deploy & Polish | ✅ done | ✅ Codex | Nginx, SSL, rate limiting, API key auth, error boundaries |
+| 10. Design Pass | 🟡 in progress | ⏳ running | Apple × X aesthetic, mobile PWA, iOS Mail replication next |
+
+## Phase 10 -- What's Done
+
+### Design Pass (Apple × X aesthetic)
+- ✅ Sidebar: dark #0f1419, lucide icons, section dividers, hover states, collapsible
+- ✅ TopBar: frosted glass blur, ⌘K search with focus animation
+- ✅ Dashboard: stat cards with icons, hover lift, section accent bars, gradient progress bar
+- ✅ Login page: dark background with radial gradient
+- ✅ Email UI: rewrote all 4 component files to match design system
+- ✅ CSS custom properties system (globals.css) with brand tokens
+
+### Mobile / PWA
+- ✅ PWA manifest + service worker + iOS meta tags (installable as app)
+- ✅ Icons generated (192, 512, apple-touch-icon)
+- ✅ Safe area insets for iPhone notch/Dynamic Island
+- ✅ Responsive AdminLayout with mobile drawer sidebar (hamburger menu)
+- ✅ Email page: single-panel on mobile (list OR detail, back button)
+- ✅ Dashboard cards stack vertically on mobile
+
+### Functional Fixes (this session)
+- ✅ Quote generator: fixed docx template delimiter mismatch (`{{}}` not `{}`)
+- ✅ Quote preview: "Edit Quote" button now goes back with form data preserved
+- ✅ Quote preview: iframe links open in new tab (not hijack page)
+- ✅ Email detail: body content constrained to viewport (no zoom/scroll overflow)
+- ✅ Email detail: responsive header stacking on mobile
+- ✅ Full email sync: 3,643 emails from Jan 2025 (nelson@ + hello@)
+- ✅ Email auto-refresh: DB poll every 5s, IMAP sync every 30s
+- ✅ Login password reset to: SignatureOS2024!
+
+## Phase 10 -- What's Next (TODO)
+
+### Priority 1: iOS Mail Replication
+- [ ] Rebuild email module to feel exactly like iOS Mail app
+- [ ] Slide transitions between list and detail view
+- [ ] Swipe actions (archive, delete, flag)
+- [ ] Blue unread dots
+- [ ] Grouped by date (Today, Yesterday, This Week, etc.)
+- [ ] Bottom reply/action bar (Reply, Reply All, Forward, Delete, Flag)
+- [ ] Thread grouping (conversation view)
+- [ ] Pull-to-refresh on mobile
+
+### Priority 2: Remaining Design Polish
+- [ ] Quotes page: apply Apple × X design to the form (currently raw embedded HTML)
+- [ ] Pipeline/Kanban: design pass
+- [ ] Contacts/Accounts/Leads/Deals list views: design pass
+- [ ] Calendar: design pass
+- [ ] Tasks: design pass
+
+### Priority 3: Outstanding Items
+- [ ] Nick's email (nick@signature-cleans.co.uk) -- needs IONOS password
+- [ ] Codex audit on Phase 10 changes (currently running, check /tmp/codex-audit.txt)
+- [ ] Any findings from codex audit need addressing
 
 ## Architecture
 
@@ -27,6 +80,8 @@
 - **Domain:** os.signature-cleans.co.uk (SSL via Let's Encrypt)
 - **Port:** 3200 (PM2 managed)
 - **DB:** signature_cleans_os on localhost:5432
+- **Design:** Apple × X -- dark sidebar, frosted glass topbar, light content area
+- **Colours:** CSS custom properties in globals.css (--brand-blue: #2056A4, --brand-green: #6B8E23)
 
 ## API Endpoints
 
@@ -53,13 +108,29 @@
 API key auth via Bearer token in Authorization header. Key stored in .env as API_KEY.
 
 ```bash
-curl -H "Authorization: Bearer $API_KEY" https://os.signature-cleans.co.uk/api/dashboard
+curl -H "Authorization: Bearer ***" https://os.signature-cleans.co.uk/api/dashboard
 ```
 
-## Credentials Needed (from Nelson)
+## Credentials
 
-- [ ] SMTP_PASS for nick@signature-cleans.co.uk (quote emails)
-- [ ] IONOS email passwords for nelson@, nick@, hello@ (IMAP sync)
+- Login: nelson@signature-cleans.co.uk / SignatureOS2024!
+- Email accounts configured: nelson@, hello@ (IONOS passwords in DB user records)
+- [ ] Nick's IONOS password still needed
+
+## Key Files Modified This Session
+
+- `src/app/layout.tsx` -- PWA meta tags, service worker registration, viewport config
+- `src/app/globals.css` -- safe area insets for PWA
+- `src/app/dashboard/emails/EmailDetail.tsx` -- mobile responsive, body overflow fix
+- `src/app/dashboard/emails/page.tsx` -- mobile single-panel, back button
+- `src/app/dashboard/quotes/page.tsx` -- edit quote flow, iframe sandbox fix, form data preservation
+- `src/lib/quotes/pdf-generator.ts` -- delimiter fix ({{ }} not { })
+- `src/components/Sidebar.tsx` -- mobile drawer
+- `src/components/TopBar.tsx` -- hamburger menu
+- `src/components/AdminLayout.tsx` -- mobile context provider
+- `public/manifest.json` -- PWA manifest
+- `public/sw.js` -- service worker
+- `public/icon-192.png`, `icon-512.png`, `apple-touch-icon.png` -- app icons
 
 ## Security Hardening Applied
 
@@ -70,9 +141,6 @@ curl -H "Authorization: Bearer $API_KEY" https://os.signature-cleans.co.uk/api/d
 - Prisma transactions on cadence start/pause/resume
 - Input validation (types, lengths, ranges) on all POST/PATCH endpoints
 - Error details never leaked to client
-- Security headers via nginx (X-Frame-Options, X-Content-Type-Options, X-XSS-Protection)
-- iframe sandbox (empty) on email preview
-
-## Next: Phase 10 -- Design Pass
-
-Full UI redesign of every page. Dedicated session with Nelson for direction.
+- Security headers via nginx
+- DOMPurify sanitization on email body HTML rendering
+- iframe sandbox with allow-popups only (no scripts, no same-origin)

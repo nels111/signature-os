@@ -210,6 +210,7 @@ export async function generateQuotePdf(data: QuotePdfData): Promise<{ pdfPath: s
   const doc = new Docxtemplater(zip, {
     paragraphLoop: true,
     linebreaks: true,
+    delimiters: { start: '{{', end: '}}' },
   });
 
   // Build placeholders (matching the Google Docs template format)

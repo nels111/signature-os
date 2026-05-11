@@ -64,7 +64,7 @@ const STAGE_COLOURS: Record<string, string> = {
   follow_up_sequence: '#f59e0b',
   meeting_scheduled: '#8b5cf6',
   meeting_attended: '#10b981',
-  quote_delivered: '#2c5f2d',
+  quote_delivered: 'var(--status-success)',
 };
 
 const DEAL_STAGE_LABELS: Record<string, string> = {
@@ -157,7 +157,7 @@ export function LeadDetailClient({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <div className="p-8 text-center" style={{ color: '#64748b' }}>
+      <div className="p-8 text-center" style={{ color: 'var(--text-secondary)' }}>
         Loading lead...
       </div>
     );
@@ -178,15 +178,15 @@ export function LeadDetailClient({ id }: { id: string }) {
         <button
           onClick={() => router.push('/dashboard/leads')}
           className="p-1 hover:bg-gray-100 rounded"
-          style={{ color: '#64748b' }}
+          style={{ color: 'var(--text-secondary)' }}
         >
           ← Back
         </button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {lead.companyName}
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
             {lead.contactName}
           </p>
         </div>
@@ -198,14 +198,14 @@ export function LeadDetailClient({ id }: { id: string }) {
         </span>
         <button
           onClick={() => setShowEditModal(true)}
-          className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
-          style={{ backgroundColor: '#2c5f2d' }}
+          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
+          style={{ backgroundColor: 'var(--brand-blue)' }}
         >
           Edit
         </button>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="px-4 py-2 text-sm border rounded-md hover:bg-red-50 text-red-600"
+          className="px-4 py-2 text-sm border rounded-lg hover:bg-red-50 text-red-600"
           style={{ borderColor: '#fca5a5' }}
         >
           Delete
@@ -213,7 +213,7 @@ export function LeadDetailClient({ id }: { id: string }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b mb-6" style={{ borderColor: '#e2e8f0' }}>
+      <div className="flex gap-1 border-b mb-6" style={{ borderColor: 'var(--border)' }}>
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -231,14 +231,14 @@ export function LeadDetailClient({ id }: { id: string }) {
 
       {/* Details Tab */}
       {activeTab === 'details' && (
-        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
+        <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DetailField label="Company Name" value={lead.companyName} />
             <DetailField label="Contact Name" value={lead.contactName} />
             <DetailField label="Email" value={lead.email} />
             <DetailField label="Phone" value={lead.phone} />
             <div>
-              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+              <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Source
               </span>
               <Badge
@@ -247,7 +247,7 @@ export function LeadDetailClient({ id }: { id: string }) {
               />
             </div>
             <div>
-              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+              <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Stage
               </span>
               <span
@@ -280,11 +280,11 @@ export function LeadDetailClient({ id }: { id: string }) {
             <DetailField label="Stage Changed" value={formatDate(lead.stageChangedAt)} />
           </div>
           {lead.notes && (
-            <div className="mt-6 pt-6 border-t" style={{ borderColor: '#e2e8f0' }}>
-              <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+            <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+              <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Notes
               </span>
-              <p className="text-sm whitespace-pre-wrap" style={{ color: '#1a1a1a' }}>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
                 {lead.notes}
               </p>
             </div>
@@ -294,8 +294,8 @@ export function LeadDetailClient({ id }: { id: string }) {
 
       {/* Linked Deals Tab */}
       {activeTab === 'deals' && (
-        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
-          <h3 className="text-sm font-semibold mb-3" style={{ color: '#1a1a1a' }}>
+        <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
             Linked Deals ({lead.deals?.length || 0})
           </h3>
           {lead.deals && lead.deals.length > 0 ? (
@@ -304,15 +304,15 @@ export function LeadDetailClient({ id }: { id: string }) {
                 <div
                   key={deal.id}
                   className="flex items-center justify-between p-3 rounded border hover:bg-gray-50 cursor-pointer"
-                  style={{ borderColor: '#e2e8f0' }}
+                  style={{ borderColor: 'var(--border)' }}
                   onClick={() => router.push(`/dashboard/deals/${deal.id}`)}
                 >
                   <div>
-                    <span className="text-sm font-medium" style={{ color: '#1a1a1a' }}>
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                       {deal.name}
                     </span>
                     {deal.value && (
-                      <span className="text-sm ml-2" style={{ color: '#2c5f2d' }}>
+                      <span className="text-sm ml-2" style={{ color: 'var(--brand-blue)' }}>
                         {formatCurrency(deal.value)}
                       </span>
                     )}
@@ -325,7 +325,7 @@ export function LeadDetailClient({ id }: { id: string }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm" style={{ color: '#94a3b8' }}>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               No deals linked to this lead yet.
             </p>
           )}
@@ -334,8 +334,8 @@ export function LeadDetailClient({ id }: { id: string }) {
 
       {/* Activity Tab */}
       {activeTab === 'activity' && (
-        <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#e2e8f0' }}>
-          <p className="text-sm" style={{ color: '#94a3b8' }}>
+        <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Activity timeline coming soon.
           </p>
         </div>
@@ -375,22 +375,22 @@ export function LeadDetailClient({ id }: { id: string }) {
         onClose={() => setShowDeleteConfirm(false)}
         title="Delete Lead"
       >
-        <p className="text-sm mb-6" style={{ color: '#64748b' }}>
+        <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
           Are you sure you want to delete{' '}
-          <strong style={{ color: '#1a1a1a' }}>{lead.companyName}</strong>
+          <strong style={{ color: 'var(--text-primary)' }}>{lead.companyName}</strong>
           ? This action can be undone by an administrator.
         </p>
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setShowDeleteConfirm(false)}
-            className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
-            style={{ borderColor: '#e2e8f0', color: '#64748b' }}
+            className="px-4 py-2 text-sm border rounded-lg hover:"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           >
             Cancel
           </button>
           <button
             onClick={handleDelete}
-            className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90"
+            className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
             style={{ backgroundColor: '#dc2626' }}
           >
             Delete Lead
@@ -413,7 +413,7 @@ function DetailField({
   const router = useRouter();
   return (
     <div>
-      <span className="block text-xs font-medium mb-1" style={{ color: '#64748b' }}>
+      <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
         {label}
       </span>
       {value ? (
@@ -421,17 +421,17 @@ function DetailField({
           <button
             onClick={() => router.push(link)}
             className="text-sm hover:underline"
-            style={{ color: '#2c5f2d' }}
+            style={{ color: 'var(--brand-blue)' }}
           >
             {value}
           </button>
         ) : (
-          <span className="text-sm" style={{ color: '#1a1a1a' }}>
+          <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
             {value}
           </span>
         )
       ) : (
-        <span className="text-sm" style={{ color: '#94a3b8' }}>
+        <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
           —
         </span>
       )}

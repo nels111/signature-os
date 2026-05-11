@@ -43,22 +43,43 @@ export function DataTable<T extends Record<string, unknown>>({
 
   if (data.length === 0) {
     return (
-      <div className="bg-white rounded-lg border p-8 text-center" style={{ borderColor: '#e2e8f0', color: '#64748b' }}>
+      <div
+        className="rounded-xl p-8 text-center text-sm"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          color: 'var(--text-muted)',
+          boxShadow: 'var(--shadow-card)',
+        }}
+      >
         {emptyMessage}
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg border overflow-hidden" style={{ borderColor: '#e2e8f0' }}>
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-card)',
+      }}
+    >
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b" style={{ borderColor: '#e2e8f0' }}>
+          <tr style={{ borderBottom: '1px solid var(--border)' }}>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`text-left px-4 py-3 font-medium ${col.sortable ? 'cursor-pointer hover:bg-gray-50' : ''}`}
-                style={{ color: '#64748b' }}
+                className={`text-left px-4 py-3 font-semibold text-xs uppercase ${
+                  col.sortable ? 'cursor-pointer' : ''
+                }`}
+                style={{
+                  color: 'var(--text-muted)',
+                  letterSpacing: '0.05em',
+                  background: 'var(--background)',
+                }}
                 onClick={() => col.sortable && handleSort(col.key)}
               >
                 {col.label}
@@ -73,14 +94,22 @@ export function DataTable<T extends Record<string, unknown>>({
           {sorted.map((item, i) => (
             <tr
               key={i}
-              className={`border-b last:border-0 ${onRowClick ? 'cursor-pointer hover:bg-gray-50' : ''} ${
-                i % 2 === 1 ? 'bg-gray-50/50' : ''
-              }`}
-              style={{ borderColor: '#e2e8f0' }}
+              className={`transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+              style={{ borderBottom: '1px solid var(--border)' }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'transparent';
+              }}
               onClick={() => onRowClick?.(item)}
             >
               {columns.map((col) => (
-                <td key={col.key} className="px-4 py-3" style={{ color: '#1a1a1a' }}>
+                <td
+                  key={col.key}
+                  className="px-4 py-3"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {col.render ? col.render(item) : String(item[col.key] ?? '')}
                 </td>
               ))}

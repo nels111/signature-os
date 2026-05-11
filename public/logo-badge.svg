@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="98" fill="#2056A4"/>
+  <circle cx="100" cy="100" r="80" fill="#A8C256"/>
+  <text x="100" y="72" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="32" fill="#1a1a1a">Signature</text>
+  <text x="100" y="104" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="32" fill="#1a1a1a">Cleans</text>
+  <text x="100" y="128" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="11" fill="#2056A4" letter-spacing="0.5">COMPLETE CLEANING</text>
+  <text x="100" y="141" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="11" fill="#2056A4" letter-spacing="0.5">SERVICES</text>
+  <text x="100" y="163" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="10.5" fill="#2056A4" letter-spacing="0.3">PEACE OF MIND,</text>
+  <text x="100" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="10.5" fill="#2056A4" letter-spacing="0.3">EVERY TIME</text>
+</svg>

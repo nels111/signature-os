@@ -48,21 +48,21 @@ export function LeadKanbanCard({ item }: { item: LeadItem }) {
   return (
     <div
       onClick={() => router.push(`/dashboard/leads/${item.id}`)}
-      className="bg-white rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-      style={{ borderColor: '#e2e8f0' }}
+      className="rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      style={{ borderColor: 'var(--border)' }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate" style={{ color: '#1a1a1a' }}>
+          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
             {item.companyName}
           </p>
-          <p className="text-xs mt-0.5 truncate" style={{ color: '#64748b' }}>
+          <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>
             {item.contactName}
           </p>
         </div>
         <div
           className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-          style={{ backgroundColor: '#2c5f2d' }}
+          style={{ backgroundColor: 'var(--brand-blue)' }}
           title={item.owner?.name || 'Unassigned'}
         >
           {getInitial(item.owner?.name)}
@@ -71,7 +71,7 @@ export function LeadKanbanCard({ item }: { item: LeadItem }) {
       <div className="mt-2">
         <span
           className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-          style={{ backgroundColor: '#f1f5f9', color: '#64748b' }}
+          style={{ backgroundColor: '#f1f5f9', color: 'var(--text-secondary)' }}
         >
           {SOURCE_LABELS[item.source] || item.source}
         </span>
@@ -86,23 +86,23 @@ export function DealKanbanCard({ item }: { item: DealItem }) {
   return (
     <div
       onClick={() => router.push(`/dashboard/deals/${item.id}`)}
-      className="bg-white rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-      style={{ borderColor: '#e2e8f0' }}
+      className="rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      style={{ borderColor: 'var(--border)' }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate" style={{ color: '#1a1a1a' }}>
+          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
             {item.name}
           </p>
           {item.contact && (
-            <p className="text-xs mt-0.5 truncate" style={{ color: '#64748b' }}>
+            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>
               {item.contact.firstName} {item.contact.lastName}
             </p>
           )}
         </div>
         <div
           className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-          style={{ backgroundColor: '#2c5f2d' }}
+          style={{ backgroundColor: 'var(--brand-blue)' }}
           title={item.owner?.name || 'Unassigned'}
         >
           {getInitial(item.owner?.name)}
@@ -110,7 +110,7 @@ export function DealKanbanCard({ item }: { item: DealItem }) {
       </div>
       {item.value && (
         <div className="mt-2">
-          <span className="text-sm font-semibold" style={{ color: '#2c5f2d' }}>
+          <span className="text-sm font-semibold" style={{ color: 'var(--brand-blue)' }}>
             {formatCurrency(item.value)}
           </span>
         </div>
