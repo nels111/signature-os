@@ -14,13 +14,23 @@ export async function GET(request: Request) {
   const end = url.searchParams.get('end');
   const calendarType = url.searchParams.get('calendarType') || '';
 
+  // Require a bounded date range to prevent unbounded reads.
+  // If caller omits one, default to a 90-day window (60 days back, 30 forward).
+  const now = Date.now();
+  const startDateBound = start ? new Date(start) : new Date(now - 60 * 24 * 60 * 60 * 1000);
+  const endDateBound = end ? new Date(end) : new Date(now + 30 * 24 * 60 * 60 * 1000);
+
+  // Cap the window at 366 days to prevent abuse.
+  const MAX_WINDOW_MS = 366 * 24 * 60 * 60 * 1000;
+  if (endDateBound.getTime() - startDateBound.getTime() > MAX_WINDOW_MS) {
+    return Response.json({ error: 'Date range exceeds 366 days' }, { status: 400 });
+  }
+
   const where: Record<string, unknown> = { deletedAt: null };
 
-  if (start && end) {
-    // Overlap: event starts before range ends AND event ends after range starts
-    where.startDate = { lte: new Date(end) };
-    where.endDate = { gte: new Date(start) };
-  }
+  // Overlap: event starts before range ends AND event ends after range starts
+  where.startDate = { lte: endDateBound };
+  where.endDate = { gte: startDateBound };
 
   if (calendarType === 'personal') {
     where.calendarType = 'personal';
@@ -55,9 +65,7 @@ export async function GET(request: Request) {
       { taskType: 'personal', ownerId: session.user.id },
     ],
   };
-  if (start && end) {
-    taskWhere.dueDate = { gte: new Date(start), lte: new Date(end) };
-  }
+  taskWhere.dueDate = { gte: startDateBound, lte: endDateBound };
 
   const tasks = await prisma.task.findMany({
     where: taskWhere,
@@ -74,7 +82,12 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   if (!body.title || !body.startDate || !body.endDate) {
     return Response.json({ error: 'title, startDate, and endDate are required' }, { status: 400 });
@@ -82,15 +95,15 @@ export async function POST(request: Request) {
 
   const event = await prisma.calendarEvent.create({
     data: {
-      title: body.title,
-      eventType: body.eventType || 'meeting',
-      calendarType: body.calendarType || 'shared',
-      allDay: body.allDay || false,
-      startDate: new Date(body.startDate),
-      endDate: new Date(body.endDate),
-      notes: body.notes || null,
-      repeat: body.repeat || null,
-      alerts: body.alerts || null,
+      title: body.title as string,
+      eventType: (body.eventType as never) || 'meeting',
+      calendarType: (body.calendarType as never) || 'shared',
+      allDay: (body.allDay as boolean) || false,
+      startDate: new Date(body.startDate as string),
+      endDate: new Date(body.endDate as string),
+      notes: (body.notes as string) || null,
+      repeat: (body.repeat as never) || null,
+      alerts: (body.alerts as never) || null,
       ownerId: session.user.id,
     },
     include: {

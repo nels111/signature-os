@@ -40,12 +40,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Too many quotes. Try again shortly.' }, { status: 429 });
     }
 
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const {
       company_name, address, contact_name, contact_email, contact_phone,
       site_type, hours_per_day, frequency, days,
       margin, product_cost, overhead_cost, pilot_pricing
-    } = body;
+    } = body as {
+      company_name?: string; address?: string; contact_name?: string;
+      contact_email?: string; contact_phone?: string; site_type?: string;
+      hours_per_day?: number | string; frequency?: number | string; days?: string[];
+      margin?: number | string; product_cost?: number | string;
+      overhead_cost?: number | string; pilot_pricing?: boolean;
+    };
 
     // Validate required fields
     if (!company_name || !address || !contact_name || !contact_email || !site_type || !hours_per_day || !frequency || !days?.length || !margin) {
@@ -59,18 +70,18 @@ export async function POST(request: NextRequest) {
     }
 
     const pdfData = {
-      companyName: company_name,
-      address,
-      contactName: contact_name,
-      contactEmail: contact_email,
+      companyName: company_name as string,
+      address: address as string,
+      contactName: contact_name as string,
+      contactEmail: contact_email as string,
       contactPhone: contact_phone || 'Not provided',
-      siteType: site_type,
-      hoursPerDay: parseFloat(hours_per_day),
-      frequency: parseInt(frequency),
-      days,
-      margin: parseFloat(margin),
-      productCost: parseFloat(product_cost) || 0,
-      overheadCost: parseFloat(overhead_cost) || 0,
+      siteType: site_type as string,
+      hoursPerDay: parseFloat(String(hours_per_day)),
+      frequency: parseInt(String(frequency)),
+      days: days as string[],
+      margin: parseFloat(String(margin)),
+      productCost: parseFloat(String(product_cost)) || 0,
+      overheadCost: parseFloat(String(overhead_cost)) || 0,
       isPilot: pilot_pricing || false,
     };
 
@@ -118,11 +129,11 @@ export async function POST(request: NextRequest) {
         contactEmail: contact_email,
         contactPhone: contact_phone || 'Not provided',
         siteType: site_type,
-        hoursPerDay: parseFloat(hours_per_day),
-        frequency: parseInt(frequency),
+        hoursPerDay: parseFloat(String(hours_per_day)),
+        frequency: parseInt(String(frequency)),
         days,
-        productCost: parseFloat(product_cost) || 0,
-        overheadCost: parseFloat(overhead_cost) || 0,
+        productCost: parseFloat(String(product_cost)) || 0,
+        overheadCost: parseFloat(String(overhead_cost)) || 0,
         weeklyHours: pricing.weeklyHours,
         sellRate: Math.round(pricing.sellRate * 100) / 100,
         labourRate: 17,

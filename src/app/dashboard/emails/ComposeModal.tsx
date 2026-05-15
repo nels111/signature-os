@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Send, X, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Send, X, Loader2, Paperclip } from "lucide-react";
 import DOMPurify from "dompurify";
 
 interface ComposeModalProps {
@@ -32,6 +32,24 @@ export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModal
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [showCc, setShowCc] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   // Close on Escape key
   const handleKeyDown = useCallback(
@@ -57,6 +75,21 @@ export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModal
         htmlBody += replyTo.bodyHtml;
       }
 
+      // Encode attachments as base64
+      const encodedAttachments = await Promise.all(
+        attachments.map(async (file) => {
+          const buffer = await file.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          let binary = "";
+          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+          return {
+            filename: file.name,
+            contentType: file.type || "application/octet-stream",
+            content: btoa(binary),
+          };
+        })
+      );
+
       const res = await fetch("/api/emails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -69,6 +102,7 @@ export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModal
           mailbox,
           inReplyTo: replyTo?.inReplyTo,
           references: replyTo?.references,
+          attachments: encodedAttachments.length > 0 ? encodedAttachments : undefined,
         }),
       });
 
@@ -231,19 +265,66 @@ export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModal
             </div>
           )}
 
+          {/* Attachment chips */}
+          {attachments.length > 0 && (
+            <div
+              className="flex flex-wrap gap-2 px-3 py-2"
+              style={{ borderTop: "1px solid var(--border, #e5e5ea)" }}
+            >
+              {attachments.map((file, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1"
+                  style={{ background: "var(--surface-accent, #EEF4FC)", fontSize: 12 }}
+                >
+                  <Paperclip size={11} style={{ color: "var(--brand-blue, #2056A4)" }} />
+                  <span style={{ color: "var(--text-primary)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {file.name}
+                  </span>
+                  <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>
+                    {formatSize(file.size)}
+                  </span>
+                  <button
+                    onClick={() => removeAttachment(i)}
+                    style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Bottom toolbar */}
           <div
             className="flex items-center justify-between px-3 py-2"
             style={{ borderTop: "1px solid var(--border, #e5e5ea)" }}
           >
-            {/* Left: Discard */}
-            <button
-              onClick={onClose}
-              className="text-sm hover:opacity-70"
-              style={{ color: "var(--text-muted, #aeaeb2)" }}
-            >
-              Discard
-            </button>
+            {/* Left: Discard + attach */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onClose}
+                className="text-sm hover:opacity-70"
+                style={{ color: "var(--text-muted, #aeaeb2)" }}
+              >
+                Discard
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach file"
+                className="flex items-center gap-1 text-sm hover:opacity-70"
+                style={{ color: "var(--text-muted, #aeaeb2)" }}
+              >
+                <Paperclip size={14} />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                style={{ display: "none" }}
+              />
+            </div>
 
             {/* Right: Send */}
             <button

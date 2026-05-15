@@ -2,6 +2,8 @@ export const runtime = 'nodejs';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { isAdmin } from '@/lib/authz';
+import type { TaskStatus } from '@prisma/client';
 
 export async function GET(
   _request: Request,
@@ -37,7 +39,12 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   const existing = await prisma.task.findFirst({ where: { id, deletedAt: null } });
   if (!existing) return Response.json({ error: 'Task not found' }, { status: 404 });
@@ -46,25 +53,50 @@ export async function PATCH(
     return Response.json({ error: 'Cannot edit another user\'s personal task' }, { status: 403 });
   }
 
+  const adminCaller = isAdmin(session);
+
   const updateData: Record<string, unknown> = {};
-  const fields = ['subject', 'dueDate', 'priority', 'status', 'taskType', 'description',
-    'repeat', 'reminder', 'linkedLeadId', 'linkedDealId', 'linkedContactId', 'ownerId'];
 
-  for (const f of fields) {
-    if (body[f] !== undefined) {
-      if (f === 'dueDate') updateData[f] = new Date(body[f]);
-      else updateData[f] = body[f] || null;
+  // Special action: toggleDone — atomic flip with previousStatus tracking
+  if (body.toggleDone === true) {
+    if (existing.status === 'completed') {
+      // Restore previous status (default not_started)
+      const restore: TaskStatus = (existing.previousStatus ?? 'not_started') as TaskStatus;
+      updateData.status = restore;
+      updateData.previousStatus = null;
+      updateData.completedAt = null;
+    } else {
+      // Mark complete, remember previous status for undo
+      updateData.status = 'completed';
+      updateData.previousStatus = existing.status;
+      updateData.completedAt = new Date();
     }
-  }
+  } else {
+    const fields = ['subject', 'dueDate', 'priority', 'status', 'taskType', 'description',
+      'repeat', 'reminder', 'linkedLeadId', 'linkedDealId', 'linkedContactId',
+      ...(adminCaller ? ['ownerId'] : [])];
 
-  // Keep required fields
-  if (updateData.subject === null) delete updateData.subject;
-  if (updateData.ownerId === null) delete updateData.ownerId;
-  if (body.status !== undefined) updateData.status = body.status;
+    for (const f of fields) {
+      if (body[f] !== undefined) {
+        if (f === 'dueDate') updateData[f] = new Date(body[f] as string | number | Date);
+        else updateData[f] = body[f] || null;
+      }
+    }
 
-  // Track completion
-  if (body.status === 'completed' && existing.status !== 'completed') {
-    updateData.completedAt = new Date();
+    // Keep required fields
+    if (updateData.subject === null) delete updateData.subject;
+    if (updateData.ownerId === null) delete updateData.ownerId;
+    if (body.status !== undefined) updateData.status = body.status;
+
+    // Track completion transitions when explicit status sent
+    if (body.status === 'completed' && existing.status !== 'completed') {
+      updateData.completedAt = new Date();
+      updateData.previousStatus = existing.status;
+    } else if (body.status && body.status !== 'completed' && existing.status === 'completed') {
+      // Manually moving away from completed: clear completedAt + previousStatus
+      updateData.completedAt = null;
+      updateData.previousStatus = null;
+    }
   }
 
   const task = await prisma.task.update({

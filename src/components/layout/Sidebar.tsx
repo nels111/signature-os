@@ -31,7 +31,7 @@ const navItems = [
   { href: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, section: 'tools' },
   { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar, section: 'tools' },
   { href: '/dashboard/emails', label: 'Email', icon: Mail, section: 'tools' },
-  { href: '/dashboard/quotes', label: 'Quotes', icon: FileText, section: 'tools' },
+  { href: '/dashboard/quotes/list', label: 'Quotes', icon: FileText, section: 'tools' },
 ];
 
 const sections = [
@@ -148,6 +148,8 @@ export function Sidebar({ mobile }: SidebarProps) {
                       color: isActive ? '#ffffff' : 'var(--sidebar-text-muted)',
                       fontWeight: isActive ? 600 : 400,
                       fontSize: '14px',
+                      borderLeft: isActive && !isCollapsed ? '3px solid var(--brand-green-accent)' : '3px solid transparent',
+                      paddingLeft: isCollapsed ? undefined : isActive ? '10px' : '10px',
                     }}
                     onMouseEnter={(e) => {
                       if (!isActive) {
@@ -162,7 +164,7 @@ export function Sidebar({ mobile }: SidebarProps) {
                       }
                     }}
                   >
-                    <Icon size={18} strokeWidth={isActive ? 2 : 1.5} />
+                    <Icon size={18} strokeWidth={isActive ? 2 : 1.5} style={isActive ? {color: 'var(--brand-green-accent)'} : undefined} />
                     {!isCollapsed && <span>{item.label}</span>}
                   </Link>
                 );

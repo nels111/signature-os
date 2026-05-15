@@ -33,7 +33,10 @@ const inputStyle = {
   borderRadius: 'var(--radius-sm)',
 };
 
-const inputFocusClass = 'w-full px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30 focus:border-[#2056A4] transition-shadow';
+// Use the .focus-brand utility from globals.css so the focus ring tracks
+// --brand-blue. Avoid hard-coding hex values here: design-system tokens
+// only.
+const inputFocusClass = 'w-full px-3 py-2 text-sm focus-brand transition-shadow';
 
 export function FormField({
   label, type = 'text', value, onChange, required, placeholder, error,

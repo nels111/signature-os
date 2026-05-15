@@ -94,9 +94,11 @@ enum InviteStatus {
 enum QuoteStatus {
   draft
   sent
+  viewed
   accepted
   rejected
   expired
+  superseded
 }
 
 enum CadenceStatus {
@@ -185,6 +187,8 @@ model Account {
   deals    Deal[]
   quotes   Quote[]
 
+  @@index([createdBy])
+  @@index([deletedAt])
   @@map("accounts")
 }
 
@@ -213,6 +217,10 @@ model Contact {
   tasks              Task[]              @relation("ContactTasks")
   firefliesTranscripts FirefliesTranscript[] @relation("ContactTranscripts")
 
+  @@index([createdBy])
+  @@index([accountId])
+  @@index([email])
+  @@index([deletedAt])
   @@map("contacts")
 }
 
@@ -245,6 +253,12 @@ model Lead {
   cadences Cadence[]
   firefliesTranscripts FirefliesTranscript[] @relation("LeadTranscripts")
 
+  @@index([ownerId])
+  @@index([contactId])
+  @@index([accountId])
+  @@index([stage])
+  @@index([email])
+  @@index([deletedAt])
   @@map("leads")
 }
 
@@ -278,6 +292,12 @@ model Deal {
   quotes        Quote[]
   firefliesTranscripts FirefliesTranscript[] @relation("DealTranscripts")
 
+  @@index([ownerId])
+  @@index([contactId])
+  @@index([accountId])
+  @@index([convertedFromId])
+  @@index([stage])
+  @@index([deletedAt])
   @@map("deals")
 }
 
@@ -295,6 +315,7 @@ model Task {
   linkedLeadId    String?
   linkedDealId    String?
   linkedContactId String?
+  previousStatus  TaskStatus?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   completedAt     DateTime?
@@ -306,6 +327,12 @@ model Task {
   linkedDeal    Deal?    @relation("DealTasks", fields: [linkedDealId], references: [id])
   linkedContact Contact? @relation("ContactTasks", fields: [linkedContactId], references: [id])
 
+  @@index([ownerId])
+  @@index([linkedLeadId])
+  @@index([linkedDealId])
+  @@index([linkedContactId])
+  @@index([status, dueDate])
+  @@index([deletedAt])
   @@map("tasks")
 }
 
@@ -329,6 +356,9 @@ model CalendarEvent {
   owner   User             @relation(fields: [ownerId], references: [id])
   invites CalendarInvite[]
 
+  @@index([ownerId])
+  @@index([startDate])
+  @@index([deletedAt])
   @@map("calendar_events")
 }
 
@@ -344,12 +374,13 @@ model CalendarInvite {
   invitee User          @relation(fields: [inviteeId], references: [id])
 
   @@unique([eventId, inviteeId])
+  @@index([inviteeId])
   @@map("calendar_invites")
 }
 
 model Email {
   id              String   @id @default(cuid())
-  messageId       String   @unique
+  messageId       String
   mailbox         String
   from            String
   to              String[]
@@ -369,12 +400,36 @@ model Email {
   createdAt       DateTime @default(now())
 
   // Relations
-  user          User     @relation(fields: [userId], references: [id])
-  linkedLead    Lead?    @relation("LeadEmails", fields: [linkedLeadId], references: [id])
-  linkedDeal    Deal?    @relation("DealEmails", fields: [linkedDealId], references: [id])
-  linkedContact Contact? @relation("ContactEmails", fields: [linkedContactId], references: [id])
+  user          User              @relation(fields: [userId], references: [id])
+  linkedLead    Lead?             @relation("LeadEmails", fields: [linkedLeadId], references: [id])
+  linkedDeal    Deal?             @relation("DealEmails", fields: [linkedDealId], references: [id])
+  linkedContact Contact?          @relation("ContactEmails", fields: [linkedContactId], references: [id])
+  attachments   EmailAttachment[]
 
+  @@unique([messageId, mailbox])
+  @@index([userId])
+  @@index([linkedLeadId])
+  @@index([linkedDealId])
+  @@index([linkedContactId])
+  @@index([mailbox, folder, date])
+  @@index([trackingId])
   @@map("emails")
+}
+
+model EmailAttachment {
+  id          String   @id @default(cuid())
+  emailId     String   @map("email_id")
+  filename    String
+  contentType String   @map("content_type")
+  size        Int      @default(0)
+  content     Bytes
+  contentId   String?  @map("content_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  email Email @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@index([emailId])
+  @@map("email_attachments")
 }
 
 model EmailTemplate {
@@ -391,6 +446,7 @@ model EmailTemplate {
   creator      User          @relation(fields: [createdBy], references: [id])
   cadenceSteps CadenceStep[]
 
+  @@index([createdBy])
   @@map("email_templates")
 }
 
@@ -432,11 +488,18 @@ model Quote {
 
   // Tracking
   sentAt        DateTime?
+  viewedAt      DateTime?
   acceptedAt    DateTime?
   rejectedAt    DateTime?
-  trackingId    String?
+  trackingId    String?     @unique
   openCount     Int         @default(0)
   createdBy     String
+
+  // Versioning: when a sent quote is edited, a clone is created and linked here
+  supersededById String?
+  supersededBy   Quote?  @relation("QuoteVersion", fields: [supersededById], references: [id])
+  versions       Quote[] @relation("QuoteVersion")
+
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -446,6 +509,13 @@ model Quote {
   account Account? @relation(fields: [accountId], references: [id])
   contact Contact? @relation(fields: [contactId], references: [id])
 
+  @@index([trackingId])
+  @@index([createdBy])
+  @@index([dealId])
+  @@index([accountId])
+  @@index([contactId])
+  @@index([status])
+  @@index([supersededById])
   @@map("quotes")
 }
 
@@ -484,6 +554,9 @@ model FirefliesTranscript {
   linkedDeal    Deal?    @relation("DealTranscripts", fields: [linkedDealId], references: [id])
   linkedContact Contact? @relation("ContactTranscripts", fields: [linkedContactId], references: [id])
 
+  @@index([linkedLeadId])
+  @@index([linkedDealId])
+  @@index([linkedContactId])
   @@map("fireflies_transcripts")
 }
 
@@ -501,6 +574,7 @@ model Activity {
   user User @relation(fields: [userId], references: [id])
 
   @@index([entityType, entityId])
+  @@index([userId, createdAt])
   @@map("activities")
 }
 
@@ -520,6 +594,8 @@ model Cadence {
   lead  Lead          @relation(fields: [leadId], references: [id])
   steps CadenceStep[]
 
+  @@index([leadId])
+  @@index([status, nextSendAt])
   @@map("cadences")
 }
 
@@ -538,5 +614,6 @@ model CadenceStep {
   template EmailTemplate @relation(fields: [templateId], references: [id])
 
   @@unique([cadenceId, stepNumber])
+  @@index([templateId])
   @@map("cadence_steps")
 }

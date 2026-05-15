@@ -14,20 +14,26 @@ export async function GET(
 
   const { id } = await params;
 
+  // Cap children to a reasonable preview size to keep responses bounded.
+  // Detail pages render the first ~50, deeper drill-downs use the list APIs.
+  const CHILDREN_LIMIT = 50;
   const account = await prisma.account.findFirst({
     where: { id, deletedAt: null },
     include: {
       contacts: {
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
+        take: CHILDREN_LIMIT,
       },
       leads: {
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
+        take: CHILDREN_LIMIT,
       },
       deals: {
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
+        take: CHILDREN_LIMIT,
       },
     },
   });
@@ -49,7 +55,12 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   const existing = await prisma.account.findFirst({
     where: { id, deletedAt: null },

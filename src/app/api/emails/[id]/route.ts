@@ -21,6 +21,9 @@ export async function GET(
         linkedLead: { select: { id: true, companyName: true } },
         linkedDeal: { select: { id: true, name: true } },
         linkedContact: { select: { id: true, firstName: true, lastName: true } },
+        attachments: {
+          select: { id: true, filename: true, contentType: true, size: true, contentId: true },
+        },
       },
     });
 
@@ -66,7 +69,12 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
     // Verify access
     const email = await prisma.email.findUnique({ where: { id } });
@@ -86,6 +94,7 @@ export async function PATCH(
 
     const updateData: Record<string, unknown> = {};
     if (body.isRead !== undefined) updateData.isRead = body.isRead;
+    if (body.folder !== undefined) updateData.folder = body.folder;
     if (body.linkedLeadId !== undefined) updateData.linkedLeadId = body.linkedLeadId;
     if (body.linkedDealId !== undefined) updateData.linkedDealId = body.linkedDealId;
     if (body.linkedContactId !== undefined) updateData.linkedContactId = body.linkedContactId;

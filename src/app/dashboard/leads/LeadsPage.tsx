@@ -44,11 +44,11 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 const STAGE_COLOURS: Record<string, string> = {
-  cold_call: '#6b7280',
-  cold_email: '#3b82f6',
-  follow_up_sequence: '#f59e0b',
-  meeting_scheduled: '#8b5cf6',
-  meeting_attended: '#10b981',
+  cold_call: 'var(--stage-cold-call)',
+  cold_email: 'var(--stage-cold-email)',
+  follow_up_sequence: 'var(--stage-follow-up)',
+  meeting_scheduled: 'var(--stage-meeting)',
+  meeting_attended: 'var(--stage-attended)',
   quote_delivered: 'var(--status-success)',
 };
 
@@ -67,6 +67,15 @@ function formatDate(dateStr: string): string {
   const day = d.getDate().toString().padStart(2, '0');
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function companyInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w.charAt(0))
+    .join('')
+    .toUpperCase();
 }
 
 export function LeadsPage() {
@@ -160,33 +169,49 @@ export function LeadsPage() {
   const columns = [
     {
       key: 'companyName',
-      label: 'Company Name',
+      label: 'Company',
       sortable: false,
       render: (item: Lead) => (
-        <span className="font-medium">{item.companyName}</span>
+        <div className="flex items-center gap-3">
+          <div
+            className="flex-shrink-0 flex items-center justify-center rounded-full text-white text-xs font-bold"
+            style={{ width: 32, height: 32, backgroundColor: 'var(--brand-blue)' }}
+          >
+            {companyInitials(item.companyName)}
+          </div>
+          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+            {item.companyName}
+          </span>
+        </div>
       ),
     },
     {
       key: 'contactName',
       label: 'Contact Name',
       sortable: false,
+      mobileHidden: true,
     },
     {
       key: 'email',
       label: 'Email',
       sortable: false,
-      render: (item: Lead) => item.email || <span className="text-gray-400">—</span>,
+      mobileHidden: true,
+      render: (item: Lead) =>
+        item.email || <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
     {
       key: 'phone',
       label: 'Phone',
       sortable: false,
-      render: (item: Lead) => item.phone || <span className="text-gray-400">—</span>,
+      mobileHidden: true,
+      render: (item: Lead) =>
+        item.phone || <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
     {
       key: 'source',
       label: 'Source',
       sortable: false,
+      mobileHidden: true,
       render: (item: Lead) => (
         <Badge
           label={SOURCE_LABELS[item.source] || item.source}
@@ -211,22 +236,32 @@ export function LeadsPage() {
       key: 'owner',
       label: 'Owner',
       sortable: false,
+      mobileHidden: true,
       render: (item: Lead) =>
         item.owner?.name ? (
-          <span className="text-sm">{item.owner.name}</span>
+          <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+            {item.owner.name}
+          </span>
         ) : (
-          <span className="text-gray-400">—</span>
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
         ),
     },
     {
       key: 'createdAt',
       label: 'Created',
       sortable: false,
+      mobileHidden: true,
       render: (item: Lead) => (
-        <span className="text-sm text-gray-500">{formatDate(item.createdAt)}</span>
+        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          {formatDate(item.createdAt)}
+        </span>
       ),
     },
   ];
+
+  const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
+  const endItem = Math.min(page * limit, total);
+  const metaText = total > 0 ? `Showing ${startItem}–${endItem} of ${total}` : undefined;
 
   return (
     <div>
@@ -255,11 +290,16 @@ export function LeadsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search leads..."
-            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30"
-            style={{ borderColor: 'var(--border)' }}
+            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus-brand"
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+            }}
           />
           <svg
-            className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+            className="absolute left-3 top-2.5 h-4 w-4"
+            style={{ color: 'var(--text-muted)' }}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -276,7 +316,11 @@ export function LeadsPage() {
           value={stageFilter}
           onChange={(e) => { setStageFilter(e.target.value); setPage(1); }}
           className="border rounded px-2 py-1 text-sm"
-          style={{ borderColor: 'var(--border)' }}
+          style={{
+            borderColor: 'var(--border)',
+            background: 'var(--surface)',
+            color: 'var(--text-primary)',
+          }}
         >
           <option value="">All Stages</option>
           <option value="cold_call">Cold Call</option>
@@ -286,13 +330,17 @@ export function LeadsPage() {
           <option value="meeting_attended">Meeting Attended</option>
           <option value="quote_delivered">Quote Delivered</option>
         </select>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>Sort:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="border rounded px-2 py-1 text-sm"
-            style={{ borderColor: 'var(--border)' }}
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+            }}
           >
             <option value="createdAt">Date Created</option>
             <option value="companyName">Company Name</option>
@@ -301,26 +349,22 @@ export function LeadsPage() {
           </select>
           <button
             onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
-            className="border rounded px-2 py-1 text-sm hover:"
-            style={{ borderColor: 'var(--border)' }}
+            className="border rounded px-2 py-1 text-sm"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
           >
             {sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="rounded-xl border p-8 text-center" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
-          Loading leads...
-        </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={leads}
-          onRowClick={(item) => router.push(`/dashboard/leads/${item.id}`)}
-          emptyMessage="No leads found. Create your first lead to get started."
-        />
-      )}
+      <DataTable
+        columns={columns}
+        data={leads}
+        onRowClick={(item) => router.push(`/dashboard/leads/${item.id}`)}
+        emptyMessage="No leads found. Create your first lead to get started."
+        isLoading={loading}
+        meta={metaText}
+      />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 

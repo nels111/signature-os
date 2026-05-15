@@ -6,6 +6,7 @@ interface Column<T> {
   key: string;
   label: string;
   sortable?: boolean;
+  mobileHidden?: boolean;
   render?: (item: T) => React.ReactNode;
 }
 
@@ -14,6 +15,8 @@ interface DataTableProps<T> {
   data: T[];
   onRowClick?: (item: T) => void;
   emptyMessage?: string;
+  isLoading?: boolean;
+  meta?: string;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -21,6 +24,8 @@ export function DataTable<T extends Record<string, unknown>>({
   data,
   onRowClick,
   emptyMessage = 'No data found',
+  isLoading = false,
+  meta,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -41,7 +46,7 @@ export function DataTable<T extends Record<string, unknown>>({
     return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
   });
 
-  if (data.length === 0) {
+  if (!isLoading && data.length === 0) {
     return (
       <div
         className="rounded-xl p-8 text-center text-sm"
@@ -58,65 +63,111 @@ export function DataTable<T extends Record<string, unknown>>({
   }
 
   return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-card)',
-      }}
-    >
-      <table className="w-full text-sm">
-        <thead>
-          <tr style={{ borderBottom: '1px solid var(--border)' }}>
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                className={`text-left px-4 py-3 font-semibold text-xs uppercase ${
-                  col.sortable ? 'cursor-pointer' : ''
-                }`}
-                style={{
-                  color: 'var(--text-muted)',
-                  letterSpacing: '0.05em',
-                  background: 'var(--background)',
-                }}
-                onClick={() => col.sortable && handleSort(col.key)}
-              >
-                {col.label}
-                {sortKey === col.key && (
-                  <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((item, i) => (
-            <tr
-              key={i}
-              className={`transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
-              style={{ borderBottom: '1px solid var(--border)' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'transparent';
-              }}
-              onClick={() => onRowClick?.(item)}
-            >
-              {columns.map((col) => (
-                <td
-                  key={col.key}
-                  className="px-4 py-3"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  {col.render ? col.render(item) : String(item[col.key] ?? '')}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-card)',
+        }}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[500px]">
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {columns.map((col) => (
+                  <th
+                    key={col.key}
+                    scope="col"
+                    role={col.sortable ? 'columnheader button' : 'columnheader'}
+                    aria-sort={
+                      sortKey === col.key
+                        ? sortDir === 'asc' ? 'ascending' : 'descending'
+                        : col.sortable ? 'none' : undefined
+                    }
+                    tabIndex={col.sortable ? 0 : undefined}
+                    className={`text-left px-5 py-3.5 font-semibold text-xs uppercase ${
+                      col.sortable ? 'cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-offset-1' : ''
+                    } ${col.mobileHidden ? 'hidden sm:table-cell' : ''}`}
+                    style={{
+                      color: 'var(--text-secondary)',
+                      letterSpacing: '0.05em',
+                      background: 'var(--surface-accent)',
+                    }}
+                    onClick={() => col.sortable && handleSort(col.key)}
+                    onKeyDown={(e) => {
+                      if (!col.sortable) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSort(col.key);
+                      }
+                    }}
+                  >
+                    {col.label}
+                    {sortKey === col.key && (
+                      <span className="ml-1" aria-hidden="true">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                      {columns.map((col) => (
+                        <td key={col.key} className={`px-5 py-3.5 ${col.mobileHidden ? 'hidden sm:table-cell' : ''}`}>
+                          <div
+                            className="h-4 rounded animate-pulse"
+                            style={{ background: 'var(--border)', width: '70%' }}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                : sorted.map((item, i) => (
+                    <tr
+                      key={i}
+                      tabIndex={onRowClick ? 0 : undefined}
+                      role={onRowClick ? 'button' : undefined}
+                      className={`transition-colors ${onRowClick ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset' : ''}`}
+                      style={{ borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.background = 'transparent';
+                      }}
+                      onClick={() => onRowClick?.(item)}
+                      onKeyDown={(e) => {
+                        if (!onRowClick) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onRowClick(item);
+                        }
+                      }}
+                    >
+                      {columns.map((col) => (
+                        <td
+                          key={col.key}
+                          className={`px-5 py-3.5 ${col.mobileHidden ? 'hidden sm:table-cell' : ''}`}
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          {col.render ? col.render(item) : String(item[col.key] ?? '')}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {meta && (
+        <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {meta}
+        </p>
+      )}
     </div>
   );
 }

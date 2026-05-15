@@ -48,8 +48,8 @@ export function LeadKanbanCard({ item }: { item: LeadItem }) {
   return (
     <div
       onClick={() => router.push(`/dashboard/leads/${item.id}`)}
-      className="rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-      style={{ borderColor: 'var(--border)' }}
+      className="rounded-xl border p-3 shadow-sm hover:shadow-md transition-all cursor-pointer"
+      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -71,7 +71,7 @@ export function LeadKanbanCard({ item }: { item: LeadItem }) {
       <div className="mt-2">
         <span
           className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-          style={{ backgroundColor: '#f1f5f9', color: 'var(--text-secondary)' }}
+          style={{ backgroundColor: 'var(--surface-hover)', color: 'var(--text-secondary)' }}
         >
           {SOURCE_LABELS[item.source] || item.source}
         </span>
@@ -86,8 +86,8 @@ export function DealKanbanCard({ item }: { item: DealItem }) {
   return (
     <div
       onClick={() => router.push(`/dashboard/deals/${item.id}`)}
-      className="rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-      style={{ borderColor: 'var(--border)' }}
+      className="rounded-xl border p-3 shadow-sm hover:shadow-md transition-all cursor-pointer"
+      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">

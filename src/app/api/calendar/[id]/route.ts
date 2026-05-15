@@ -39,7 +39,12 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   const existing = await prisma.calendarEvent.findFirst({ where: { id, deletedAt: null } });
   if (!existing) return Response.json({ error: 'Event not found' }, { status: 404 });
@@ -51,7 +56,7 @@ export async function PATCH(
   const fields = ['title', 'eventType', 'calendarType', 'allDay', 'startDate', 'endDate', 'notes', 'repeat', 'alerts'];
   for (const f of fields) {
     if (body[f] !== undefined) {
-      if (f === 'startDate' || f === 'endDate') updateData[f] = new Date(body[f]);
+      if (f === 'startDate' || f === 'endDate') updateData[f] = new Date(body[f] as string | number | Date);
       else updateData[f] = body[f];
     }
   }

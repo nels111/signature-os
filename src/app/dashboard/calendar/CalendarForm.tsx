@@ -98,7 +98,7 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
       </div>
       <div className="flex gap-3 justify-end pt-2">
         <button type="button" onClick={onCancel}
-          className="px-4 py-2 text-sm border rounded-lg hover:" style={{ borderColor: 'var(--border)' }}>Cancel</button>
+          className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50" style={{ borderColor: 'var(--border)' }}>Cancel</button>
         <button type="submit" disabled={loading}
           className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ backgroundColor: 'var(--brand-blue)' }}>
           {loading ? 'Saving...' : 'Save Event'}

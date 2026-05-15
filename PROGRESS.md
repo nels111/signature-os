@@ -1,6 +1,6 @@
 # Signature Cleans OS -- Build Progress
 
-**Last Updated:** 2026-05-10 13:15 UTC
+**Last Updated:** 2026-05-11 14:10 UTC
 **Current Phase:** Phase 10 -- Design Pass & Mobile (IN PROGRESS)
 **Status:** 🟡 Design pass mostly done, mobile PWA live, functional fixes deployed
 
@@ -20,7 +20,7 @@
 | 7. Integrations | ✅ done | ✅ Codex | Fireflies sync, Activity log, Dashboard KPI endpoint |
 | 8. Cadence Engine | ✅ done | ✅ Codex | Email sequences (DISABLED by default), templates CRUD, merge fields |
 | 9. Deploy & Polish | ✅ done | ✅ Codex | Nginx, SSL, rate limiting, API key auth, error boundaries |
-| 10. Design Pass | 🟡 in progress | ⏳ running | Apple × X aesthetic, mobile PWA, iOS Mail replication next |
+| 10. Design Pass | ✅ done | ✅ Codex | Apple × X aesthetic, mobile PWA, iOS Mail rebuild complete. Audit 14 May. |
 
 ## Phase 10 -- What's Done
 
@@ -48,31 +48,44 @@
 - ✅ Email detail: responsive header stacking on mobile
 - ✅ Full email sync: 3,643 emails from Jan 2025 (nelson@ + hello@)
 - ✅ Email auto-refresh: DB poll every 5s, IMAP sync every 30s
-- ✅ Login password reset to: SignatureOS2024!
+- ✅ Login password reset (credentials stored in 1Password / IT vault, not in repo)
 
 ## Phase 10 -- What's Next (TODO)
 
 ### Priority 1: iOS Mail Replication
-- [ ] Rebuild email module to feel exactly like iOS Mail app
-- [ ] Slide transitions between list and detail view
-- [ ] Swipe actions (archive, delete, flag)
-- [ ] Blue unread dots
-- [ ] Grouped by date (Today, Yesterday, This Week, etc.)
-- [ ] Bottom reply/action bar (Reply, Reply All, Forward, Delete, Flag)
-- [ ] Thread grouping (conversation view)
-- [ ] Pull-to-refresh on mobile
+- [x] Slide transitions between list and detail view (mobile: panels slide left/right)
+- [x] Swipe actions: swipe right = mark read, swipe left = delete (with coloured reveals)
+- [x] Blue unread dots (iOS Mail style, left-column position)
+- [x] Grouped by date (Today, Yesterday, This Week, Earlier) with sticky headers
+- [x] Bottom reply/action bar (Reply, Forward, Delete, Mark Unread) — was already built
+- [x] Thread grouping (conversation view) — was already built
+- [x] Pull-to-refresh on mobile (with rotation animation and threshold snap)
+- [x] Mobile back button: ChevronLeft + "Inbox" label (iOS Mail style)
+- [x] Sender avatars with consistent hash-based colours per sender
 
 ### Priority 2: Remaining Design Polish
-- [ ] Quotes page: apply Apple × X design to the form (currently raw embedded HTML)
-- [ ] Pipeline/Kanban: design pass
-- [ ] Contacts/Accounts/Leads/Deals list views: design pass
-- [ ] Calendar: design pass
-- [ ] Tasks: design pass
+- [x] Quotes page: CSS vars on all result/sent/error screens, pricing bar + email metadata now use design system (13 May)
+- [x] Pipeline/Kanban: design pass (CSS vars for all stage/deal colors, skeleton loader, card backgrounds, summary stat cards) (13 May)
+- [x] Contacts list view: avatar initials, CSS var fixes, loading skeleton, meta row count (11 May)
+- [x] Leads list view: company avatar initials, CSS var fixes, loading skeleton, meta row count (11 May)
+- [x] Deals list view: deal avatar initials, bold brand-blue value, CSS var fixes, loading skeleton (11 May)
+- [x] Accounts list view: account avatar initials, CSS var fixes, loading skeleton, meta row count (11 May)
+- [x] DataTable: isLoading skeleton prop, meta string prop below table (11 May)
+- [x] Calendar: design pass (13 May)
+- [x] Tasks: design pass (13 May)
+
+### Priority 2b: Email CRM Integration
+- [x] Email auto-linking: sync route now matches sender email against Contact.email + Lead.email, sets linkedContactId/linkedLeadId on creation (11 May)
+- [x] CrmPanel component: 3rd column panel showing linked Contact (avatar, name, company, email, phone) + Lead (stage) + Deal (stage, value) with open-in-CRM links (11 May)
+- [x] 3-column email layout: CrmPanel visible on xl+ screens (1280px+), hidden on mobile/tablet (11 May)
+- [x] Enhanced GET /api/emails/[id]: now returns full linked entity data (contactName, email, phone, company, leadStage, dealValue) for CRM panel rendering
+- [ ] Manual link/unlink UI (future): let user manually link an email to any contact/lead
+- [x] Retroactive auto-link: 78 contacts, 50 leads, 7 deals imported from Zoho. 1,604/3,879 emails auto-linked to CRM records (41%). Script: scripts/zoho-to-sigos.py
 
 ### Priority 3: Outstanding Items
 - [ ] Nick's email (nick@signature-cleans.co.uk) -- needs IONOS password
-- [ ] Codex audit on Phase 10 changes (currently running, check /tmp/codex-audit.txt)
-- [ ] Any findings from codex audit need addressing
+- [x] Codex audit on Phase 10 changes — completed 14 May 2026. Report at ~/codex-audit-phase10.txt
+- [x] P1 bug fixed: handleDelete now moves to Trash via API (was UI-only, emails reappeared on sync)
 
 ## Architecture
 
@@ -113,8 +126,9 @@ curl -H "Authorization: Bearer ***" https://os.signature-cleans.co.uk/api/dashbo
 
 ## Credentials
 
-- Login: nelson@signature-cleans.co.uk / SignatureOS2024!
-- Email accounts configured: nelson@, hello@ (IONOS passwords in DB user records)
+- Production credentials live in 1Password / IT vault. NEVER commit them to this repo.
+- Login: nelson@signature-cleans.co.uk (password in vault)
+- Email accounts configured: nelson@, hello@ (IONOS passwords stored on encrypted user records in DB)
 - [ ] Nick's IONOS password still needed
 
 ## Key Files Modified This Session

@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import DOMPurify from "dompurify";
+import { useState, useEffect, useRef } from "react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+interface EmailAttachmentMeta {
+  id: string;
+  filename: string;
+  contentType: string;
+  size: number;
+  contentId?: string | null;
+}
 
 interface EmailFull {
   id: string;
@@ -21,6 +28,7 @@ interface EmailFull {
   linkedLead: { id: string; companyName: string } | null;
   linkedDeal: { id: string; name: string } | null;
   linkedContact: { id: string; firstName: string; lastName: string } | null;
+  attachments?: EmailAttachmentMeta[];
 }
 
 interface EmailDetailProps {
@@ -34,101 +42,12 @@ interface EmailDetailProps {
   }) => void;
   onBack: () => void;
   onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
   onMarkRead: (id: string, read: boolean) => void;
+  activeFolder?: string;
 }
 
-// ── Inline SVG Icons ───────────────────────────────────────────────────────────
-
-function IconX({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
-function IconReply({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="9 17 4 12 9 7" />
-      <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-    </svg>
-  );
-}
-
-function IconReplyAll({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="7 17 2 12 7 7" />
-      <polyline points="12 17 7 12 12 7" />
-      <path d="M22 18v-2a4 4 0 0 0-4-4H7" />
-    </svg>
-  );
-}
-
-function IconForward({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 17 20 12 15 7" />
-      <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
-    </svg>
-  );
-}
-
-function IconTrash({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <line x1="10" y1="11" x2="10" y2="17" />
-      <line x1="14" y1="11" x2="14" y2="17" />
-    </svg>
-  );
-}
-
-function IconMail({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-      <polyline points="22,6 12,13 2,6" />
-    </svg>
-  );
-}
-
-function IconMailOpen({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z" />
-      <path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10" />
-    </svg>
-  );
-}
-
-function IconChevronDown({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  "#E57373", "#F06292", "#BA68C8", "#9575CD",
-  "#7986CB", "#64B5F6", "#4FC3F7", "#4DD0E1",
-  "#4DB6AC", "#81C784", "#AED581", "#FFD54F",
-  "#FFB74D", "#FF8A65", "#A1887F", "#90A4AE",
-];
-
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function extractName(from: string): string {
   const match = from.match(/^([^<]+)</);
@@ -142,7 +61,16 @@ function extractEmail(from: string): string {
 }
 
 function getInitial(name: string): string {
-  return name.charAt(0).toUpperCase();
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function hashColor(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 50%, 40%)`;
 }
 
 function formatShortDate(dateStr: string): string {
@@ -150,26 +78,53 @@ function formatShortDate(dateStr: string): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-  } else if (diffDays === 1) {
-    return "Yesterday";
-  } else if (diffDays < 7) {
-    return date.toLocaleDateString("en-GB", { weekday: "short" });
-  }
+  if (diffDays === 0) return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return date.toLocaleDateString("en-GB", { weekday: "short" });
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 function formatFullDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  // Strip timezone suffixes like " | Europe/London" from Connecteam-generated dates
+  const cleaned = dateStr.replace(/\s*\|.*$/, "").trim();
+  const date = new Date(cleaned);
+  if (isNaN(date.getTime())) return dateStr; // fallback: show raw string
+  return date.toLocaleDateString("en-GB", {
+    weekday: "short", day: "numeric", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
   });
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(contentType: string): string {
+  if (contentType.startsWith("image/")) return "🖼";
+  if (contentType === "application/pdf") return "📄";
+  if (contentType.includes("word") || contentType.includes("document")) return "📝";
+  if (contentType.includes("sheet") || contentType.includes("excel") || contentType.includes("csv")) return "📊";
+  if (contentType.includes("zip") || contentType.includes("compressed")) return "🗜";
+  return "📎";
+}
+
+function openAttachment(id: string, contentType: string) {
+  const isOffice =
+    contentType.includes("word") || contentType.includes("document") ||
+    contentType.includes("sheet") || contentType.includes("excel") ||
+    contentType.includes("presentation") || contentType.includes("powerpoint") ||
+    contentType.includes("spreadsheet");
+
+  // Office docs: convert to PDF server-side so iOS Quick Look renders natively
+  // without routing to Zoho or another external app.
+  // PDFs and images: serve inline directly.
+  const url = isOffice
+    ? `/api/emails/attachments/${id}/pdf`
+    : `/api/emails/attachments/${id}?inline=1`;
+
+  window.location.href = url;
 }
 
 function formatRecipients(addresses: string[]): string {
@@ -180,202 +135,353 @@ function formatRecipients(addresses: string[]): string {
   }).join(", ");
 }
 
-// ── Single Message Component ───────────────────────────────────────────────────
+// ── Email Body Iframe ──────────────────────────────────────────────────────────
+
+function EmailBodyIframe({ html }: { html: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Measure from the parent. With sandbox="allow-same-origin" (and NO allow-scripts)
+  // we can read the iframe DOM safely without ever executing third-party email
+  // scripts. This closes the XSS surface that allow-scripts created.
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    let cleanup: (() => void) | undefined;
+
+    const measure = () => {
+      const doc = iframe.contentDocument;
+      if (!doc?.body) return;
+      const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+      iframe.style.height = (h + 24) + "px";
+    };
+
+    const onLoad = () => {
+      measure();
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+
+      // Re-measure when images finish loading (their height isn't known up-front).
+      const imgs = Array.from(doc.images || []);
+      imgs.forEach((img) => {
+        if (!img.complete) {
+          img.addEventListener('load', measure);
+          img.addEventListener('error', measure);
+        }
+      });
+
+      // Watch for layout shifts (fonts loading, etc).
+      let ro: ResizeObserver | undefined;
+      if (typeof ResizeObserver !== 'undefined' && doc.body) {
+        ro = new ResizeObserver(measure);
+        ro.observe(doc.body);
+      }
+
+      cleanup = () => {
+        imgs.forEach((img) => {
+          img.removeEventListener('load', measure);
+          img.removeEventListener('error', measure);
+        });
+        ro?.disconnect();
+      };
+    };
+
+    iframe.addEventListener('load', onLoad);
+    return () => {
+      iframe.removeEventListener('load', onLoad);
+      cleanup?.();
+    };
+  }, [html]);
+
+  const srcDoc = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<style>
+  /* Force everything inside the iframe to fit the screen width */
+  html, body {
+    margin: 0; padding: 0;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    word-break: break-word;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 15px; color: #1A1A1F; line-height: 1.6;
+  }
+  /* Clamp all elements: overrides inline width attrs on tables/tds */
+  * { box-sizing: border-box !important; max-width: 100% !important; }
+  /* Tables: force responsive regardless of inline width attributes */
+  table { border-collapse: collapse !important; width: 100% !important; table-layout: auto !important; }
+  table[width], td[width], th[width] { width: auto !important; }
+  td, th { word-break: break-word; max-width: 0; }
+  /* Images */
+  img { max-width: 100% !important; height: auto !important; display: block; }
+  /* Links */
+  a { color: #2056A4; word-break: break-all; }
+  p { margin: 0 0 1em; }
+  blockquote { margin: 8px 0; padding: 0 0 0 12px; border-left: 3px solid #DADADA; color: #60606A; }
+  /* Centre-aligned email containers shouldn't overflow */
+  [align="center"] { text-align: center; }
+  center { display: block; }
+</style>
+</head>
+<body>${html}</body>
+</html>`;
+
+  return (
+    <iframe
+      ref={iframeRef}
+      srcDoc={srcDoc}
+      sandbox="allow-same-origin allow-popups"
+      scrolling="no"
+      style={{ width: "100%", border: "none", display: "block", minHeight: "80px", overflow: "hidden" }}
+      title="Email content"
+    />
+  );
+}
+
+// ── Skeleton Loading ───────────────────────────────────────────────────────────
+
+function DetailSkeleton() {
+  return (
+    <div style={{ padding: "20px 16px" }}>
+      <style>{`
+        @keyframes skeleton-shimmer {
+          0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; }
+        }
+        .sk { animation: skeleton-shimmer 1.6s ease-in-out infinite; background: var(--border); border-radius: 8px; }
+      `}</style>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <div className="sk" style={{ width: 48, height: 48, borderRadius: "50%", flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div className="sk" style={{ height: 16, width: "55%", marginBottom: 8 }} />
+          <div className="sk" style={{ height: 13, width: "40%" }} />
+        </div>
+      </div>
+      {[95, 80, 70, 90, 60, 75, 85].map((w, i) => (
+        <div key={i} className="sk" style={{ height: 14, width: `${w}%`, marginBottom: 10 }} />
+      ))}
+    </div>
+  );
+}
+
+// ── Message Item ───────────────────────────────────────────────────────────────
 
 function MessageItem({
   email,
   isExpanded,
   onToggle,
   onReplyClick,
+  onReplyAllClick,
   onForwardClick,
 }: {
   email: EmailFull;
   isExpanded: boolean;
   onToggle: () => void;
   onReplyClick: () => void;
+  onReplyAllClick: () => void;
   onForwardClick: () => void;
 }) {
   const senderName = extractName(email.from);
-  const avatarColor = getAvatarColor(senderName);
+  const avatarColor = hashColor(senderName);
+  const initials = getInitial(senderName);
   const [showDetails, setShowDetails] = useState(false);
 
   return (
-    <div className="border-b" style={{ borderColor: "var(--border)" }}>
-      {/* Clickable header row */}
+    <div style={{ borderBottom: "1px solid var(--border)" }}>
+      {/* Message header — always visible, click to expand/collapse */}
       <button
         onClick={onToggle}
-        className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors hover:bg-[var(--background)]"
+        style={{
+          width: "100%",
+          textAlign: "left",
+          padding: "14px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          transition: "background-color 100ms ease",
+        }}
+        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-hover)"; }}
+        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
       >
         {/* Avatar */}
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-semibold"
-          style={{ backgroundColor: avatarColor }}
-        >
-          {getInitial(senderName)}
+        <div style={{
+          width: 40, height: 40, borderRadius: "50%",
+          backgroundColor: avatarColor,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#fff", fontSize: 14, fontWeight: 700,
+          flexShrink: 0,
+        }}>
+          {initials}
         </div>
 
-        {/* Name */}
-        <div className="flex-1 min-w-0">
-          <span
-            className="text-sm font-semibold truncate"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {senderName}
-          </span>
-          {!isExpanded && email.bodyText && (
-            <span
-              className="text-sm ml-2 truncate"
-              style={{ color: "var(--text-muted)" }}
-            >
-              — {email.bodyText.substring(0, 80)}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {senderName}
             </span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0, whiteSpace: "nowrap" }}>
+              {formatShortDate(email.date)}
+            </span>
+          </div>
+
+          {!isExpanded && (
+            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {email.bodyText?.substring(0, 100) || "(no preview)"}
+            </p>
+          )}
+
+          {isExpanded && (
+            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+              to {formatRecipients(email.to)}
+            </p>
           )}
         </div>
 
-        {/* Date + chevron */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            {isExpanded ? formatFullDate(email.date) : formatShortDate(email.date)}
-          </span>
-          <span
-            className="transition-transform duration-200"
-            style={{
-              color: "var(--text-muted)",
-              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-            }}
-          >
-            <IconChevronDown size={14} />
-          </span>
+        {/* Expand/collapse chevron */}
+        <div style={{
+          width: 24, height: 24,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+          transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+          transition: "transform 200ms ease",
+          color: "var(--text-muted)",
+        }}>
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </div>
       </button>
 
-      {/* Expandable body – animated with CSS grid */}
-      <div
-        className="grid transition-[grid-template-rows] duration-200 ease-in-out"
-        style={{
-          gridTemplateRows: isExpanded ? "1fr" : "0fr",
-        }}
-      >
-        <div className="overflow-hidden">
-          <div className="px-4 pb-4 pl-[60px]">
-            {/* Recipient details */}
-            <div className="mb-3">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDetails(!showDetails);
-                }}
-                className="text-xs underline mb-1"
-                style={{ color: "var(--text-muted)" }}
-              >
-                {showDetails ? "hide details" : "details"}
-              </button>
-              {showDetails && (
-                <div className="text-xs space-y-0.5 mt-1" style={{ color: "var(--text-secondary)" }}>
-                  <div>
-                    <span style={{ color: "var(--text-muted)" }}>From: </span>
-                    {email.from}
-                  </div>
-                  <div>
-                    <span style={{ color: "var(--text-muted)" }}>To: </span>
-                    {formatRecipients(email.to)}
-                  </div>
-                  {email.cc.length > 0 && (
-                    <div>
-                      <span style={{ color: "var(--text-muted)" }}>CC: </span>
-                      {formatRecipients(email.cc)}
-                    </div>
-                  )}
-                  <div>
-                    <span style={{ color: "var(--text-muted)" }}>Date: </span>
-                    {formatFullDate(email.date)}
-                  </div>
-                </div>
-              )}
-              {!showDetails && (
-                <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  To: {formatRecipients(email.to)}
-                </div>
-              )}
-            </div>
-
-            {/* CRM links */}
-            {(email.linkedLead || email.linkedDeal || email.linkedContact) && (
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {email.linkedContact && (
-                  <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#E8F0FE", color: "#2056A4" }}>
-                    Contact: {email.linkedContact.firstName} {email.linkedContact.lastName}
-                  </span>
-                )}
-                {email.linkedLead && (
-                  <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#E6F4EA", color: "#137333" }}>
-                    Lead: {email.linkedLead.companyName}
-                  </span>
-                )}
-                {email.linkedDeal && (
-                  <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#F3E8FD", color: "#7627BB" }}>
-                    Deal: {email.linkedDeal.name}
-                  </span>
-                )}
+      {/* Expanded body */}
+      <div style={{
+        display: "grid",
+        gridTemplateRows: isExpanded ? "1fr" : "0fr",
+        transition: "grid-template-rows 220ms ease",
+      }}>
+        <div style={{ overflow: "hidden" }}>
+          {/* Metadata detail toggle */}
+          <div style={{ padding: "0 16px 8px 16px" }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowDetails(!showDetails); }}
+              style={{
+                fontSize: 12, color: "var(--brand-blue)",
+                background: "none", border: "none", cursor: "pointer",
+                padding: 0, textDecoration: "underline",
+              }}
+            >
+              {showDetails ? "Hide details" : "Details"}
+            </button>
+            {showDetails && (
+              <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7 }}>
+                <div><span style={{ color: "var(--text-muted)" }}>From: </span>{email.from}</div>
+                <div><span style={{ color: "var(--text-muted)" }}>To: </span>{formatRecipients(email.to)}</div>
+                {email.cc.length > 0 && <div><span style={{ color: "var(--text-muted)" }}>CC: </span>{formatRecipients(email.cc)}</div>}
+                <div><span style={{ color: "var(--text-muted)" }}>Date: </span>{formatFullDate(email.date)}</div>
               </div>
             )}
+          </div>
 
-            {/* Email body */}
-            <div className="mb-4">
-              {email.bodyHtml ? (
-                <div
-                  className="email-body prose prose-sm max-w-none text-sm"
-                  style={{ color: "var(--text-primary)" }}
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(email.bodyHtml, {
-                      ADD_TAGS: ["style"],
-                      ADD_ATTR: ["target"],
-                    }),
-                  }}
-                />
-              ) : (
-                <pre
-                  className="text-sm whitespace-pre-wrap font-sans"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {email.bodyText || "(No content)"}
-                </pre>
-              )}
+          {/* Email body */}
+          <div style={{ padding: "0 16px 16px" }}>
+            {email.bodyHtml ? (
+              <EmailBodyIframe html={email.bodyHtml} />
+            ) : (
+              <pre style={{ fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap", fontFamily: "inherit", color: "var(--text-primary)", margin: 0 }}>
+                {email.bodyText || "(No content)"}
+              </pre>
+            )}
+          </div>
+
+          {/* Attachments */}
+          {email.attachments && email.attachments.length > 0 && (
+            <div style={{ padding: "0 16px 12px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: 8 }}>
+                Attachments
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {email.attachments.map((att) => (
+                  <button
+                    key={att.id}
+                    onClick={() => openAttachment(att.id, att.contentType)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 8,
+                      padding: "8px 12px", borderRadius: 10,
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--surface-accent, #EEF4FC)",
+                      cursor: "pointer", background: "var(--surface-accent, #EEF4FC)",
+                    }}
+                  >
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>{getFileIcon(att.contentType)}</span>
+                    <div style={{ minWidth: 0, textAlign: "left" }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {att.filename}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>
+                        {formatFileSize(att.size)}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
+          )}
 
-            {/* Reply / Forward actions (desktop) */}
-            <div className="hidden sm:flex gap-2">
+          {/* Reply / Reply All / Forward inline (desktop) */}
+          <div style={{ display: "flex", gap: 8, padding: "0 16px 16px", flexWrap: "wrap" }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onReplyClick(); }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                height: 36, padding: "0 16px",
+                borderRadius: 8, border: "1px solid var(--border)",
+                backgroundColor: "var(--surface)", color: "var(--text-primary)",
+                fontSize: 13, fontWeight: 500, cursor: "pointer",
+              }}
+            >
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 17 4 12 9 7" /><path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+              </svg>
+              Reply
+            </button>
+            {email.cc.length > 0 || email.to.length > 1 ? (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onReplyClick();
-                }}
-                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-md border text-xs font-medium transition-colors hover:bg-gray-100"
+                onClick={(e) => { e.stopPropagation(); onReplyAllClick(); }}
                 style={{
-                  borderColor: "var(--border)",
-                  backgroundColor: "var(--surface)",
-                  color: "var(--text-primary)",
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  height: 36, padding: "0 16px",
+                  borderRadius: 8, border: "1px solid var(--border)",
+                  backgroundColor: "var(--surface)", color: "var(--text-primary)",
+                  fontSize: 13, fontWeight: 500, cursor: "pointer",
                 }}
               >
-                <IconReply size={13} />
-                Reply
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="7 17 2 12 7 7" /><polyline points="12 17 7 12 12 7" /><path d="M22 18v-2a4 4 0 0 0-4-4H7" />
+                </svg>
+                Reply All
               </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onForwardClick();
-                }}
-                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-md border text-xs font-medium transition-colors hover:bg-gray-100"
-                style={{
-                  borderColor: "var(--border)",
-                  backgroundColor: "var(--surface)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <IconForward size={13} />
-                Forward
-              </button>
-            </div>
+            ) : null}
+            <button
+              onClick={(e) => { e.stopPropagation(); onForwardClick(); }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                height: 36, padding: "0 16px",
+                borderRadius: 8, border: "1px solid var(--border)",
+                backgroundColor: "var(--surface)", color: "var(--text-primary)",
+                fontSize: 13, fontWeight: 500, cursor: "pointer",
+              }}
+            >
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 17 20 12 15 7" /><path d="M4 18v-2a4 4 0 0 1 4-4h12" />
+              </svg>
+              Forward
+            </button>
           </div>
         </div>
       </div>
@@ -390,13 +496,14 @@ export function EmailDetail({
   onReply,
   onBack,
   onDelete,
+  onArchive,
   onMarkRead,
+  activeFolder = "INBOX",
 }: EmailDetailProps) {
   const [emails, setEmails] = useState<EmailFull[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  // Fetch all emails in the thread
   useEffect(() => {
     let cancelled = false;
 
@@ -413,22 +520,15 @@ export function EmailDetail({
         if (cancelled) return;
 
         const validEmails = results.filter((e): e is EmailFull => e !== null);
-        // Sort by date ascending (oldest first in thread)
-        validEmails.sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
+        validEmails.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setEmails(validEmails);
 
-        // Expand only the last message by default
         if (validEmails.length > 0) {
           setExpandedIds(new Set([validEmails[validEmails.length - 1].id]));
         }
 
-        // Mark unread emails as read
         for (const email of validEmails) {
-          if (!email.isRead) {
-            onMarkRead(email.id, true);
-          }
+          if (!email.isRead) onMarkRead(email.id, true);
         }
       } catch (err) {
         console.error("Failed to fetch thread:", err);
@@ -438,34 +538,26 @@ export function EmailDetail({
     }
 
     fetchThread();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emailIds.join(",")]);
 
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
   const handleReply = (email: EmailFull) => {
-    const replyAddr = extractEmail(email.from);
     onReply({
-      to: replyAddr,
-      subject: email.subject.startsWith("Re: ")
-        ? email.subject
-        : `Re: ${email.subject}`,
+      to: extractEmail(email.from),
+      subject: email.subject.startsWith("Re: ") ? email.subject : `Re: ${email.subject}`,
       inReplyTo: email.messageId,
       references: email.messageId,
-      bodyHtml: `<br><br><div style="border-left: 2px solid #ccc; padding-left: 8px; margin-left: 8px; color: #666;">
+      bodyHtml: `<br><br><div style="border-left:2px solid #ddd;padding-left:8px;margin-left:8px;color:#666">
         <p>On ${formatFullDate(email.date)}, ${email.from} wrote:</p>
         ${email.bodyHtml || `<pre>${email.bodyText || ""}</pre>`}
       </div>`,
@@ -473,21 +565,16 @@ export function EmailDetail({
   };
 
   const handleReplyAll = (email: EmailFull) => {
-    const allRecipients = [
-      extractEmail(email.from),
-      ...email.to.map(extractEmail),
-      ...email.cc.map(extractEmail),
-    ];
-    // Deduplicate
-    const unique = [...new Set(allRecipients)];
+    const allRecipients = [...email.to, ...email.cc];
+    const uniqueRecipients = [...new Set(allRecipients)].filter(
+      (addr) => !addr.includes(email.mailbox)
+    );
     onReply({
-      to: unique.join(", "),
-      subject: email.subject.startsWith("Re: ")
-        ? email.subject
-        : `Re: ${email.subject}`,
+      to: uniqueRecipients.join(", "),
+      subject: email.subject.startsWith("Re: ") ? email.subject : `Re: ${email.subject}`,
       inReplyTo: email.messageId,
       references: email.messageId,
-      bodyHtml: `<br><br><div style="border-left: 2px solid #ccc; padding-left: 8px; margin-left: 8px; color: #666;">
+      bodyHtml: `<br><br><div style="border-left:2px solid #ddd;padding-left:8px;margin-left:8px;color:#666">
         <p>On ${formatFullDate(email.date)}, ${email.from} wrote:</p>
         ${email.bodyHtml || `<pre>${email.bodyText || ""}</pre>`}
       </div>`,
@@ -497,143 +584,202 @@ export function EmailDetail({
   const handleForward = (email: EmailFull) => {
     onReply({
       to: "",
-      subject: email.subject.startsWith("Fwd: ")
-        ? email.subject
-        : `Fwd: ${email.subject}`,
+      subject: email.subject.startsWith("Fwd: ") ? email.subject : `Fwd: ${email.subject}`,
       inReplyTo: "",
       references: "",
-      bodyHtml: `<br><br><div style="border-left: 2px solid #ccc; padding-left: 8px; margin-left: 8px; color: #666;">
+      bodyHtml: `<br><br><div style="border-left:2px solid #ddd;padding-left:8px;margin-left:8px;color:#666">
         <p>---------- Forwarded message ----------</p>
-        <p>From: ${email.from}<br>Date: ${formatFullDate(email.date)}<br>Subject: ${email.subject}<br>To: ${email.to.join(", ")}</p>
+        <p>From: ${email.from}<br>Date: ${formatFullDate(email.date)}<br>Subject: ${email.subject}</p>
         ${email.bodyHtml || `<pre>${email.bodyText || ""}</pre>`}
       </div>`,
     });
   };
 
-  // Get the last email for toolbar actions
   const lastEmail = emails.length > 0 ? emails[emails.length - 1] : null;
   const subject = emails[0]?.subject || "Loading…";
 
-  // Loading state
+  // CRM context from any email in thread
+  const linkedContact = emails.find((e) => e.linkedContact)?.linkedContact;
+  const linkedLead = emails.find((e) => e.linkedLead)?.linkedLead;
+  const linkedDeal = emails.find((e) => e.linkedDeal)?.linkedDeal;
+  const hasCrm = linkedContact || linkedLead || linkedDeal;
+
   if (loading) {
     return (
-      <div
-        className="flex items-center justify-center h-full"
-        style={{ color: "var(--text-muted)" }}
-      >
-        <div className="flex items-center gap-2 text-sm">
-          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          Loading…
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--surface)" }}>
+        {/* Header skeleton */}
+        <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid var(--border)", gap: 12, flexShrink: 0 }}>
+          <div style={{ width: 60, height: 32, borderRadius: 8, background: "var(--border)" }} />
+          <div style={{ flex: 1, height: 16, borderRadius: 8, background: "var(--border)" }} />
+          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--border)" }} />
         </div>
+        <DetailSkeleton />
       </div>
     );
   }
 
-  // Empty state
   if (emails.length === 0) {
     return (
-      <div
-        className="flex items-center justify-center h-full"
-        style={{ color: "var(--text-muted)" }}
-      >
-        <span className="text-sm">Email not found</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", fontSize: 14 }}>
+        Email not found
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--surface)" }}>
-      {/* ── Top Toolbar (desktop) ─────────────────────────────────── */}
-      <div
-        className="hidden sm:flex items-center justify-between px-4 py-2 border-b flex-shrink-0"
-        style={{ borderColor: "var(--border)" }}
-      >
-        {/* Left: Back button */}
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", backgroundColor: "var(--surface)" }}>
+
+      {/* ── Header bar (combined: back + subject + actions) ──────────── */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "8px 12px 8px 8px",
+        borderBottom: "1px solid var(--border)",
+        flexShrink: 0,
+        gap: 8,
+        minHeight: 48,
+      }}>
+        {/* Back */}
         <button
           onClick={onBack}
-          className="flex items-center justify-center w-7 h-7 rounded-lg border transition-colors hover:bg-gray-100"
           style={{
-            borderColor: "var(--border)",
-            backgroundColor: "var(--surface)",
-            color: "var(--text-primary)",
+            display: "flex", alignItems: "center", gap: 3,
+            color: "var(--brand-blue)", background: "none", border: "none",
+            cursor: "pointer", padding: "4px 6px", borderRadius: 6, flexShrink: 0,
+            fontSize: 16, fontWeight: 400,
+            WebkitTapHighlightColor: "transparent",
           }}
-          title="Close"
         >
-          <IconX size={14} />
+          <svg width={10} height={16} viewBox="0 0 10 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 1 1 8 9 15" />
+          </svg>
+          <span style={{ fontSize: 16 }}>
+            {activeFolder === "INBOX" ? "Inbox" : activeFolder === "Sent" ? "Sent" : activeFolder === "Drafts" ? "Drafts" : activeFolder === "Archive" ? "Archive" : activeFolder === "Trash" ? "Trash" : "Back"}
+          </span>
         </button>
 
-        {/* Right: Reply All + Delete */}
-        <div className="flex items-center gap-2">
+        {/* Subject */}
+        <h2 style={{
+          flex: 1, minWidth: 0,
+          fontSize: 15, fontWeight: 600,
+          color: "var(--text-primary)",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          margin: 0,
+        }}>
+          {subject}
+          {emails.length > 1 && (
+            <span style={{
+              marginLeft: 6, fontSize: 11, fontWeight: 600,
+              color: "var(--text-muted)", flexShrink: 0,
+              background: "var(--border)", borderRadius: 10,
+              padding: "1px 6px", verticalAlign: "middle",
+            }}>
+              {emails.length}
+            </span>
+          )}
+        </h2>
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
           {lastEmail && (
             <button
-              onClick={() => handleReplyAll(lastEmail)}
-              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-lg border text-xs font-medium transition-colors hover:bg-gray-100"
+              onClick={() => onMarkRead(lastEmail.id, !lastEmail.isRead)}
+              title={lastEmail.isRead ? "Mark unread" : "Mark read"}
               style={{
-                borderColor: "var(--border)",
-                backgroundColor: "var(--surface)",
-                color: "var(--text-primary)",
+                width: 32, height: 32, borderRadius: 8,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: "1px solid var(--border)", backgroundColor: "var(--surface)",
+                color: "var(--text-secondary)", cursor: "pointer",
               }}
             >
-              <IconReplyAll size={13} />
-              Reply All
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {lastEmail.isRead
+                  ? <><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></>
+                  : <><path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z" /><path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10" /></>
+                }
+              </svg>
+            </button>
+          )}
+          {lastEmail && activeFolder !== "Archive" && (
+            <button
+              onClick={() => onArchive(lastEmail.id)}
+              title="Archive"
+              style={{
+                width: 32, height: 32, borderRadius: 8,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: "1px solid #BBF7D0", backgroundColor: "#DCFCE7",
+                color: "#16A34A", cursor: "pointer",
+              }}
+            >
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="21 8 21 21 3 21 3 8" />
+                <rect x="1" y="3" width="22" height="5" />
+                <line x1="10" y1="12" x2="14" y2="12" />
+              </svg>
             </button>
           )}
           <button
             onClick={() => lastEmail && onDelete(lastEmail.id)}
-            className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:opacity-80"
-            style={{
-              borderColor: "#FCCDD5",
-              border: "1px solid #FCCDD5",
-              backgroundColor: "#FDE4E9",
-              color: "var(--status-danger, #FF3B30)",
-            }}
             title="Delete"
+            style={{
+              width: 32, height: 32, borderRadius: 8,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "1px solid #FCCDD5", backgroundColor: "#FDE4E9",
+              color: "var(--status-danger)", cursor: "pointer",
+            }}
           >
-            <IconTrash size={13} />
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
           </button>
         </div>
       </div>
 
-      {/* ── Mobile Top Bar ────────────────────────────────────────── */}
-      <div
-        className="flex sm:hidden items-center px-3 py-2 border-b flex-shrink-0"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <button
-          onClick={onBack}
-          className="flex items-center justify-center w-7 h-7 rounded-lg"
-          style={{ color: "var(--text-primary)" }}
-        >
-          <IconX size={16} />
-        </button>
-        <h2
-          className="flex-1 text-sm font-medium truncate ml-2"
-          style={{ color: "var(--text-primary)" }}
-        >
-          {subject}
-        </h2>
-      </div>
-
-      {/* ── Subject Header ────────────────────────────────────────── */}
-      <div
-        className="hidden sm:block px-4 py-3 border-b flex-shrink-0"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <h1
-          className="text-base font-medium"
-          style={{ color: "var(--text-primary)" }}
-        >
-          {subject}
-          {emails.length > 1 && (
-            <span className="ml-2 text-sm font-normal" style={{ color: "var(--text-muted)" }}>
-              [{emails.length}]
-            </span>
+      {/* ── CRM context strip ──────────────────────────────────────── */}
+      {hasCrm && (
+        <div style={{
+          display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6,
+          padding: "8px 14px",
+          borderBottom: "1px solid var(--border)",
+          backgroundColor: "var(--surface-accent)",
+          flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-muted)" }}>
+            Linked
+          </span>
+          {linkedContact && (
+            <a href={`/dashboard/contacts?id=${linkedContact.id}`} style={{
+              fontSize: 12, fontWeight: 500,
+              padding: "3px 10px", borderRadius: 20,
+              backgroundColor: "#E8F0FE", color: "#2056A4", textDecoration: "none",
+            }}>
+              {linkedContact.firstName} {linkedContact.lastName}
+            </a>
           )}
-        </h1>
-      </div>
+          {linkedLead && (
+            <a href={`/dashboard/leads?id=${linkedLead.id}`} style={{
+              fontSize: 12, fontWeight: 500,
+              padding: "3px 10px", borderRadius: 20,
+              backgroundColor: "#E6F4EA", color: "#137333", textDecoration: "none",
+            }}>
+              {linkedLead.companyName}
+            </a>
+          )}
+          {linkedDeal && (
+            <a href={`/dashboard/deals?id=${linkedDeal.id}`} style={{
+              fontSize: 12, fontWeight: 500,
+              padding: "3px 10px", borderRadius: 20,
+              backgroundColor: "#F3E8FD", color: "#7627BB", textDecoration: "none",
+            }}>
+              {linkedDeal.name}
+            </a>
+          )}
+        </div>
+      )}
 
-      {/* ── Thread Messages ───────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
+      {/* ── Thread messages ────────────────────────────────────────── */}
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
         {emails.map((email) => (
           <MessageItem
             key={email.id}
@@ -641,51 +787,117 @@ export function EmailDetail({
             isExpanded={expandedIds.has(email.id)}
             onToggle={() => toggleExpanded(email.id)}
             onReplyClick={() => handleReply(email)}
+            onReplyAllClick={() => handleReplyAll(email)}
             onForwardClick={() => handleForward(email)}
           />
         ))}
+
+        {/* Bottom padding for mobile action bar */}
+        <div style={{ height: lastEmail ? 64 : 0 }} className="sm:hidden" />
       </div>
 
-      {/* ── Mobile Bottom Action Bar ──────────────────────────────── */}
+      {/* ── Mobile bottom action bar ───────────────────────────────── */}
       {lastEmail && (
         <div
-          className="flex sm:hidden items-center justify-around px-2 py-2 border-t flex-shrink-0"
+          className="sm:hidden"
           style={{
-            borderColor: "var(--border)",
+            position: "sticky", bottom: 0,
+            display: "flex", alignItems: "center",
+            padding: "6px 8px",
+            borderTop: "1px solid var(--border)",
             backgroundColor: "var(--surface)",
+            flexShrink: 0,
+            backdropFilter: "blur(12px)",
+            gap: 4,
           }}
         >
+          {/* Reply button — prominent */}
           <button
             onClick={() => handleReply(lastEmail)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1"
-            style={{ color: "var(--text-secondary)" }}
+            style={{
+              flex: 1,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+              height: 44, borderRadius: 10,
+              backgroundColor: "var(--brand-blue)", color: "#fff",
+              border: "none", cursor: "pointer",
+              fontSize: 15, fontWeight: 600,
+            }}
           >
-            <IconReply size={18} />
-            <span className="text-[10px]">Reply</span>
+            <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 17 4 12 9 7" /><path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+            </svg>
+            Reply
           </button>
+
+          {/* Reply All (only if there are CC recipients or multiple To) */}
+          {(emails[0]?.cc.length > 0 || emails[0]?.to.length > 1) && (
+            <button
+              onClick={() => handleReplyAll(lastEmail)}
+              title="Reply All"
+              style={{
+                width: 44, height: 44, borderRadius: 10,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: "1px solid var(--border)", backgroundColor: "var(--surface)",
+                color: "var(--text-secondary)", cursor: "pointer",
+              }}
+            >
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="7 17 2 12 7 7" /><polyline points="12 17 7 12 12 7" /><path d="M22 18v-2a4 4 0 0 0-4-4H7" />
+              </svg>
+            </button>
+          )}
+
+          {/* Forward */}
           <button
             onClick={() => handleForward(lastEmail)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1"
-            style={{ color: "var(--text-secondary)" }}
+            title="Forward"
+            style={{
+              width: 44, height: 44, borderRadius: 10,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "1px solid var(--border)", backgroundColor: "var(--surface)",
+              color: "var(--text-secondary)", cursor: "pointer",
+            }}
           >
-            <IconForward size={18} />
-            <span className="text-[10px]">Forward</span>
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 17 20 12 15 7" /><path d="M4 18v-2a4 4 0 0 1 4-4h12" />
+            </svg>
           </button>
+
+          {/* Archive (not shown from Archive folder) */}
+          {activeFolder !== "Archive" && (
+            <button
+              onClick={() => onArchive(lastEmail.id)}
+              title="Archive"
+              style={{
+                width: 44, height: 44, borderRadius: 10,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: "1px solid #BBF7D0", backgroundColor: "#DCFCE7",
+                color: "#16A34A", cursor: "pointer",
+              }}
+            >
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="21 8 21 21 3 21 3 8" />
+                <rect x="1" y="3" width="22" height="5" />
+                <line x1="10" y1="12" x2="14" y2="12" />
+              </svg>
+            </button>
+          )}
+
+          {/* Delete */}
           <button
             onClick={() => onDelete(lastEmail.id)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1"
-            style={{ color: "var(--status-danger, #FF3B30)" }}
+            title="Delete"
+            style={{
+              width: 44, height: 44, borderRadius: 10,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "1px solid #FCCDD5", backgroundColor: "#FDE4E9",
+              color: "var(--status-danger)", cursor: "pointer",
+            }}
           >
-            <IconTrash size={18} />
-            <span className="text-[10px]">Delete</span>
-          </button>
-          <button
-            onClick={() => onMarkRead(lastEmail.id, !lastEmail.isRead)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            {lastEmail.isRead ? <IconMail size={18} /> : <IconMailOpen size={18} />}
-            <span className="text-[10px]">{lastEmail.isRead ? "Unread" : "Read"}</span>
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
           </button>
         </div>
       )}

@@ -13,7 +13,12 @@ export async function POST(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   if (!body.inviteeId) {
     return Response.json({ error: 'inviteeId is required' }, { status: 400 });
@@ -28,7 +33,7 @@ export async function POST(
   const invite = await prisma.calendarInvite.create({
     data: {
       eventId: id,
-      inviteeId: body.inviteeId,
+      inviteeId: body.inviteeId as string,
       status: 'pending',
     },
     include: { invitee: { select: { id: true, name: true } } },
@@ -47,9 +52,14 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
-  if (!body.status || !['accepted', 'declined'].includes(body.status)) {
+  if (!body.status || !['accepted', 'declined'].includes(body.status as string)) {
     return Response.json({ error: 'status must be accepted or declined' }, { status: 400 });
   }
 
@@ -62,7 +72,7 @@ export async function PATCH(
 
   const updated = await prisma.calendarInvite.update({
     where: { id: invite.id },
-    data: { status: body.status, respondedAt: new Date() },
+    data: { status: body.status as never, respondedAt: new Date() },
     include: { invitee: { select: { id: true, name: true } } },
   });
 

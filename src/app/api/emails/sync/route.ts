@@ -3,6 +3,14 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { fetchEmails, getImapConfig } from '@/lib/imap';
 
+/** Extract email address from "Name <addr>" or bare "addr" */
+function extractEmailAddress(from: string): string | null {
+  const angleMatch = from.match(/<([^>]+)>/);
+  if (angleMatch) return angleMatch[1].toLowerCase().trim();
+  const emailMatch = from.match(/[\w.+%-]+@[\w.-]+\.[\w]+/);
+  return emailMatch ? emailMatch[0].toLowerCase().trim() : null;
+}
+
 // POST /api/emails/sync - Trigger IMAP sync for a mailbox
 export async function POST(request: NextRequest) {
   try {
@@ -11,8 +19,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { mailbox } = body;
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { mailbox } = body as { mailbox?: string };
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -50,7 +63,7 @@ export async function POST(request: NextRequest) {
     let synced = 0;
     for (const email of imapEmails) {
       const result = await prisma.email.upsert({
-        where: { messageId: email.messageId },
+        where: { messageId_mailbox: { messageId: email.messageId, mailbox: targetEmail! } },
         create: {
           messageId: email.messageId,
           mailbox: targetEmail!,
@@ -68,7 +81,60 @@ export async function POST(request: NextRequest) {
           folder: email.folder,
         },
       });
-      if (result.createdAt.getTime() > Date.now() - 5000) {
+
+      // Auto-link to CRM on creation (or if not yet linked)
+      if (!result.linkedContactId && !result.linkedLeadId) {
+        const fromEmail = extractEmailAddress(email.from);
+        if (fromEmail) {
+          const [contact, lead] = await Promise.all([
+            prisma.contact.findFirst({
+              where: { email: { equals: fromEmail, mode: 'insensitive' }, deletedAt: null },
+              select: { id: true },
+            }),
+            prisma.lead.findFirst({
+              where: { email: { equals: fromEmail, mode: 'insensitive' }, deletedAt: null },
+              select: { id: true },
+            }),
+          ]);
+
+          if (contact || lead) {
+            await prisma.email.update({
+              where: { id: result.id },
+              data: {
+                ...(contact ? { linkedContactId: contact.id } : {}),
+                ...(lead ? { linkedLeadId: lead.id } : {}),
+              },
+            });
+          }
+        }
+      }
+
+      const isNew = result.createdAt.getTime() > Date.now() - 5000;
+
+      // Store attachments if the email has some AND none are stored yet
+      if (email.attachments && email.attachments.length > 0) {
+        const existingCount = await prisma.emailAttachment.count({ where: { emailId: result.id } });
+        if (existingCount === 0) {
+          for (const attachment of email.attachments) {
+            try {
+              await prisma.emailAttachment.create({
+                data: {
+                  emailId: result.id,
+                  filename: attachment.filename,
+                  contentType: attachment.contentType,
+                  size: attachment.size,
+                  content: attachment.content as unknown as Uint8Array<ArrayBuffer>,
+                  contentId: attachment.contentId || null,
+                },
+              });
+            } catch {
+              // Skip if attachment storage fails
+            }
+          }
+        }
+      }
+
+      if (isNew) {
         synced++;
       }
     }

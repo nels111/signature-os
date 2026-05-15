@@ -15,7 +15,7 @@ const variants: Record<string, { bg: string; color: string }> = {
 
 export function Badge({ label, children, variant = 'default', color }: BadgeProps) {
   const style = color
-    ? { bg: color + '14', color }
+    ? { bg: color.startsWith('var(') ? `color-mix(in srgb, ${color} 12%, transparent)` : color + '14', color }
     : variants[variant];
   return (
     <span

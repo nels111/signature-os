@@ -57,7 +57,12 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   if (!body.name) {
     return Response.json({ error: 'name is required' }, { status: 400 });
@@ -65,12 +70,12 @@ export async function POST(request: Request) {
 
   const account = await prisma.account.create({
     data: {
-      name: body.name,
-      industry: body.industry || null,
-      website: body.website || null,
-      phone: body.phone || null,
-      address: body.address || null,
-      notes: body.notes || null,
+      name: body.name as string,
+      industry: (body.industry as string) || null,
+      website: (body.website as string) || null,
+      phone: (body.phone as string) || null,
+      address: (body.address as string) || null,
+      notes: (body.notes as string) || null,
       createdBy: session.user.id,
     },
   });

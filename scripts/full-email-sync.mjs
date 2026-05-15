@@ -65,7 +65,7 @@ async function syncFolder(client, folder, email, userId) {
         for await (const msg of client.fetch(`${start}:${end}`, { source: true, uid: true })) {
           msgs.push(msg);
         }
-      } catch (e) {
+      } catch {
         errs += BATCH;
         continue;
       }

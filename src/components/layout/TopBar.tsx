@@ -192,7 +192,7 @@ export function TopBar() {
 
           {showNotifs && (
             <div
-              className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-[360px] rounded-xl z-50 overflow-hidden"
+              className="fixed sm:absolute right-2 sm:right-0 top-14 sm:top-full sm:mt-2 w-[calc(100vw-1rem)] sm:w-[360px] rounded-xl z-50 overflow-hidden"
               style={{
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',

@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { resolveOwnerIdOnCreate } from '@/lib/authz';
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -64,7 +65,12 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   if (!body.subject || !body.dueDate) {
     return Response.json({ error: 'subject and dueDate are required' }, { status: 400 });
@@ -72,18 +78,18 @@ export async function POST(request: Request) {
 
   const task = await prisma.task.create({
     data: {
-      subject: body.subject,
-      ownerId: body.ownerId || session.user.id,
-      dueDate: new Date(body.dueDate),
-      priority: body.priority || 'normal',
-      status: body.status || 'not_started',
-      taskType: body.taskType || 'business',
-      description: body.description || null,
-      repeat: body.repeat || null,
-      reminder: body.reminder || null,
-      linkedLeadId: body.linkedLeadId || null,
-      linkedDealId: body.linkedDealId || null,
-      linkedContactId: body.linkedContactId || null,
+      subject: body.subject as string,
+      ownerId: resolveOwnerIdOnCreate(session, body.ownerId),
+      dueDate: new Date(body.dueDate as string),
+      priority: (body.priority as never) || 'normal',
+      status: (body.status as never) || 'not_started',
+      taskType: (body.taskType as never) || 'business',
+      description: (body.description as string) || null,
+      repeat: (body.repeat as never) || null,
+      reminder: (body.reminder as never) || null,
+      linkedLeadId: (body.linkedLeadId as string) || null,
+      linkedDealId: (body.linkedDealId as string) || null,
+      linkedContactId: (body.linkedContactId as string) || null,
     },
     include: { owner: { select: { id: true, name: true, email: true } } },
   });

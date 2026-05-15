@@ -2,6 +2,9 @@ export const runtime = 'nodejs';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { resolveOwnerIdOnCreate } from '@/lib/authz';
+import { notifyLeadAssigned } from '@/lib/notifications';
+import { logLeadCreated } from '@/lib/activities';
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -56,7 +59,12 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   if (!body.companyName || !body.contactName || !body.source) {
     return Response.json(
@@ -67,18 +75,35 @@ export async function POST(request: Request) {
 
   const lead = await prisma.lead.create({
     data: {
-      companyName: body.companyName,
-      contactName: body.contactName,
-      email: body.email || null,
-      phone: body.phone || null,
-      source: body.source,
-      stage: body.stage || 'cold_call',
-      ownerId: body.ownerId || session.user.id,
-      contactId: body.contactId || null,
-      accountId: body.accountId || null,
-      notes: body.notes || null,
+      companyName: body.companyName as string,
+      contactName: body.contactName as string,
+      email: (body.email as string) || null,
+      phone: (body.phone as string) || null,
+      source: body.source as never,
+      stage: (body.stage as never) || 'cold_call',
+      ownerId: resolveOwnerIdOnCreate(session, body.ownerId),
+      contactId: (body.contactId as string) || null,
+      accountId: (body.accountId as string) || null,
+      notes: (body.notes as string) || null,
     },
     include: { owner: true, account: true },
+  });
+
+  // Notify lead owner if assigned to someone other than the creator
+  await notifyLeadAssigned({
+    ownerUserId: lead.ownerId,
+    actorUserId: session.user.id,
+    leadId: lead.id,
+    leadLabel: `${lead.companyName} (${lead.contactName})`,
+  });
+
+  // Log activity
+  await logLeadCreated({
+    userId: session.user.id,
+    leadId: lead.id,
+    companyName: lead.companyName,
+    contactName: lead.contactName,
+    source: lead.source,
   });
 
   return Response.json(lead, { status: 201 });

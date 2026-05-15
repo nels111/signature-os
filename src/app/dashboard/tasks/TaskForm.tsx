@@ -78,7 +78,7 @@ export function TaskForm({ initialData, onSubmit, onCancel, loading }: TaskFormP
       </div>
       <div className="flex gap-3 justify-end pt-2">
         <button type="button" onClick={onCancel}
-          className="px-4 py-2 text-sm border rounded-lg hover:" style={{ borderColor: 'var(--border)' }}>
+          className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50" style={{ borderColor: 'var(--border)' }}>
           Cancel
         </button>
         <button type="submit" disabled={loading}

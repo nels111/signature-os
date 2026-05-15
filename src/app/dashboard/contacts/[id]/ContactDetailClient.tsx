@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { ContactForm } from '../ContactForm';
 import type { ContactFormData } from '../ContactForm';
 
@@ -55,7 +56,7 @@ export function ContactDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'details' | 'linked'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'linked' | 'activity'>('details');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -125,6 +126,7 @@ export function ContactDetailClient({ id }: { id: string }) {
   const tabs = [
     { key: 'details' as const, label: 'Details' },
     { key: 'linked' as const, label: 'Linked Entities' },
+    { key: 'activity' as const, label: 'Activity' },
   ];
 
   return (
@@ -255,7 +257,7 @@ export function ContactDetailClient({ id }: { id: string }) {
                 {contact.leads.map((lead) => (
                   <div
                     key={lead.id}
-                    className="flex items-center justify-between p-3 rounded border hover:"
+                    className="flex items-center justify-between p-3 rounded border hover:bg-gray-50"
                     style={{ borderColor: 'var(--border)' }}
                   >
                     <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -282,7 +284,7 @@ export function ContactDetailClient({ id }: { id: string }) {
                 {contact.deals.map((deal) => (
                   <div
                     key={deal.id}
-                    className="flex items-center justify-between p-3 rounded border hover:"
+                    className="flex items-center justify-between p-3 rounded border hover:bg-gray-50"
                     style={{ borderColor: 'var(--border)' }}
                   >
                     <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -302,6 +304,10 @@ export function ContactDetailClient({ id }: { id: string }) {
             )}
           </div>
         </div>
+      )}
+
+      {activeTab === 'activity' && (
+        <ActivityTimeline entityType="contact" entityId={contact.id} />
       )}
 
       {/* Edit Modal */}
@@ -344,7 +350,7 @@ export function ContactDetailClient({ id }: { id: string }) {
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setShowDeleteConfirm(false)}
-            className="px-4 py-2 text-sm border rounded-lg hover:"
+            className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
             style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           >
             Cancel

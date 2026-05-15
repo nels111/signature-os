@@ -24,7 +24,7 @@ interface CalTask {
 }
 
 const EVENT_COLORS: Record<string, string> = {
-  meeting: '#3b82f6', site_survey: '#8b5cf6', follow_up: '#f59e0b', calendly: '#10b981', personal: '#6b7280',
+  meeting: 'var(--event-meeting)', site_survey: 'var(--event-survey)', follow_up: 'var(--event-follow-up)', calendly: 'var(--event-calendly)', personal: 'var(--event-personal)',
 };
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -73,6 +73,7 @@ export function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,8 +88,10 @@ export function CalendarPage() {
       if (!cancelled) {
         setEvents(json.events || []);
         setTasks(json.tasks || []);
+        setLoading(false);
       }
     }
+    setLoading(true);
     loadData();
     return () => { cancelled = true; };
   }, [year, month, filter, refreshKey]);
@@ -138,6 +141,9 @@ export function CalendarPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Calendar</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            {loading ? 'Loading...' : `${events.length} event${events.length !== 1 ? 's' : ''} this month`}
+          </p>
         </div>
         <div className="flex gap-2">
           <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)}
@@ -155,20 +161,26 @@ export function CalendarPage() {
 
       {/* Month Navigation */}
       <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="px-3 py-1 text-sm border rounded hover:" style={{ borderColor: 'var(--border)' }}>←</button>
+        <button onClick={prevMonth} className="px-3 py-1 text-sm border rounded" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>←</button>
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>{MONTHS[month]} {year}</h2>
           <button onClick={goToday} className="px-2 py-0.5 text-xs border rounded" style={{ borderColor: 'var(--border)', color: 'var(--brand-blue)' }}>Today</button>
         </div>
-        <button onClick={nextMonth} className="px-3 py-1 text-sm border rounded hover:" style={{ borderColor: 'var(--border)' }}>→</button>
+        <button onClick={nextMonth} className="px-3 py-1 text-sm border rounded" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>→</button>
       </div>
 
       {/* Month Grid */}
       <div className="border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+        <div className="overflow-x-auto">
+        <div style={{ minWidth: 560 }}>
         {/* Day headers */}
-        <div className="grid grid-cols-7 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="grid grid-cols-7 border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface-accent)' }}>
           {DAYS.map(d => (
-            <div key={d} className="px-2 py-2 text-center text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{d}</div>
+            <div key={d} className="px-2 py-2 text-center text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>{d}</div>
           ))}
         </div>
         {/* Weeks */}
@@ -182,25 +194,25 @@ export function CalendarPage() {
               return (
                 <div key={i}
                   className="min-h-[100px] p-1 border-r last:border-r-0 cursor-pointer"
-                  style={{ borderColor: 'var(--border)', backgroundColor: isToday ? '#f0fdf4' : day.inMonth ? '#fff' : '#f9fafb' }}
+                  style={{ borderColor: 'var(--border)', backgroundColor: isToday ? 'var(--status-success-bg)' : day.inMonth ? 'var(--surface)' : 'var(--background)' }}
                   onClick={() => { setSelectedDate(key); setShowCreate(true); }}>
                   <div className="text-right">
-                    <span className={`text-xs ${isToday ? 'bg-green-600 text-white rounded-full px-1.5 py-0.5' : ''}`}
-                      style={{ color: day.inMonth ? 'var(--text-primary)' : '#cbd5e1' }}>
+                    <span className="text-xs"
+                      style={{ color: isToday ? '#fff' : day.inMonth ? 'var(--text-primary)' : 'var(--text-muted)', backgroundColor: isToday ? 'var(--status-success)' : undefined, borderRadius: isToday ? '9999px' : undefined, padding: isToday ? '1px 6px' : undefined }}>
                       {day.date.getDate()}
                     </span>
                   </div>
                   <div className="space-y-0.5 mt-1">
                     {dayEvents.slice(0, 3).map(ev => (
-                      <div key={ev.id} className="text-xs px-1 py-0.5 rounded truncate text-white cursor-pointeropacity-80"
+                      <div key={ev.id} className="text-xs px-1 py-0.5 rounded truncate text-white cursor-pointer opacity-80 hover:opacity-100"
                         style={{ backgroundColor: EVENT_COLORS[ev.eventType] || '#6b7280' }}
                         onClick={(e) => { e.stopPropagation(); setEditEvent(ev); }}>
                         {ev.title}
                       </div>
                     ))}
                     {dayTasks.slice(0, 2).map(t => (
-                      <div key={t.id} className="text-xs px-1 py-0.5 rounded truncate border border-dashed cursor-pointeropacity-80"
-                        style={{ borderColor: '#6b7280', color: '#6b7280' }}
+                      <div key={t.id} className="text-xs px-1 py-0.5 rounded truncate border border-dashed cursor-pointer opacity-80 hover:opacity-100"
+                        style={{ borderColor: 'var(--text-secondary)', color: 'var(--text-secondary)' }}
                         onClick={(e) => { e.stopPropagation(); window.location.href = `/dashboard/tasks/${t.id}`; }}>
                         ✓ {t.subject}
                       </div>
@@ -214,6 +226,8 @@ export function CalendarPage() {
             })}
           </div>
         ))}
+        </div>
+        </div>
       </div>
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New Event">

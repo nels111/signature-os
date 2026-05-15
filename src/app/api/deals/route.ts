@@ -2,6 +2,8 @@ export const runtime = 'nodejs';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { resolveOwnerIdOnCreate } from '@/lib/authz';
+import { logDealCreated } from '@/lib/activities';
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -54,7 +56,12 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   if (!body.name) {
     return Response.json(
@@ -65,16 +72,23 @@ export async function POST(request: Request) {
 
   const deal = await prisma.deal.create({
     data: {
-      name: body.name,
-      stage: body.stage || 'quote_sent',
-      value: body.value ? parseFloat(body.value) : null,
-      ownerId: body.ownerId || session.user.id,
-      contactId: body.contactId || null,
-      accountId: body.accountId || null,
-      convertedFromId: body.convertedFromId || null,
-      notes: body.notes || null,
+      name: body.name as string,
+      stage: (body.stage as never) || 'quote_sent',
+      value: body.value ? parseFloat(body.value as string) : null,
+      ownerId: resolveOwnerIdOnCreate(session, body.ownerId),
+      contactId: (body.contactId as string) || null,
+      accountId: (body.accountId as string) || null,
+      convertedFromId: (body.convertedFromId as string) || null,
+      notes: (body.notes as string) || null,
     },
     include: { owner: true, contact: true, account: true },
+  });
+
+  await logDealCreated({
+    userId: session.user.id,
+    dealId: deal.id,
+    dealName: deal.name,
+    fromLeadId: deal.convertedFromId,
   });
 
   return Response.json(deal, { status: 201 });

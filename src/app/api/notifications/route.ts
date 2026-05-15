@@ -44,8 +44,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Only admins can create notifications for other users
-    const body = await request.json();
-    const { userId, type, title, message, entityType, entityId } = body;
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { userId, type, title, message, entityType, entityId } = body as {
+      userId?: string; type?: string; title?: string; message?: string;
+      entityType?: string; entityId?: string;
+    };
 
     const targetUserId = userId || session.user.id;
 
@@ -58,8 +66,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'type, title, and message are required' }, { status: 400 });
     }
 
+    // Cast to NotificationType enum. Validation against allowed values
+     // happens at the DB layer; bogus values will produce a clean 500 below.
     const notification = await prisma.notification.create({
-      data: { userId: targetUserId, type, title, message, entityType, entityId },
+      data: {
+        userId: targetUserId,
+        type: type as 'task_due' | 'task_overdue' | 'event_reminder' | 'email_received' | 'deal_stage_changed' | 'lead_assigned' | 'invite_received' | 'cadence_reply' | 'audit_due' | 'shift_alert' | 'quote_sent',
+        title,
+        message,
+        entityType,
+        entityId,
+      },
     });
 
     return NextResponse.json({ notification });
@@ -77,8 +94,13 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { ids, markAll } = body;
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { ids, markAll } = body as { ids?: string[]; markAll?: boolean };
 
     if (markAll) {
       await prisma.notification.updateMany({

@@ -30,10 +30,10 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 const STAGE_COLOURS: Record<string, string> = {
-  quote_sent: '#3b82f6',
-  follow_up_from_quote: '#f59e0b',
-  closed_won: '#10b981',
-  closed_lost: '#ef4444',
+  quote_sent: 'var(--deal-quote-sent)',
+  follow_up_from_quote: 'var(--deal-follow-up)',
+  closed_won: 'var(--deal-won)',
+  closed_lost: 'var(--deal-lost)',
 };
 
 function formatDate(dateStr: string): string {
@@ -48,6 +48,15 @@ function formatCurrency(val: string | number | null | undefined): string {
   const num = typeof val === 'string' ? parseFloat(val) : val;
   if (isNaN(num)) return '';
   return `£${num.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+function dealInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w.charAt(0))
+    .join('')
+    .toUpperCase();
 }
 
 export function DealsPage() {
@@ -141,10 +150,20 @@ export function DealsPage() {
   const columns = [
     {
       key: 'name',
-      label: 'Name',
+      label: 'Deal',
       sortable: false,
       render: (item: Deal) => (
-        <span className="font-medium">{item.name}</span>
+        <div className="flex items-center gap-3">
+          <div
+            className="flex-shrink-0 flex items-center justify-center rounded-full text-white text-xs font-bold"
+            style={{ width: 32, height: 32, backgroundColor: 'var(--brand-blue)' }}
+          >
+            {dealInitials(item.name)}
+          </div>
+          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+            {item.name}
+          </span>
+        </div>
       ),
     },
     {
@@ -166,59 +185,71 @@ export function DealsPage() {
       sortable: false,
       render: (item: Deal) =>
         item.value ? (
-          <span className="text-sm font-medium" style={{ color: 'var(--brand-blue)' }}>
+          <span className="text-sm font-bold" style={{ color: 'var(--brand-blue)' }}>
             {formatCurrency(item.value)}
           </span>
         ) : (
-          <span className="text-gray-400">—</span>
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
         ),
     },
     {
       key: 'owner',
       label: 'Owner',
       sortable: false,
+      mobileHidden: true,
       render: (item: Deal) =>
         item.owner?.name ? (
-          <span className="text-sm">{item.owner.name}</span>
+          <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+            {item.owner.name}
+          </span>
         ) : (
-          <span className="text-gray-400">—</span>
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
         ),
     },
     {
       key: 'contact',
       label: 'Contact',
       sortable: false,
+      mobileHidden: true,
       render: (item: Deal) =>
         item.contact ? (
-          <span className="text-sm">
+          <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
             {item.contact.firstName} {item.contact.lastName}
           </span>
         ) : (
-          <span className="text-gray-400">—</span>
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
         ),
     },
     {
       key: 'account',
       label: 'Account',
       sortable: false,
+      mobileHidden: true,
       render: (item: Deal) =>
         item.account ? (
           <span className="text-sm" style={{ color: 'var(--brand-blue)' }}>
             {item.account.name}
           </span>
         ) : (
-          <span className="text-gray-400">—</span>
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
         ),
     },
     {
       key: 'createdAt',
       label: 'Created',
       sortable: false,
+      mobileHidden: true,
       render: (item: Deal) => (
-        <span className="text-sm text-gray-500">{formatDate(item.createdAt)}</span>
+        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          {formatDate(item.createdAt)}
+        </span>
       ),
     },
   ];
+
+  const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
+  const endItem = Math.min(page * limit, total);
+  const metaText = total > 0 ? `Showing ${startItem}–${endItem} of ${total}` : undefined;
 
   return (
     <div>
@@ -247,11 +278,16 @@ export function DealsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search deals..."
-            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30"
-            style={{ borderColor: 'var(--border)' }}
+            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus-brand"
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+            }}
           />
           <svg
-            className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+            className="absolute left-3 top-2.5 h-4 w-4"
+            style={{ color: 'var(--text-muted)' }}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -268,7 +304,11 @@ export function DealsPage() {
           value={stageFilter}
           onChange={(e) => { setStageFilter(e.target.value); setPage(1); }}
           className="border rounded px-2 py-1 text-sm"
-          style={{ borderColor: 'var(--border)' }}
+          style={{
+            borderColor: 'var(--border)',
+            background: 'var(--surface)',
+            color: 'var(--text-primary)',
+          }}
         >
           <option value="">All Stages</option>
           <option value="quote_sent">Quote Sent</option>
@@ -276,13 +316,17 @@ export function DealsPage() {
           <option value="closed_won">Closed Won</option>
           <option value="closed_lost">Closed Lost</option>
         </select>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>Sort:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="border rounded px-2 py-1 text-sm"
-            style={{ borderColor: 'var(--border)' }}
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+            }}
           >
             <option value="createdAt">Date Created</option>
             <option value="name">Name</option>
@@ -291,26 +335,22 @@ export function DealsPage() {
           </select>
           <button
             onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
-            className="border rounded px-2 py-1 text-sm hover:"
-            style={{ borderColor: 'var(--border)' }}
+            className="border rounded px-2 py-1 text-sm"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
           >
             {sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="rounded-xl border p-8 text-center" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
-          Loading deals...
-        </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={deals}
-          onRowClick={(item) => router.push(`/dashboard/deals/${item.id}`)}
-          emptyMessage="No deals found. Create your first deal to get started."
-        />
-      )}
+      <DataTable
+        columns={columns}
+        data={deals}
+        onRowClick={(item) => router.push(`/dashboard/deals/${item.id}`)}
+        emptyMessage="No deals found. Create your first deal to get started."
+        isLoading={loading}
+        meta={metaText}
+      />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 

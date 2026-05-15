@@ -66,7 +66,6 @@ export function ContactsPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -141,46 +140,60 @@ export function ContactsPage() {
   const columns = [
     {
       key: 'firstName',
-      label: 'First Name',
+      label: 'Contact',
       sortable: false,
-      render: (item: Contact) => (
-        <span className="font-medium">{item.firstName}</span>
-      ),
-    },
-    {
-      key: 'lastName',
-      label: 'Last Name',
-      sortable: false,
+      render: (item: Contact) => {
+        const initials = `${item.firstName.charAt(0)}${item.lastName.charAt(0)}`.toUpperCase();
+        return (
+          <div className="flex items-center gap-3">
+            <div
+              className="flex-shrink-0 flex items-center justify-center rounded-full text-white text-xs font-bold"
+              style={{ width: 32, height: 32, backgroundColor: 'var(--brand-blue)' }}
+            >
+              {initials}
+            </div>
+            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              {item.firstName} {item.lastName}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: 'email',
       label: 'Email',
       sortable: false,
-      render: (item: Contact) => item.email || <span className="text-gray-400">—</span>,
+      render: (item: Contact) =>
+        item.email || <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
     {
       key: 'phone',
       label: 'Phone',
       sortable: false,
-      render: (item: Contact) => item.phone || <span className="text-gray-400">—</span>,
+      mobileHidden: true,
+      render: (item: Contact) =>
+        item.phone || <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
     {
       key: 'company',
       label: 'Company',
       sortable: false,
-      render: (item: Contact) => item.company || <span className="text-gray-400">—</span>,
+      mobileHidden: true,
+      render: (item: Contact) =>
+        item.company || <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
     {
       key: 'account',
       label: 'Account',
       sortable: false,
+      mobileHidden: true,
       render: (item: Contact) =>
         item.account ? (
           <span className="text-sm" style={{ color: 'var(--brand-blue)' }}>
             {item.account.name}
           </span>
         ) : (
-          <span className="text-gray-400">—</span>
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
         ),
     },
     {
@@ -194,18 +207,25 @@ export function ContactsPage() {
             variant={SOURCE_VARIANTS[item.source] || 'default'}
           />
         ) : (
-          <span className="text-gray-400">—</span>
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
         ),
     },
     {
       key: 'createdAt',
       label: 'Created',
       sortable: false,
+      mobileHidden: true,
       render: (item: Contact) => (
-        <span className="text-sm text-gray-500">{formatDate(item.createdAt)}</span>
+        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          {formatDate(item.createdAt)}
+        </span>
       ),
     },
   ];
+
+  const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
+  const endItem = Math.min(page * limit, total);
+  const metaText = total > 0 ? `Showing ${startItem}–${endItem} of ${total}` : undefined;
 
   return (
     <div>
@@ -227,18 +247,23 @@ export function ContactsPage() {
         </button>
       </div>
 
-      <div className="mb-4 flex gap-4 items-center">
+      <div className="mb-4 flex gap-4 items-center flex-wrap">
         <div className="relative flex-1 max-w-md">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search contacts..."
-            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30"
-            style={{ borderColor: 'var(--border)' }}
+            className="w-full pl-9 pr-4 py-2 text-sm border rounded-lg focus-brand"
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+            }}
           />
           <svg
-            className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+            className="absolute left-3 top-2.5 h-4 w-4"
+            style={{ color: 'var(--text-muted)' }}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -251,13 +276,17 @@ export function ContactsPage() {
             />
           </svg>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>Sort:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="border rounded px-2 py-1 text-sm"
-            style={{ borderColor: 'var(--border)' }}
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+            }}
           >
             <option value="createdAt">Date Created</option>
             <option value="firstName">First Name</option>
@@ -267,26 +296,22 @@ export function ContactsPage() {
           </select>
           <button
             onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
-            className="border rounded px-2 py-1 text-sm hover:"
-            style={{ borderColor: 'var(--border)' }}
+            className="border rounded px-2 py-1 text-sm"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
           >
             {sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="rounded-xl border p-8 text-center" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
-          Loading contacts...
-        </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={contacts}
-          onRowClick={(item) => router.push(`/dashboard/contacts/${item.id}`)}
-          emptyMessage="No contacts found. Create your first contact to get started."
-        />
-      )}
+      <DataTable
+        columns={columns}
+        data={contacts}
+        onRowClick={(item) => router.push(`/dashboard/contacts/${item.id}`)}
+        emptyMessage="No contacts found. Create your first contact to get started."
+        isLoading={loading}
+        meta={metaText}
+      />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 

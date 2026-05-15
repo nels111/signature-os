@@ -26,6 +26,9 @@ export function KanbanBoard<T>({
   const [dragFromCol, setDragFromCol] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const dragRef = useRef<{ itemId: string; fromCol: string } | null>(null);
+  const touchRef = useRef<{ itemId: string; fromCol: string } | null>(null);
+
+  // ── HTML5 Drag (desktop) ──────────────────────────────────────────────────
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, itemId: string, columnId: string) => {
@@ -70,17 +73,69 @@ export function KanbanBoard<T>({
     dragRef.current = null;
   }, []);
 
+  // ── Touch Drag (mobile) ───────────────────────────────────────────────────
+
+  const getColumnIdFromPoint = useCallback((x: number, y: number): string | null => {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    // Walk up the DOM tree to find the nearest [data-column-id] ancestor
+    let node: Element | null = el;
+    while (node) {
+      const colId = node.getAttribute('data-column-id');
+      if (colId) return colId;
+      node = node.parentElement;
+    }
+    return null;
+  }, []);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent, itemId: string, columnId: string) => {
+      touchRef.current = { itemId, fromCol: columnId };
+      setDragItemId(itemId);
+      setDragFromCol(columnId);
+    },
+    []
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!touchRef.current) return;
+      const touch = e.touches[0];
+      const colId = getColumnIdFromPoint(touch.clientX, touch.clientY);
+      setDragOverCol(colId);
+    },
+    [getColumnIdFromPoint]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const ref = touchRef.current;
+      if (!ref) return;
+      const touch = e.changedTouches[0];
+      const toColId = getColumnIdFromPoint(touch.clientX, touch.clientY);
+      if (toColId && toColId !== ref.fromCol) {
+        onDragEnd(ref.itemId, ref.fromCol, toColId);
+      }
+      setDragItemId(null);
+      setDragFromCol(null);
+      setDragOverCol(null);
+      touchRef.current = null;
+    },
+    [getColumnIdFromPoint, onDragEnd]
+  );
+
   return (
     <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: '400px' }}>
       {columns.map((column) => (
         <div
           key={column.id}
+          data-column-id={column.id}
           className={`flex-shrink-0 w-72 rounded-xl border transition-colors ${
             dragOverCol === column.id ? 'ring-2 ring-offset-1' : ''
           }`}
           style={{
             borderColor: dragOverCol === column.id ? column.color : 'var(--border)',
-            backgroundColor: dragOverCol === column.id ? '#f8fafc' : '#f9fafb',
+            backgroundColor: dragOverCol === column.id ? 'var(--surface-accent)' : 'var(--background)',
             outline: dragOverCol === column.id ? `2px solid ${column.color}` : 'none',
           }}
           onDragOver={(e) => handleDragOver(e, column.id)}
@@ -119,7 +174,11 @@ export function KanbanBoard<T>({
                   draggable
                   onDragStart={(e) => handleDragStart(e, itemId, column.id)}
                   onDragEnd={handleDragEndCleanup}
-                  className={`transition-opacity ${
+                  onTouchStart={(e) => handleTouchStart(e, itemId, column.id)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  style={{ touchAction: 'none' }}
+                  className={`transition-opacity cursor-grab active:cursor-grabbing ${
                     dragItemId === itemId && dragFromCol === column.id
                       ? 'opacity-40'
                       : 'opacity-100'
@@ -132,7 +191,7 @@ export function KanbanBoard<T>({
             {column.items.length === 0 && (
               <div
                 className="text-center py-8 text-xs rounded border border-dashed"
-                style={{ color: 'var(--text-muted)', borderColor: '#cbd5e1' }}
+                style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}
               >
                 Drop items here
               </div>

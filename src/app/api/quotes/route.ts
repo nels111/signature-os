@@ -84,15 +84,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { dealId, accountId, contactId, weeklyHours, sellRate, isPilot } = body;
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { dealId, accountId, contactId, weeklyHours, sellRate, isPilot } = body as {
+      dealId?: string; accountId?: string; contactId?: string;
+      weeklyHours?: number | string; sellRate?: number | string; isPilot?: boolean;
+    };
 
     if (!weeklyHours || !sellRate) {
       return NextResponse.json({ error: 'weeklyHours and sellRate are required' }, { status: 400 });
     }
 
-    const numSellRate = parseFloat(sellRate);
-    const numWeeklyHours = parseFloat(weeklyHours);
+    const numSellRate = parseFloat(String(sellRate));
+    const numWeeklyHours = parseFloat(String(weeklyHours));
     const labourRate = LABOUR_RATE;
     const pilotDiscount = isPilot ? PILOT_DISCOUNT : 0;
 
@@ -104,7 +112,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const totals = calculateQuoteTotals(numWeeklyHours, numSellRate, labourRate, isPilot, pilotDiscount);
+    const totals = calculateQuoteTotals(numWeeklyHours, numSellRate, labourRate, isPilot ?? false, pilotDiscount);
 
     // HARD BLOCK: margin below minimum
     if (totals.margin < MIN_MARGIN) {

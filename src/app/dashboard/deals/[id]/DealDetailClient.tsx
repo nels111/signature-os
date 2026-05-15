@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { DealForm } from '../DealForm';
 import type { DealFormData } from '../DealForm';
 
@@ -319,11 +320,7 @@ export function DealDetailClient({ id }: { id: string }) {
 
       {/* Activity Tab */}
       {activeTab === 'activity' && (
-        <div className="rounded-xl border p-6" style={{ borderColor: 'var(--border)' }}>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Activity timeline coming soon.
-          </p>
-        </div>
+        <ActivityTimeline entityType="deal" entityId={deal.id} />
       )}
 
       {/* Edit Modal */}
@@ -365,7 +362,7 @@ export function DealDetailClient({ id }: { id: string }) {
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setShowDeleteConfirm(false)}
-            className="px-4 py-2 text-sm border rounded-lg hover:"
+            className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
             style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           >
             Cancel

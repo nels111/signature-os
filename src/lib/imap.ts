@@ -9,6 +9,14 @@ export interface MailboxConfig {
   tls: boolean;
 }
 
+export interface AttachmentMeta {
+  filename: string;
+  contentType: string;
+  size: number;
+  content: Buffer;
+  contentId?: string;
+}
+
 export interface ParsedEmail {
   messageId: string;
   from: string;
@@ -19,6 +27,7 @@ export interface ParsedEmail {
   bodyHtml: string | null;
   date: Date;
   folder: string;
+  attachments: AttachmentMeta[];
 }
 
 const IONOS_IMAP = {
@@ -58,41 +67,53 @@ export async function fetchEmails(
     try {
       // Default to last 30 days if no since date, avoids scanning entire mailbox
       const defaultSince = since || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const messages = client.fetch(
-        { since: defaultSince },
-        {
-          envelope: true,
-          source: true,
-          uid: true,
-        }
-      );
 
-      let count = 0;
-      for await (const msg of messages) {
-        if (count >= limit) break;
+      // Search returns UIDs in ascending order (oldest first).
+      // Take the LAST `limit` UIDs to guarantee we always get the newest messages,
+      // not the oldest ones (which was cutting off this week's emails).
+      const searchResult = await client.search({ since: defaultSince }, { uid: true });
+      const allUids: number[] = Array.isArray(searchResult) ? searchResult : [];
+      const uidsToFetch = allUids.slice(-limit); // newest `limit` UIDs
 
-        try {
-          if (!msg.source) continue;
-          const parsed = await simpleParser(msg.source);
+      if (uidsToFetch.length > 0) {
+        const uidRange = uidsToFetch.join(',');
+        const messages = client.fetch(uidRange, { envelope: true, source: true, uid: true }, { uid: true });
 
-          emails.push({
-            messageId: parsed.messageId || msg.uid.toString(),
-            from: parsed.from?.text || '',
-            to: parsed.to
-              ? (Array.isArray(parsed.to) ? parsed.to.map(t => t.text) : [parsed.to.text])
-              : [],
-            cc: parsed.cc
-              ? (Array.isArray(parsed.cc) ? parsed.cc.map(c => c.text) : [parsed.cc.text])
-              : [],
-            subject: parsed.subject || '(No Subject)',
-            bodyText: parsed.text || null,
-            bodyHtml: parsed.html || null,
-            date: parsed.date || new Date(),
-            folder,
-          });
-          count++;
-        } catch {
-          // Skip unparseable messages
+        for await (const msg of messages) {
+          try {
+            if (!msg.source) continue;
+            const parsed = await simpleParser(msg.source);
+
+            // Extract real attachments (exclude inline images that are part of the HTML body)
+            const attachments: AttachmentMeta[] = (parsed.attachments || [])
+              .filter(a => a.contentDisposition === 'attachment' || (!a.contentId && a.filename))
+              .map(a => ({
+                filename: a.filename || 'attachment',
+                contentType: a.contentType,
+                size: a.size || (a.content?.length ?? 0),
+                content: Buffer.isBuffer(a.content) ? a.content : Buffer.from(a.content || []),
+                contentId: a.contentId || undefined,
+              }));
+
+            emails.push({
+              messageId: parsed.messageId || msg.uid.toString(),
+              from: parsed.from?.text || '',
+              to: parsed.to
+                ? (Array.isArray(parsed.to) ? parsed.to.map(t => t.text) : [parsed.to.text])
+                : [],
+              cc: parsed.cc
+                ? (Array.isArray(parsed.cc) ? parsed.cc.map(c => c.text) : [parsed.cc.text])
+                : [],
+              subject: parsed.subject || '(No Subject)',
+              bodyText: parsed.text || null,
+              bodyHtml: parsed.html || null,
+              date: parsed.date || new Date(),
+              folder,
+              attachments,
+            });
+          } catch {
+            // Skip unparseable messages
+          }
         }
       }
     } finally {

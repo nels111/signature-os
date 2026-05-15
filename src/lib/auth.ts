@@ -2,6 +2,7 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import * as bcrypt from 'bcryptjs';
 import { Pool } from 'pg';
+import { checkRateLimit, RATE_LIMITS } from './rate-limit';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -16,9 +17,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        // Throttle login attempts per email address. Limit (RATE_LIMITS.login)
+        // is currently 10 per 15 minutes. Using the email (lower-cased) as the
+        // key throttles credential stuffing without needing a reliable client IP.
+        const emailKey = String(credentials.email).trim().toLowerCase();
+        if (!emailKey) return null;
+        const rate = checkRateLimit(`login:${emailKey}`, RATE_LIMITS.login);
+        if (rate.limited) {
+          // Returning null surfaces as "invalid credentials" to the client which
+          // is the safer UX (don't disclose that rate limiting is in effect).
+          return null;
+        }
+
         const result = await pool.query(
           'SELECT id, name, email, password, role FROM users WHERE email = $1',
-          [credentials.email as string]
+          [emailKey]
         );
 
         const user = result.rows[0];

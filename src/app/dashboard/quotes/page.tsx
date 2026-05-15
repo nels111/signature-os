@@ -495,6 +495,9 @@ export default function QuotesPage() {
 
       recalc();
     }
+    // savedFormData/savedDays/savedPilot only read here to restore state when re-entering "form" screen.
+    // Including them as deps would re-run setup on every save, wiping live form state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
   // Send the quote
@@ -533,6 +536,15 @@ export default function QuotesPage() {
 
   return (
     <div className="h-[calc(100vh-64px)] overflow-y-auto">
+      {/* Page header — only show on form screen */}
+      {screen === "form" && (
+        <div className="flex items-center justify-between px-4 pt-6 pb-2" style={{ maxWidth: 600, margin: "0 auto" }}>
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Quote Generator</h1>
+            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Build and send a new client quote</p>
+          </div>
+        </div>
+      )}
       {/* Form Screen */}
       {screen === "form" && (
         <div ref={containerRef} dangerouslySetInnerHTML={{ __html: QUOTE_HTML }} />
@@ -542,12 +554,12 @@ export default function QuotesPage() {
       {screen === "loading" && (
         <div style={{ maxWidth: 600, margin: "0 auto", padding: 40, textAlign: "center" }}>
           <div style={{
-            width: 48, height: 48, border: "4px solid #e0e0e0", borderTopColor: "var(--brand-blue)",
+            width: 48, height: 48, border: "4px solid var(--border)", borderTopColor: "var(--brand-blue)",
             borderRadius: "50%", animation: "qg-spin 0.8s linear infinite", margin: "0 auto 16px"
           }} />
           <style>{`@keyframes qg-spin { to { transform: rotate(360deg); } }`}</style>
           <h2 style={{ color: "var(--brand-blue)", marginBottom: 8 }}>Generating Quote...</h2>
-          <p style={{ color: "#666" }}>Creating PDF and preparing email draft.</p>
+          <p style={{ color: "var(--text-secondary)" }}>Creating PDF and preparing email draft.</p>
         </div>
       )}
 
@@ -592,33 +604,34 @@ export default function QuotesPage() {
 
           {/* Email metadata */}
           <div style={{
-            background: "#f8f9fa", padding: "16px 20px", borderBottom: "1px solid #e0e0e0",
+            background: "var(--surface-accent)", padding: "16px 20px", borderBottom: "1px solid var(--border)",
             fontSize: 14
           }}>
-            <div style={{ marginBottom: 8 }}>
-              <span style={{ fontWeight: 600, color: "#555", width: 60, display: "inline-block" }}>From:</span>
-              <span>Nick Stentiford &lt;nick@signature-cleans.co.uk&gt;</span>
+            <div style={{ marginBottom: 8, display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontWeight: 600, color: "var(--text-secondary)", flexShrink: 0, width: 60 }}>From:</span>
+              <span style={{ color: "var(--text-primary)" }}>Nick Stentiford &lt;nick@signature-cleans.co.uk&gt;</span>
             </div>
-            <div style={{ marginBottom: 8 }}>
-              <span style={{ fontWeight: 600, color: "#555", width: 60, display: "inline-block" }}>To:</span>
-              <span>{quoteResult.email.to}</span>
+            <div style={{ marginBottom: 8, display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontWeight: 600, color: "var(--text-secondary)", flexShrink: 0, width: 60 }}>To:</span>
+              <span style={{ wordBreak: "break-all", color: "var(--text-primary)" }}>{quoteResult.email.to}</span>
             </div>
-            <div style={{ marginBottom: 8 }}>
-              <span style={{ fontWeight: 600, color: "#555", width: 60, display: "inline-block" }}>Subject:</span>
+            <div style={{ marginBottom: 8, display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontWeight: 600, color: "var(--text-secondary)", flexShrink: 0, width: 60 }}>Subject:</span>
               <input
                 type="text"
                 value={editableSubject}
                 onChange={(e) => setEditableSubject(e.target.value)}
                 style={{
-                  border: "1px solid #ddd", borderRadius: 4, padding: "4px 8px",
-                  fontSize: 14, width: "calc(100% - 70px)", fontFamily: "inherit"
+                  border: "1px solid var(--border)", borderRadius: 4, padding: "4px 8px",
+                  fontSize: 14, flex: 1, minWidth: 0, fontFamily: "inherit",
+                  background: "var(--surface)", color: "var(--text-primary)"
                 }}
               />
             </div>
             <div>
-              <span style={{ fontWeight: 600, color: "#555", width: 60, display: "inline-block" }}>Attach:</span>
+              <span style={{ fontWeight: 600, color: "var(--text-secondary)", width: 60, display: "inline-block" }}>Attach:</span>
               <span style={{
-                background: "#e8f0e8", padding: "2px 8px", borderRadius: 4,
+                background: "var(--status-success-bg)", padding: "2px 8px", borderRadius: 4,
                 fontSize: 13, color: "var(--brand-blue)"
               }}>
                 📎 {quoteResult.email.pdfFilename}
@@ -628,8 +641,8 @@ export default function QuotesPage() {
 
           {/* Pricing summary bar */}
           <div style={{
-            background: "#fff", padding: "12px 20px", borderBottom: "1px solid #e0e0e0",
-            display: "flex", gap: 24, fontSize: 13, color: "#555"
+            background: "var(--surface)", padding: "12px 20px", borderBottom: "1px solid var(--border)",
+            display: "flex", gap: 24, fontSize: 13, color: "var(--text-secondary)", flexWrap: "wrap"
           }}>
             <span><strong>Per Visit:</strong> £{quoteResult.pricing.perVisit.toFixed(2)}</span>
             {quoteResult.pricing.pilotPerVisit && (
@@ -651,7 +664,7 @@ export default function QuotesPage() {
 
           {/* Email HTML preview */}
           <div style={{
-            background: "#fff", border: "1px solid #e0e0e0", borderRadius: "0 0 12px 12px",
+            background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "0 0 12px 12px",
             overflow: "hidden"
           }}>
             <iframe
@@ -668,15 +681,15 @@ export default function QuotesPage() {
       {screen === "sent" && quoteResult && (
         <div style={{
           maxWidth: 500, margin: "80px auto", padding: 40, textAlign: "center",
-          background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)"
         }}>
           <div style={{ fontSize: 64, marginBottom: 16 }}>✓</div>
           <h2 style={{ color: "var(--brand-blue)", marginBottom: 8 }}>Quote Sent!</h2>
-          <p style={{ color: "#666", marginBottom: 16 }}>
+          <p style={{ color: "var(--text-secondary)", marginBottom: 16 }}>
             Quote emailed to {quoteResult.email.to} with PDF attached.
           </p>
           <div style={{
-            background: "#e8f0e8", padding: "8px 16px", borderRadius: 8,
+            background: "var(--status-success-bg)", padding: "8px 16px", borderRadius: 8,
             display: "inline-block", fontFamily: "monospace", fontSize: 14, color: "var(--brand-blue)"
           }}>
             {quoteResult.quote_ref}
@@ -685,7 +698,7 @@ export default function QuotesPage() {
           <button
             onClick={resetAll}
             style={{
-              marginTop: 24, padding: "12px 32px", background: "white", color: "var(--brand-blue)",
+              marginTop: 24, padding: "12px 32px", background: "var(--surface)", color: "var(--brand-blue)",
               border: "2px solid var(--brand-blue)", borderRadius: 8, fontSize: 15,
               fontWeight: 600, cursor: "pointer"
             }}
@@ -699,15 +712,15 @@ export default function QuotesPage() {
       {screen === "error" && (
         <div style={{
           maxWidth: 500, margin: "80px auto", padding: 40, textAlign: "center",
-          background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)"
         }}>
           <div style={{ fontSize: 64, marginBottom: 16 }}>⚠</div>
-          <h2 style={{ color: "#c4302b", marginBottom: 8 }}>Something Went Wrong</h2>
-          <p style={{ color: "#666", marginBottom: 16 }}>{errorMessage}</p>
+          <h2 style={{ color: "var(--status-danger)", marginBottom: 8 }}>Something Went Wrong</h2>
+          <p style={{ color: "var(--text-secondary)", marginBottom: 16 }}>{errorMessage}</p>
           <button
             onClick={resetAll}
             style={{
-              marginTop: 8, padding: "12px 32px", background: "white", color: "var(--brand-blue)",
+              marginTop: 8, padding: "12px 32px", background: "var(--surface)", color: "var(--brand-blue)",
               border: "2px solid var(--brand-blue)", borderRadius: 8, fontSize: 15,
               fontWeight: 600, cursor: "pointer"
             }}

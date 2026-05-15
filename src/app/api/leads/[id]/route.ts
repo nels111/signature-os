@@ -2,6 +2,9 @@ export const runtime = 'nodejs';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { isAdmin } from '@/lib/authz';
+import { notifyLeadAssigned } from '@/lib/notifications';
+import { logLeadStageChange, logDealCreated } from '@/lib/activities';
 
 export async function GET(
   _request: Request,
@@ -14,6 +17,7 @@ export async function GET(
 
   const { id } = await params;
 
+  const CHILDREN_LIMIT = 50;
   const lead = await prisma.lead.findFirst({
     where: { id, deletedAt: null },
     include: {
@@ -23,6 +27,7 @@ export async function GET(
       deals: {
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
+        take: CHILDREN_LIMIT,
       },
     },
   });
@@ -44,7 +49,12 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   const existing = await prisma.lead.findFirst({
     where: { id, deletedAt: null },
@@ -54,9 +64,12 @@ export async function PATCH(
     return Response.json({ error: 'Lead not found' }, { status: 404 });
   }
 
+  // ownerId is admin-only; strip it from non-admin requests
+  const adminCaller = isAdmin(session);
   const allowedFields = [
     'companyName', 'contactName', 'email', 'phone', 'source', 'stage',
-    'meetingOutcome', 'ownerId', 'notes', 'contactId', 'accountId', 'cadenceStatus',
+    'meetingOutcome', 'notes', 'contactId', 'accountId', 'cadenceStatus',
+    ...(adminCaller ? ['ownerId'] : []),
   ];
   const updateData: Record<string, unknown> = {};
 
@@ -89,6 +102,28 @@ export async function PATCH(
     include: { owner: true, contact: true, account: true },
   });
 
+  // Notify new owner if reassignment happened
+  const ownerChanged = body.ownerId && body.ownerId !== existing.ownerId;
+  if (ownerChanged) {
+    await notifyLeadAssigned({
+      ownerUserId: lead.ownerId,
+      actorUserId: session.user.id,
+      leadId: lead.id,
+      leadLabel: `${lead.companyName} (${lead.contactName})`,
+    });
+  }
+
+  // Log activity on stage change
+  if (stageChanged) {
+    await logLeadStageChange({
+      userId: session.user.id,
+      leadId: lead.id,
+      leadLabel: `${lead.companyName} (${lead.contactName})`,
+      fromStage: existing.stage,
+      toStage: lead.stage,
+    });
+  }
+
   // Auto-create deal when stage changes to quote_delivered
   if (stageChanged && body.stage === 'quote_delivered') {
     const deal = await prisma.deal.create({
@@ -101,6 +136,13 @@ export async function PATCH(
         convertedFromId: lead.id,
       },
       include: { owner: true, contact: true, account: true },
+    });
+
+    await logDealCreated({
+      userId: session.user.id,
+      dealId: deal.id,
+      dealName: deal.name,
+      fromLeadId: lead.id,
     });
 
     return Response.json({ lead, deal });

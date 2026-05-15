@@ -27,19 +27,19 @@ interface DealItem {
 }
 
 const LEAD_STAGES = [
-  { id: 'cold_call', label: 'Cold Call', color: '#6b7280' },
-  { id: 'cold_email', label: 'Cold Email', color: '#3b82f6' },
-  { id: 'follow_up_sequence', label: 'Follow-up Sequence', color: '#f59e0b' },
-  { id: 'meeting_scheduled', label: 'Meeting Scheduled', color: '#8b5cf6' },
-  { id: 'meeting_attended', label: 'Meeting Attended', color: '#10b981' },
+  { id: 'cold_call', label: 'Cold Call', color: 'var(--stage-cold-call)' },
+  { id: 'cold_email', label: 'Cold Email', color: 'var(--stage-cold-email)' },
+  { id: 'follow_up_sequence', label: 'Follow-up Sequence', color: 'var(--stage-follow-up)' },
+  { id: 'meeting_scheduled', label: 'Meeting Scheduled', color: 'var(--stage-meeting)' },
+  { id: 'meeting_attended', label: 'Meeting Attended', color: 'var(--stage-attended)' },
   { id: 'quote_delivered', label: 'Quote Delivered', color: 'var(--brand-blue)' },
 ];
 
 const DEAL_STAGES = [
-  { id: 'quote_sent', label: 'Quote Sent', color: '#3b82f6' },
-  { id: 'follow_up_from_quote', label: 'Follow-up from Quote', color: '#f59e0b' },
-  { id: 'closed_won', label: 'Closed Won', color: '#10b981' },
-  { id: 'closed_lost', label: 'Closed Lost', color: '#ef4444' },
+  { id: 'quote_sent', label: 'Quote Sent', color: 'var(--deal-quote-sent)' },
+  { id: 'follow_up_from_quote', label: 'Follow-up from Quote', color: 'var(--deal-follow-up)' },
+  { id: 'closed_won', label: 'Closed Won', color: 'var(--deal-won)' },
+  { id: 'closed_lost', label: 'Closed Lost', color: 'var(--deal-lost)' },
 ];
 
 function formatCurrency(val: string | number | null | undefined): string {
@@ -291,8 +291,36 @@ export function PipelinePage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center" style={{ color: 'var(--text-secondary)' }}>
-        Loading pipeline...
+      <div>
+        <div className="mb-6">
+          <div className="h-8 w-32 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+          <div className="h-4 w-56 rounded-lg mt-2 animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+        </div>
+        <div className="flex gap-1 border-b mb-6" style={{ borderColor: 'var(--border)' }}>
+          {['Lead Pipeline', 'Deal Pipeline'].map((t) => (
+            <div key={t} className="px-4 py-2 rounded-t">
+              <div className="h-4 w-24 rounded animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex-shrink-0 w-72 rounded-xl border" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}>
+              <div className="px-3 py-3 border-b flex items-center gap-2" style={{ borderColor: 'var(--border)' }}>
+                <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+                <div className="h-4 w-28 rounded animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+              </div>
+              <div className="p-2 space-y-2">
+                {[1, 2].map((j) => (
+                  <div key={j} className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
+                    <div className="h-4 w-full rounded animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+                    <div className="h-3 w-2/3 rounded mt-2 animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -314,11 +342,12 @@ export function PipelinePage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors"
+            style={
               activeTab === tab.key
-                ? 'border-green-700 text-green-700'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+                ? { borderColor: 'var(--brand-green-accent)', color: 'var(--brand-green)' }
+                : { borderColor: 'transparent', color: 'var(--text-secondary)' }
+            }
           >
             {tab.label}
           </button>
@@ -349,7 +378,7 @@ export function PipelinePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div
               className="rounded-xl border p-4"
-              style={{ borderColor: 'var(--border)' }}
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
             >
               <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Total Pipeline Value
@@ -363,12 +392,12 @@ export function PipelinePage() {
             </div>
             <div
               className="rounded-xl border p-4"
-              style={{ borderColor: '#dcfce7' }}
+              style={{ borderColor: 'var(--status-success)', backgroundColor: 'var(--status-success-bg)' }}
             >
-              <p className="text-xs font-medium" style={{ color: '#166534' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--status-success)' }}>
                 Won
               </p>
-              <p className="text-2xl font-bold mt-1" style={{ color: '#10b981' }}>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--status-success)' }}>
                 {formatCurrency(wonValue)}
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -377,12 +406,12 @@ export function PipelinePage() {
             </div>
             <div
               className="rounded-xl border p-4"
-              style={{ borderColor: '#fce4e4' }}
+              style={{ borderColor: 'var(--status-danger)', backgroundColor: 'var(--status-danger-bg)' }}
             >
-              <p className="text-xs font-medium" style={{ color: '#991b1b' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--status-danger)' }}>
                 Lost
               </p>
-              <p className="text-2xl font-bold mt-1" style={{ color: '#ef4444' }}>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--status-danger)' }}>
                 {lostCount}
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -421,7 +450,7 @@ export function PipelinePage() {
             onChange={(e) => setLossReason(e.target.value)}
             placeholder="Why was this deal lost? (optional)"
             rows={3}
-            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30"
+            className="w-full px-3 py-2 text-sm border rounded-lg focus-brand"
             style={{ borderColor: 'var(--border)' }}
           />
           <div className="flex justify-end gap-3">
@@ -430,7 +459,7 @@ export function PipelinePage() {
                 setShowLossModal(false);
                 setPendingLossDealId(null);
               }}
-              className="px-4 py-2 text-sm border rounded-lg hover:"
+              className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
               style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
             >
               Cancel
@@ -462,7 +491,7 @@ export function PipelinePage() {
           <select
             value={meetingOutcome}
             onChange={(e) => setMeetingOutcome(e.target.value)}
-            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2056A4]/30"
+            className="w-full px-3 py-2 text-sm border rounded-lg focus-brand"
             style={{ borderColor: 'var(--border)' }}
           >
             <option value="">Select outcome...</option>
@@ -476,7 +505,7 @@ export function PipelinePage() {
                 setShowOutcomeModal(false);
                 setPendingOutcomeLeadId(null);
               }}
-              className="px-4 py-2 text-sm border rounded-lg hover:"
+              className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
               style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
             >
               Cancel

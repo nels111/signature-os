@@ -2,6 +2,9 @@ export const runtime = 'nodejs';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { isAdmin } from '@/lib/authz';
+import { notifyDealStageChanged } from '@/lib/notifications';
+import { logDealStageChange } from '@/lib/activities';
 
 export async function GET(
   _request: Request,
@@ -49,7 +52,12 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   const existing = await prisma.deal.findFirst({
     where: { id, deletedAt: null },
@@ -59,16 +67,19 @@ export async function PATCH(
     return Response.json({ error: 'Deal not found' }, { status: 404 });
   }
 
+  // ownerId is admin-only; non-admin updates ignore it
+  const adminCaller = isAdmin(session);
   const allowedFields = [
-    'name', 'stage', 'value', 'ownerId', 'contactId', 'accountId',
+    'name', 'stage', 'value', 'contactId', 'accountId',
     'quoteId', 'notes', 'lossReason',
+    ...(adminCaller ? ['ownerId'] : []),
   ];
   const updateData: Record<string, unknown> = {};
 
   for (const field of allowedFields) {
     if (body[field] !== undefined) {
       if (field === 'value') {
-        updateData[field] = body[field] ? parseFloat(body[field]) : null;
+        updateData[field] = body[field] ? parseFloat(body[field] as string) : null;
       } else {
         updateData[field] = body[field] || null;
       }
@@ -105,6 +116,26 @@ export async function PATCH(
     data: updateData,
     include: { owner: true, contact: true, account: true, convertedFrom: true },
   });
+
+  // Notify deal owner about stage transition
+  if (stageChanged) {
+    await notifyDealStageChanged({
+      ownerUserId: deal.ownerId,
+      actorUserId: session.user.id,
+      dealId: deal.id,
+      dealName: deal.name,
+      fromStage: existing.stage,
+      toStage: deal.stage,
+    });
+
+    await logDealStageChange({
+      userId: session.user.id,
+      dealId: deal.id,
+      dealName: deal.name,
+      fromStage: existing.stage,
+      toStage: deal.stage,
+    });
+  }
 
   return Response.json(deal);
 }

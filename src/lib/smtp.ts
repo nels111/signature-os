@@ -7,6 +7,12 @@ export interface SmtpConfig {
   pass: string;
 }
 
+export interface EmailAttachmentInput {
+  filename: string;
+  contentType: string;
+  content: string; // base64-encoded
+}
+
 export interface SendEmailOptions {
   from: string;
   to: string | string[];
@@ -18,6 +24,7 @@ export interface SendEmailOptions {
   replyTo?: string;
   inReplyTo?: string;
   references?: string;
+  attachments?: EmailAttachmentInput[];
 }
 
 const IONOS_SMTP = {
@@ -65,6 +72,11 @@ export async function sendEmail(
     replyTo: options.replyTo,
     inReplyTo: options.inReplyTo,
     references: options.references,
+    attachments: options.attachments?.map(a => ({
+      filename: a.filename,
+      content: Buffer.from(a.content, 'base64'),
+      contentType: a.contentType,
+    })),
   });
 
   return { messageId: result.messageId };

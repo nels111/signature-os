@@ -16,11 +16,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { weeklyHours, sellRate, isPilot } = body;
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { weeklyHours, sellRate, isPilot } = body as {
+      weeklyHours?: number | string; sellRate?: number | string; isPilot?: boolean;
+    };
 
-    const numSellRate = parseFloat(sellRate || '0');
-    const numWeeklyHours = parseFloat(weeklyHours || '0');
+    const numSellRate = parseFloat(String(sellRate || '0'));
+    const numWeeklyHours = parseFloat(String(weeklyHours || '0'));
     const pilotDiscount = isPilot ? PILOT_DISCOUNT : 0;
 
     const effectiveRate = isPilot ? numSellRate * (1 - pilotDiscount / 100) : numSellRate;

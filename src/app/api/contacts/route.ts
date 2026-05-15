@@ -54,7 +54,12 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   if (!body.firstName || !body.lastName) {
     return Response.json(
@@ -65,14 +70,15 @@ export async function POST(request: Request) {
 
   const contact = await prisma.contact.create({
     data: {
-      firstName: body.firstName,
-      lastName: body.lastName,
-      email: body.email || null,
-      phone: body.phone || null,
-      company: body.company || null,
-      accountId: body.accountId || null,
-      notes: body.notes || null,
-      source: body.source || null,
+      firstName: body.firstName as string,
+      lastName: body.lastName as string,
+      email: (body.email as string) || null,
+      phone: (body.phone as string) || null,
+      company: (body.company as string) || null,
+      accountId: (body.accountId as string) || null,
+      notes: (body.notes as string) || null,
+      // Source must be a LeadSource enum value; widen via unknown so Prisma narrows it.
+      source: (body.source as unknown as 'cold_call' | 'cold_email' | 'referral' | 'website' | 'mark_walker' | 'direct_mail' | 'other' | undefined) || null,
       createdBy: session.user.id,
     },
     include: { account: true },

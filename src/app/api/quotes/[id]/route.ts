@@ -48,7 +48,12 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
     const quote = await prisma.quote.findUnique({ where: { id } });
     if (!quote) {
@@ -57,18 +62,29 @@ export async function PATCH(
 
     const updateData: Record<string, unknown> = {};
 
+    // Block pricing edits on any non-draft quote (force clone-to-new-version workflow)
+    const isPricingEdit = body.weeklyHours !== undefined
+      || body.sellRate !== undefined
+      || body.isPilot !== undefined;
+    if (isPricingEdit && quote.status !== 'draft') {
+      return NextResponse.json({
+        error: `Cannot edit pricing on a ${quote.status} quote. Use Clone to create a new version.`,
+        code: 'CLONE_REQUIRED',
+      }, { status: 409 });
+    }
+
     if (body.status) {
       updateData.status = body.status;
       if (body.status === 'sent' && !quote.sentAt) {
         updateData.sentAt = new Date();
-        updateData.trackingId = crypto.randomUUID();
+        if (!quote.trackingId) updateData.trackingId = crypto.randomUUID();
       }
       if (body.status === 'accepted') updateData.acceptedAt = new Date();
       if (body.status === 'rejected') updateData.rejectedAt = new Date();
     }
 
-    if (body.weeklyHours !== undefined) updateData.weeklyHours = parseFloat(body.weeklyHours);
-    if (body.sellRate !== undefined) updateData.sellRate = parseFloat(body.sellRate);
+    if (body.weeklyHours !== undefined) updateData.weeklyHours = parseFloat(String(body.weeklyHours));
+    if (body.sellRate !== undefined) updateData.sellRate = parseFloat(String(body.sellRate));
     if (body.isPilot !== undefined) updateData.isPilot = body.isPilot;
 
     const updated = await prisma.quote.update({

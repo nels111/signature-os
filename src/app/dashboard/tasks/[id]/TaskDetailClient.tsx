@@ -62,7 +62,7 @@ export function TaskDetailClient() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowEdit(true)}
-            className="px-3 py-1.5 text-sm border rounded-lg hover:" style={{ borderColor: 'var(--border)' }}>Edit</button>
+            className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50" style={{ borderColor: 'var(--border)' }}>Edit</button>
           <button onClick={handleDelete}
             className="px-3 py-1.5 text-sm text-white rounded-lg" style={{ backgroundColor: '#ef4444' }}>Delete</button>
         </div>

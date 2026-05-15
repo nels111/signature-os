@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { AccountForm } from '../AccountForm';
 import type { AccountFormData } from '../AccountForm';
 
@@ -39,7 +40,7 @@ export function AccountDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'details' | 'contacts' | 'linked'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'contacts' | 'linked' | 'activity'>('details');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -110,6 +111,7 @@ export function AccountDetailClient({ id }: { id: string }) {
     { key: 'details' as const, label: 'Details' },
     { key: 'contacts' as const, label: `Contacts (${account.contacts?.length || 0})` },
     { key: 'linked' as const, label: 'Linked Entities' },
+    { key: 'activity' as const, label: 'Activity' },
   ];
 
   return (
@@ -271,7 +273,7 @@ export function AccountDetailClient({ id }: { id: string }) {
                 {account.leads.map((lead) => (
                   <div
                     key={lead.id}
-                    className="flex items-center justify-between p-3 rounded border hover:"
+                    className="flex items-center justify-between p-3 rounded border hover:bg-gray-50"
                     style={{ borderColor: 'var(--border)' }}
                   >
                     <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -298,7 +300,7 @@ export function AccountDetailClient({ id }: { id: string }) {
                 {account.deals.map((deal) => (
                   <div
                     key={deal.id}
-                    className="flex items-center justify-between p-3 rounded border hover:"
+                    className="flex items-center justify-between p-3 rounded border hover:bg-gray-50"
                     style={{ borderColor: 'var(--border)' }}
                   >
                     <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -318,6 +320,10 @@ export function AccountDetailClient({ id }: { id: string }) {
             )}
           </div>
         </div>
+      )}
+
+      {activeTab === 'activity' && (
+        <ActivityTimeline entityType="account" entityId={account.id} />
       )}
 
       {/* Edit Modal */}
@@ -356,7 +362,7 @@ export function AccountDetailClient({ id }: { id: string }) {
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setShowDeleteConfirm(false)}
-            className="px-4 py-2 text-sm border rounded-lg hover:"
+            className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
             style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           >
             Cancel

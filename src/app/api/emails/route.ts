@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { fetchEmails, getImapConfig } from '@/lib/imap';
 import { sendEmail, getSmtpConfig } from '@/lib/smtp';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 // GET /api/emails - Fetch emails from IMAP and sync to DB
 export async function GET(request: NextRequest) {
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
         // Upsert each email to DB
         for (const email of imapEmails) {
           await prisma.email.upsert({
-            where: { messageId: email.messageId },
+            where: { messageId_mailbox: { messageId: email.messageId, mailbox: targetEmail! } },
             create: {
               messageId: email.messageId,
               mailbox: targetEmail!,
@@ -106,6 +107,21 @@ export async function GET(request: NextRequest) {
         { from: { contains: search, mode: 'insensitive' } },
         { bodyText: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    // Return unread counts per folder if requested
+    if (searchParams.get('counts') === 'true') {
+      const folders = ['INBOX', 'Sent', 'Drafts', 'Trash', 'Archive'];
+      const counts = await Promise.all(
+        folders.map((f) =>
+          prisma.email.count({
+            where: { mailbox: targetEmail!, folder: f, isRead: false },
+          })
+        )
+      );
+      return NextResponse.json({
+        counts: Object.fromEntries(folders.map((f, i) => [f, counts[i]])),
+      });
     }
 
     if (folder !== 'ALL') {
@@ -156,8 +172,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { to, cc, bcc, subject, text, html, replyTo, inReplyTo, references, mailbox } = body;
+    // Throttle per-user email sends to prevent accidental loops / abuse.
+    const rate = checkRateLimit(`emailSend:${session.user.id}`, RATE_LIMITS.emailSend);
+    if (rate.limited) {
+      return NextResponse.json(
+        { error: 'Too many emails. Please slow down.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil((rate.retryAfterMs ?? 60000) / 1000)),
+          },
+        }
+      );
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { to, cc, bcc, subject, text, html, replyTo, inReplyTo, references, mailbox, attachments } = body as {
+      to?: string | string[]; cc?: string[]; bcc?: string[]; subject?: string;
+      text?: string; html?: string; replyTo?: string; inReplyTo?: string;
+      // SMTP header is a single concatenated string; clients may submit either form.
+      references?: string | string[]; mailbox?: string;
+      attachments?: import('@/lib/smtp').EmailAttachmentInput[];
+    };
 
     if (!to || !subject) {
       return NextResponse.json({ error: 'to and subject required' }, { status: 400 });
@@ -199,7 +240,8 @@ export async function POST(request: NextRequest) {
       html,
       replyTo,
       inReplyTo,
-      references,
+      references: Array.isArray(references) ? references.join(' ') : references,
+      attachments,
     });
 
     // Save sent email to DB

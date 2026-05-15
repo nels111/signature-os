@@ -70,13 +70,15 @@ interface StatCardProps {
 }
 
 function StatCard({ label, value, change, positive, icon, accent }: StatCardProps) {
+  const accentColor = accent || 'var(--brand-blue)';
   return (
     <div
-      className="rounded-2xl p-5 transition-all duration-200 group"
+      className="rounded-2xl p-5 transition-all duration-200 relative overflow-hidden"
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         boxShadow: 'var(--shadow-card)',
+        borderLeft: `3px solid ${accentColor}`,
       }}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-hover)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-card)'; e.currentTarget.style.transform = 'translateY(0)'; }}
@@ -162,16 +164,14 @@ function GrowthProgressBar({ current, target }: { current: number; target: numbe
       </p>
       <div className="relative">
         <div
-          className="w-full h-2 rounded-full overflow-hidden"
-          style={{ background: 'var(--background)' }}
+          className="w-full h-3 rounded-full overflow-hidden"
+          style={{ background: 'var(--border)' }}
         >
           <div
             className="h-full rounded-full transition-all duration-700 ease-out"
             style={{
               width: `${pct}%`,
-              background: pct > 50
-                ? 'linear-gradient(90deg, var(--brand-blue), var(--status-success))'
-                : 'var(--brand-blue)',
+              background: 'linear-gradient(90deg, var(--brand-blue) 0%, var(--brand-green-accent) 100%)',
             }}
           />
         </div>
@@ -318,7 +318,7 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
       {isSales && (
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-4 rounded-full" style={{ background: 'var(--brand-blue)' }} />
+            <div className="w-1.5 h-5 rounded-full" style={{ background: 'var(--brand-blue)' }} />
             <h2
               className="text-xs font-semibold uppercase"
               style={{ color: 'var(--text-muted)', letterSpacing: '0.08em' }}
@@ -357,10 +357,10 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
       {isOps && (
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-4 rounded-full" style={{ background: 'var(--status-success)' }} />
+            <div className="w-1.5 h-5 rounded-full" style={{ background: 'var(--brand-green-accent)' }} />
             <h2
               className="text-xs font-semibold uppercase"
-              style={{ color: 'var(--text-muted)', letterSpacing: '0.08em' }}
+              style={{ color: 'var(--brand-green)', letterSpacing: '0.08em' }}
             >
               Operations
             </h2>

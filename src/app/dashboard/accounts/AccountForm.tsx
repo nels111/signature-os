@@ -95,7 +95,7 @@ export function AccountForm({ initialData, onSubmit, onCancel, loading }: Accoun
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm border rounded-lg hover:"
+          className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
           style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
         >
           Cancel
