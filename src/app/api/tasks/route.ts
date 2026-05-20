@@ -3,6 +3,8 @@ export const runtime = 'nodejs';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { resolveOwnerIdOnCreate } from '@/lib/authz';
+import { notifyTaskAssigned } from '@/lib/notifications';
+import { sendPushToUser } from '@/lib/push';
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -24,20 +26,28 @@ export async function GET(request: Request) {
   const allowedSortFields = ['subject', 'dueDate', 'priority', 'status', 'taskType', 'createdAt'];
   const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'dueDate';
 
+  const isAdmin = session.user.role === 'admin';
+
   const where: Record<string, unknown> = { deletedAt: null };
+
+  // Default: everyone sees only tasks assigned to them.
+  // Admin can override by passing ?ownerId=xxx to view a specific person's tasks.
+  // This means Nelson's tasks don't bleed into Nick's view and vice versa.
+  if (isAdmin && ownerId) {
+    where.ownerId = ownerId; // Admin viewing someone else's tasks explicitly
+  } else {
+    where.ownerId = session.user.id; // Default: own tasks only
+  }
+
   if (status) where.status = status;
   if (priority) where.priority = priority;
   if (taskType) {
     if (taskType === 'NOT_personal') {
-      // Business tab: all types except personal
       where.taskType = { not: 'personal' };
     } else {
       where.taskType = taskType;
-      // Personal tasks are only visible to the owner
-      if (taskType === 'personal') where.ownerId = session.user.id;
     }
   }
-  if (ownerId) where.ownerId = ownerId;
   if (search) {
     where.OR = [
       { subject: { contains: search, mode: 'insensitive' } },
@@ -93,6 +103,27 @@ export async function POST(request: Request) {
     },
     include: { owner: { select: { id: true, name: true, email: true } } },
   });
+
+  // If the task was assigned to someone other than the creator, notify them.
+  const assigneeId = task.ownerId;
+  if (assigneeId && assigneeId !== session.user.id) {
+    const taskLabel = task.subject;
+    Promise.allSettled([
+      notifyTaskAssigned({
+        assigneeUserId: assigneeId,
+        actorUserId: session.user.id,
+        taskId: task.id,
+        taskTitle: taskLabel,
+      }),
+      sendPushToUser(assigneeId, {
+        title: 'Task assigned to you',
+        body: taskLabel,
+        icon: '/icon-192.png',
+        url: `/dashboard/tasks/${task.id}`,
+        tag: `task-assigned-${task.id}`,
+      }),
+    ]).catch(err => console.error('[tasks] assignment notification error', err));
+  }
 
   return Response.json(task, { status: 201 });
 }

@@ -12,6 +12,9 @@ export interface DealFormData {
   accountId: string;
   notes: string;
   lossReason: string;
+  sector: string;
+  closingDate: string;
+  probability: string;
 }
 
 interface AccountOption {
@@ -34,6 +37,17 @@ const STAGE_OPTIONS = [
   { label: 'Closed Lost', value: 'closed_lost' },
 ];
 
+const SECTOR_OPTIONS = [
+  { label: 'Hospitality', value: 'hospitality' },
+  { label: 'Automotive', value: 'automotive' },
+  { label: 'Education', value: 'education' },
+  { label: 'Construction / Property', value: 'construction_property' },
+  { label: 'Healthcare', value: 'healthcare' },
+  { label: 'Office / Professional', value: 'office_professional' },
+  { label: 'Retail', value: 'retail' },
+  { label: 'Other', value: 'other' },
+];
+
 export function DealForm({ initialData, onSubmit, onCancel, loading, isEdit }: DealFormProps) {
   const [form, setForm] = useState<DealFormData>({
     name: initialData?.name || '',
@@ -44,6 +58,9 @@ export function DealForm({ initialData, onSubmit, onCancel, loading, isEdit }: D
     accountId: initialData?.accountId || '',
     notes: initialData?.notes || '',
     lossReason: initialData?.lossReason || '',
+    sector: initialData?.sector || '',
+    closingDate: initialData?.closingDate || '',
+    probability: initialData?.probability || '',
   });
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -89,13 +106,65 @@ export function DealForm({ initialData, onSubmit, onCancel, loading, isEdit }: D
           options={STAGE_OPTIONS}
         />
       )}
-      <FormField
-        label="Value (£)"
-        type="number"
-        value={form.value}
-        onChange={update('value')}
-        placeholder="e.g. 5000"
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          label="Value (£/month)"
+          type="number"
+          value={form.value}
+          onChange={update('value')}
+          placeholder="e.g. 2500"
+        />
+        <SelectField
+          label="Sector"
+          value={form.sector}
+          onChange={update('sector')}
+          options={SECTOR_OPTIONS}
+          placeholder="Select sector..."
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label
+            className="block text-xs font-semibold uppercase mb-1.5"
+            style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}
+          >
+            Expected Close Date
+          </label>
+          <input
+            type="date"
+            value={form.closingDate}
+            onChange={(e) => update('closingDate')(e.target.value)}
+            className="w-full px-3 py-2 text-sm border rounded-lg focus-brand"
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+            }}
+          />
+        </div>
+        <div>
+          <label
+            className="block text-xs font-semibold uppercase mb-1.5"
+            style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}
+          >
+            Probability (%)
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={form.probability}
+            onChange={(e) => update('probability')(e.target.value)}
+            placeholder="e.g. 70"
+            className="w-full px-3 py-2 text-sm border rounded-lg focus-brand"
+            style={{
+              borderColor: 'var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+            }}
+          />
+        </div>
+      </div>
       <SelectField
         label="Account"
         value={form.accountId}

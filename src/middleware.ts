@@ -97,14 +97,16 @@ function checkCsrf(req: NextRequest): NextResponse | null {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow auth routes, static files, and public quote tracking endpoints
+  // Allow auth routes, static files, public quote tracking, and external webhooks
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/auth') ||
     pathname === '/login' ||
     pathname === '/favicon.ico' ||
     pathname.startsWith('/api/quotes/track/') ||
-    pathname.startsWith('/q/')
+    pathname.startsWith('/q/') ||
+    // Twilio webhooks come from Twilio's servers (no Origin/session cookie)
+    pathname.startsWith('/api/webhooks/twilio/')
   ) {
     return NextResponse.next();
   }

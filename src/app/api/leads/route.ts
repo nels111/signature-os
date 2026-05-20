@@ -19,6 +19,7 @@ export async function GET(request: Request) {
   const sortBy = url.searchParams.get('sortBy') || 'createdAt';
   const sortDir = url.searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc';
   const stage = url.searchParams.get('stage') || '';
+  const excludeStage = url.searchParams.get('excludeStage') || '';
   const ownerId = url.searchParams.get('ownerId') || '';
 
   const allowedSortFields = ['companyName', 'contactName', 'email', 'stage', 'source', 'createdAt', 'updatedAt'];
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
   const where = {
     deletedAt: null,
     ...(stage ? { stage: stage as never } : {}),
+    ...(excludeStage && !stage ? { NOT: { stage: excludeStage as never } } : {}),
     ...(ownerId ? { ownerId } : {}),
     ...(search
       ? {
@@ -85,6 +87,7 @@ export async function POST(request: Request) {
       contactId: (body.contactId as string) || null,
       accountId: (body.accountId as string) || null,
       notes: (body.notes as string) || null,
+      sector: (body.sector as string) || null,
     },
     include: { owner: true, account: true },
   });
@@ -94,7 +97,7 @@ export async function POST(request: Request) {
     ownerUserId: lead.ownerId,
     actorUserId: session.user.id,
     leadId: lead.id,
-    leadLabel: `${lead.companyName} (${lead.contactName})`,
+    leadLabel: `${lead.companyName}${lead.contactName ? ` (${lead.contactName})` : ''}`,
   });
 
   // Log activity

@@ -1,14 +1,14 @@
 import { prisma } from '@/lib/db';
 
 const MERGE_FIELDS: Record<string, (lead: LeadData) => string> = {
-  '{{contact_name}}': (l) => l.contactName,
+  '{{contact_name}}': (l) => l.contactName || 'there',
   '{{company_name}}': (l) => l.companyName,
-  '{{first_name}}': (l) => l.contactName.split(' ')[0],
+  '{{first_name}}': (l) => l.contactName?.trim().split(' ')[0] || 'there',
   '{{calendly_link}}': () => 'https://calendly.com/signature-cleans',
 };
 
 interface LeadData {
-  contactName: string;
+  contactName: string | null;
   companyName: string;
   email: string | null;
 }

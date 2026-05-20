@@ -13,6 +13,7 @@ enum Role {
   sales
   operations
   viewer
+  va
 }
 
 enum LeadSource {
@@ -26,12 +27,17 @@ enum LeadSource {
 }
 
 enum LeadStage {
+  new_lead
   cold_call
   cold_email
+  linkedin
   follow_up_sequence
+  not_interested_for_now
+  contact_when_contract_up
   meeting_scheduled
   meeting_attended
   quote_delivered
+  foad
 }
 
 enum MeetingOutcome {
@@ -122,6 +128,9 @@ enum NotificationType {
   audit_due
   shift_alert
   quote_sent
+  quote_viewed
+  task_assigned
+  lead_cold_alert
 }
 
 enum ActivityType {
@@ -227,7 +236,7 @@ model Contact {
 model Lead {
   id             String          @id @default(cuid())
   companyName    String
-  contactName    String
+  contactName    String?
   email          String?
   phone          String?
   source         LeadSource
@@ -238,6 +247,7 @@ model Lead {
   contactId      String?
   accountId      String?
   cadenceStatus  CadenceStatus?
+  sector         String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   stageChangedAt DateTime        @default(now())
@@ -277,6 +287,9 @@ model Deal {
   lostAt          DateTime?
   lossReason      String?
   notes           String?
+  sector          String?
+  closingDate     DateTime? @map("closing_date")
+  probability     Int?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   stageChangedAt  DateTime  @default(now())

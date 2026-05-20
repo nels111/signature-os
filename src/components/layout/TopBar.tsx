@@ -3,8 +3,9 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Bell, LogOut, ChevronDown, Menu } from 'lucide-react';
+import { Search, Bell, BellRing, BellOff, LogOut, ChevronDown, Menu, Clock, Timer } from 'lucide-react';
 import { useLayout } from './LayoutContext';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 interface Notification {
   id: string;
@@ -28,15 +29,65 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+function useClockStatus(isVa: boolean) {
+  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [clockedInAt, setClockedInAt] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0); // seconds
+  const [loading, setLoading] = useState(false);
+
+  const fetchStatus = useCallback(async () => {
+    if (!isVa) return;
+    try {
+      const res = await fetch('/api/time-tracking/status');
+      const data = await res.json();
+      setIsClockedIn(data.isClockedIn);
+      setClockedInAt(data.clockedInAt || null);
+    } catch { /* ignore */ }
+  }, [isVa]);
+
+  useEffect(() => { fetchStatus(); }, [fetchStatus]);
+
+  useEffect(() => {
+    if (!isClockedIn || !clockedInAt) { setElapsed(0); return; }
+    const tick = () => setElapsed(Math.floor((Date.now() - new Date(clockedInAt).getTime()) / 1000));
+    tick();
+    const id = setInterval(tick, 10000); // update every 10s
+    return () => clearInterval(id);
+  }, [isClockedIn, clockedInAt]);
+
+  const toggle = async () => {
+    setLoading(true);
+    try {
+      const endpoint = isClockedIn ? '/api/time-tracking/clock-out' : '/api/time-tracking/clock-in';
+      await fetch(endpoint, { method: 'POST' });
+      await fetchStatus();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fmtElapsed = () => {
+    const h = Math.floor(elapsed / 3600);
+    const m = Math.floor((elapsed % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+
+  return { isClockedIn, elapsed, loading, toggle, fmtElapsed };
+}
+
 export function TopBar() {
   const { data: session } = useSession();
   const router = useRouter();
   const { toggleSidebar } = useLayout();
+  const { state: pushState, enable: enablePush, disable: disablePush } = usePushNotifications();
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [searchFocused, setSearchFocused] = useState(false);
+  const isVa = session?.user?.role === 'va';
+  const clock = useClockStatus(isVa);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -172,6 +223,36 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-1">
+        {/* VA clock in/out pill */}
+        {isVa && (
+          <button
+            onClick={clock.toggle}
+            disabled={clock.loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold mr-2 transition-all duration-150"
+            style={clock.isClockedIn ? {
+              background: '#22c55e18',
+              color: '#16a34a',
+              border: '1px solid #22c55e40',
+            } : {
+              background: 'var(--brand-blue-subtle)',
+              color: 'var(--brand-blue)',
+              border: '1px solid var(--brand-blue-subtle)',
+            }}
+          >
+            {clock.isClockedIn ? (
+              <>
+                <Timer size={13} />
+                <span className="hidden sm:inline">{clock.fmtElapsed()} · </span>
+                <span>Clock Out</span>
+              </>
+            ) : (
+              <>
+                <Clock size={13} />
+                <span>Clock In</span>
+              </>
+            )}
+          </button>
+        )}
         {/* Notification bell */}
         <div className="relative notif-dropdown">
           <button
@@ -312,6 +393,26 @@ export function TopBar() {
                   {session?.user?.role}
                 </div>
               </div>
+              {/* Push notification toggle */}
+              {pushState !== 'unsupported' && (
+                <button
+                  onClick={pushState === 'granted' ? disablePush : enablePush}
+                  className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
+                  style={{ color: pushState === 'denied' ? 'var(--text-muted)' : 'var(--text-primary)' }}
+                  disabled={pushState === 'denied' || pushState === 'loading'}
+                >
+                  {pushState === 'granted' ? (
+                    <BellRing size={14} style={{ color: 'var(--brand-blue)' }} />
+                  ) : pushState === 'denied' ? (
+                    <BellOff size={14} style={{ color: 'var(--text-muted)' }} />
+                  ) : (
+                    <Bell size={14} style={{ color: 'var(--text-muted)' }} />
+                  )}
+                  {pushState === 'granted' ? 'Push notifications on' :
+                   pushState === 'denied' ? 'Notifications blocked' :
+                   'Enable push notifications'}
+                </button>
+              )}
               <button
                 onClick={() => signOut({ callbackUrl: '/login' })}
                 className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"

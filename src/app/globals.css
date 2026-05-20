@@ -57,9 +57,13 @@
   /* Lead / Pipeline stage colors — richer */
   --stage-cold-call: #64748B;
   --stage-cold-email: #2563EB;
+  --stage-linkedin: #8B5CF6;
   --stage-follow-up: #D97706;
+  --stage-not-interested: #F59E0B;
+  --stage-cwccu: #0D9488;
   --stage-meeting: #7C3AED;
   --stage-attended: #059669;
+  --stage-foad: #DC2626;
   --deal-quote-sent: #2563EB;
   --deal-follow-up: #D97706;
   --deal-won: #059669;

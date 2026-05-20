@@ -13,7 +13,7 @@
 
 import type { Session } from 'next-auth';
 
-export type Role = 'admin' | 'sales' | 'operations' | 'viewer';
+export type Role = 'admin' | 'sales' | 'operations' | 'viewer' | 'va';
 
 export function isAdmin(session: Session | null | undefined): boolean {
   return session?.user?.role === 'admin';

@@ -23,16 +23,21 @@ interface DealItem {
   value: string | number | null;
   owner: { id: string; name: string | null } | null;
   contact: { id: string; firstName: string; lastName: string } | null;
+  stageChangedAt: string | null;
   [key: string]: unknown;
 }
 
 const LEAD_STAGES = [
   { id: 'cold_call', label: 'Cold Call', color: 'var(--stage-cold-call)' },
   { id: 'cold_email', label: 'Cold Email', color: 'var(--stage-cold-email)' },
+  { id: 'linkedin', label: 'LinkedIn', color: 'var(--stage-linkedin)' },
   { id: 'follow_up_sequence', label: 'Follow-up Sequence', color: 'var(--stage-follow-up)' },
+  { id: 'not_interested_for_now', label: 'Not Interested for Now', color: 'var(--stage-not-interested)' },
+  { id: 'contact_when_contract_up', label: 'Contact When Contract Up', color: 'var(--stage-cwccu)' },
   { id: 'meeting_scheduled', label: 'Meeting Scheduled', color: 'var(--stage-meeting)' },
   { id: 'meeting_attended', label: 'Meeting Attended', color: 'var(--stage-attended)' },
   { id: 'quote_delivered', label: 'Quote Delivered', color: 'var(--brand-blue)' },
+  { id: 'foad', label: 'FOAD', color: 'var(--stage-foad)' },
 ];
 
 const DEAL_STAGES = [

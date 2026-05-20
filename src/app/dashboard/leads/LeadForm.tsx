@@ -15,6 +15,7 @@ export interface LeadFormData {
   contactId: string;
   accountId: string;
   notes: string;
+  sector: string;
 }
 
 interface AccountOption {
@@ -43,16 +44,31 @@ const SOURCE_OPTIONS = [
 const STAGE_OPTIONS = [
   { label: 'Cold Call', value: 'cold_call' },
   { label: 'Cold Email', value: 'cold_email' },
+  { label: 'LinkedIn', value: 'linkedin' },
   { label: 'Follow-up Sequence', value: 'follow_up_sequence' },
+  { label: 'Not Interested for Now', value: 'not_interested_for_now' },
+  { label: 'Contact When Contract Up', value: 'contact_when_contract_up' },
   { label: 'Meeting Scheduled', value: 'meeting_scheduled' },
   { label: 'Meeting Attended', value: 'meeting_attended' },
   { label: 'Quote Delivered', value: 'quote_delivered' },
+  { label: 'FOAD', value: 'foad' },
 ];
 
 const MEETING_OUTCOME_OPTIONS = [
   { label: 'Good', value: 'good' },
   { label: 'Bad', value: 'bad' },
   { label: 'Not Interested', value: 'not_interested' },
+];
+
+const SECTOR_OPTIONS = [
+  { label: 'Hospitality', value: 'hospitality' },
+  { label: 'Automotive', value: 'automotive' },
+  { label: 'Education', value: 'education' },
+  { label: 'Construction / Property', value: 'construction_property' },
+  { label: 'Healthcare', value: 'healthcare' },
+  { label: 'Office / Professional', value: 'office_professional' },
+  { label: 'Retail', value: 'retail' },
+  { label: 'Other', value: 'other' },
 ];
 
 export function LeadForm({ initialData, onSubmit, onCancel, loading, isEdit }: LeadFormProps) {
@@ -68,6 +84,7 @@ export function LeadForm({ initialData, onSubmit, onCancel, loading, isEdit }: L
     contactId: initialData?.contactId || '',
     accountId: initialData?.accountId || '',
     notes: initialData?.notes || '',
+    sector: initialData?.sector || '',
   });
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -88,7 +105,6 @@ export function LeadForm({ initialData, onSubmit, onCancel, loading, isEdit }: L
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     if (!form.companyName.trim()) newErrors.companyName = 'Company name is required';
-    if (!form.contactName.trim()) newErrors.contactName = 'Contact name is required';
     if (!form.source) newErrors.source = 'Source is required';
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -112,7 +128,6 @@ export function LeadForm({ initialData, onSubmit, onCancel, loading, isEdit }: L
           label="Contact Name"
           value={form.contactName}
           onChange={update('contactName')}
-          required
           error={errors.contactName}
           placeholder="e.g. John Smith"
         />
@@ -142,15 +157,22 @@ export function LeadForm({ initialData, onSubmit, onCancel, loading, isEdit }: L
           required
           placeholder="Select source..."
         />
-        {isEdit && (
-          <SelectField
-            label="Stage"
-            value={form.stage}
-            onChange={update('stage')}
-            options={STAGE_OPTIONS}
-          />
-        )}
+        <SelectField
+          label="Sector"
+          value={form.sector}
+          onChange={update('sector')}
+          options={SECTOR_OPTIONS}
+          placeholder="Select sector..."
+        />
       </div>
+      {isEdit && (
+        <SelectField
+          label="Stage"
+          value={form.stage}
+          onChange={update('stage')}
+          options={STAGE_OPTIONS}
+        />
+      )}
       {form.stage === 'meeting_attended' && (
         <SelectField
           label="Meeting Outcome"

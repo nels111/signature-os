@@ -53,19 +53,27 @@ const SOURCE_VARIANTS: Record<string, 'default' | 'success' | 'warning' | 'dange
 const STAGE_LABELS: Record<string, string> = {
   cold_call: 'Cold Call',
   cold_email: 'Cold Email',
+  linkedin: 'LinkedIn',
   follow_up_sequence: 'Follow-up Sequence',
+  not_interested_for_now: 'Not Interested for Now',
+  contact_when_contract_up: 'Contact When Contract Up',
   meeting_scheduled: 'Meeting Scheduled',
   meeting_attended: 'Meeting Attended',
   quote_delivered: 'Quote Delivered',
+  foad: 'FOAD',
 };
 
 const STAGE_COLOURS: Record<string, string> = {
   cold_call: '#6b7280',
-  cold_email: '#3b82f6',
+  cold_email: '#2563eb',
+  linkedin: '#8b5cf6',
   follow_up_sequence: '#f59e0b',
-  meeting_scheduled: '#8b5cf6',
+  not_interested_for_now: '#f59e0b',
+  contact_when_contract_up: '#0d9488',
+  meeting_scheduled: '#7c3aed',
   meeting_attended: '#10b981',
-  quote_delivered: 'var(--status-success)',
+  quote_delivered: '#059669',
+  foad: '#dc2626',
 };
 
 const DEAL_STAGE_LABELS: Record<string, string> = {
@@ -103,6 +111,11 @@ export function LeadDetailClient({ id }: { id: string }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [convertError, setConvertError] = useState<string | null>(null);
+  const [showBookVisit, setShowBookVisit] = useState(false);
+  const [bookingVisit, setBookingVisit] = useState(false);
+  const [bookVisitError, setBookVisitError] = useState<string | null>(null);
 
   const mountRef = useRef(true);
 
@@ -156,6 +169,61 @@ export function LeadDetailClient({ id }: { id: string }) {
     }
   };
 
+  const handleBookVisit = async (data: {
+    startDate: string;
+    endDate: string;
+    location?: string;
+    notes?: string;
+  }) => {
+    setBookingVisit(true);
+    setBookVisitError(null);
+    try {
+      const res = await fetch(`/api/leads/${id}/book-visit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to book visit');
+      }
+      setShowBookVisit(false);
+      refetchLead();
+    } catch (e: unknown) {
+      setBookVisitError(e instanceof Error ? e.message : 'Failed to book visit');
+    } finally {
+      setBookingVisit(false);
+    }
+  };
+
+  const handleConvertToDeal = async () => {
+    if (!lead) return;
+    setConverting(true);
+    setConvertError(null);
+    try {
+      const res = await fetch('/api/deals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: lead.companyName,
+          convertedFromId: lead.id,
+          contactId: lead.contactId,
+          accountId: lead.accountId,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to create deal');
+      }
+      const deal = await res.json();
+      router.push(`/dashboard/deals/${deal.id}`);
+    } catch (e: unknown) {
+      setConvertError(e instanceof Error ? e.message : 'Failed to convert');
+    } finally {
+      setConverting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 text-center" style={{ color: 'var(--text-secondary)' }}>
@@ -197,6 +265,26 @@ export function LeadDetailClient({ id }: { id: string }) {
         >
           {STAGE_LABELS[lead.stage] || lead.stage}
         </span>
+        <button
+          onClick={() => { setShowBookVisit(true); setBookVisitError(null); }}
+          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
+          style={{ backgroundColor: '#7c3aed' }}
+          title="Book a site visit for this lead"
+        >
+          Book Site Visit
+        </button>
+        {convertError && (
+          <span className="text-xs text-red-600">{convertError}</span>
+        )}
+        <button
+          onClick={handleConvertToDeal}
+          disabled={converting}
+          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+          style={{ backgroundColor: '#16a34a' }}
+          title="Create a deal from this lead"
+        >
+          {converting ? 'Converting...' : '+ Deal'}
+        </button>
         <button
           onClick={() => setShowEditModal(true)}
           className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
@@ -335,7 +423,7 @@ export function LeadDetailClient({ id }: { id: string }) {
 
       {/* Activity Tab */}
       {activeTab === 'activity' && (
-        <ActivityTimeline entityType="lead" entityId={lead.id} />
+        <ActivityTimeline entityType="lead" entityId={lead.id} entityName={lead.companyName} />
       )}
 
       {/* Edit Modal */}
@@ -348,7 +436,7 @@ export function LeadDetailClient({ id }: { id: string }) {
         <LeadForm
           initialData={{
             companyName: lead.companyName,
-            contactName: lead.contactName,
+            contactName: lead.contactName || '',
             email: lead.email || '',
             phone: lead.phone || '',
             source: lead.source,
@@ -363,6 +451,22 @@ export function LeadDetailClient({ id }: { id: string }) {
           onCancel={() => setShowEditModal(false)}
           loading={saving}
           isEdit
+        />
+      </Modal>
+
+      {/* Book Site Visit Modal */}
+      <Modal
+        open={showBookVisit}
+        onClose={() => setShowBookVisit(false)}
+        title="Book Site Visit"
+        maxWidth="480px"
+      >
+        <BookVisitForm
+          lead={lead}
+          onSubmit={handleBookVisit}
+          onCancel={() => setShowBookVisit(false)}
+          loading={bookingVisit}
+          error={bookVisitError}
         />
       </Modal>
 
@@ -395,6 +499,152 @@ export function LeadDetailClient({ id }: { id: string }) {
         </div>
       </Modal>
     </div>
+  );
+}
+
+function BookVisitForm({
+  lead,
+  onSubmit,
+  onCancel,
+  loading,
+  error,
+}: {
+  lead: { companyName: string; contactName: string };
+  onSubmit: (data: { startDate: string; endDate: string; location?: string; notes?: string }) => void;
+  onCancel: () => void;
+  loading: boolean;
+  error: string | null;
+}) {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(9, 0, 0, 0);
+
+  function toInput(d: Date) {
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${mo}-${da}T${h}:${mi}`;
+  }
+
+  const endDefault = new Date(tomorrow);
+  endDefault.setHours(10, 0, 0, 0);
+
+  const [startDate, setStartDate] = useState(toInput(tomorrow));
+  const [endDate, setEndDate] = useState(toInput(endDefault));
+  const [location, setLocation] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!startDate || !endDate) return;
+    onSubmit({
+      startDate: new Date(startDate).toISOString(),
+      endDate: new Date(endDate).toISOString(),
+      location: location || undefined,
+      notes: notes || undefined,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div
+        className="px-3 py-2.5 rounded-lg text-sm"
+        style={{ background: 'var(--surface-hover)', color: 'var(--text-secondary)' }}
+      >
+        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{lead.companyName}</span>
+        {' '}&middot; {lead.contactName}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Start *</label>
+          <input
+            type="datetime-local"
+            value={startDate}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              // Auto-set end 1hr later
+              const start = new Date(e.target.value);
+              if (!isNaN(start.getTime())) {
+                start.setHours(start.getHours() + 1);
+                setEndDate(toInput(start));
+              }
+            }}
+            required
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+            style={{ borderColor: 'var(--border)' }}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>End *</label>
+          <input
+            type="datetime-local"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            required
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+            style={{ borderColor: 'var(--border)' }}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Location / Address</label>
+        <input
+          type="text"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="e.g. 12 High Street, Exeter"
+          className="w-full px-3 py-2 border rounded-lg text-sm"
+          style={{ borderColor: 'var(--border)' }}
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Notes</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          placeholder="Parking info, access details, contact on arrival..."
+          className="w-full px-3 py-2 border rounded-lg text-sm"
+          style={{ borderColor: 'var(--border)' }}
+        />
+      </div>
+
+      <div
+        className="px-3 py-2 rounded-lg text-xs"
+        style={{ background: '#7c3aed12', color: '#7c3aed', border: '1px solid #7c3aed30' }}
+      >
+        Books into Nick&apos;s diary · updates lead to Meeting Scheduled · sends notification to hello@
+      </div>
+
+      {error && (
+        <p className="text-xs text-red-600">{error}</p>
+      )}
+
+      <div className="flex gap-3 justify-end pt-1">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 text-sm border rounded-lg"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50"
+          style={{ backgroundColor: '#7c3aed' }}
+        >
+          {loading ? 'Booking...' : 'Book Site Visit'}
+        </button>
+      </div>
+    </form>
   );
 }
 

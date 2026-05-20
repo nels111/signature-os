@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import Image from 'next/image';
+import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard,
   TrendingUp,
@@ -15,24 +16,31 @@ import {
   Calendar,
   Mail,
   FileText,
+  Phone,
+  Clock,
   ChevronLeft,
   ChevronRight,
   X,
 } from 'lucide-react';
 import { useLayout } from './LayoutContext';
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview' },
-  { href: '/dashboard/pipeline', label: 'Pipeline', icon: TrendingUp, section: 'overview' },
-  { href: '/dashboard/deals', label: 'Deals', icon: Handshake, section: 'ops' },
-  { href: '/dashboard/accounts', label: 'Accounts', icon: Building2, section: 'ops' },
-  { href: '/dashboard/contacts', label: 'Contacts', icon: Users, section: 'ops' },
-  { href: '/dashboard/leads', label: 'Leads', icon: UserPlus, section: 'ops' },
-  { href: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, section: 'tools' },
-  { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar, section: 'tools' },
-  { href: '/dashboard/emails', label: 'Email', icon: Mail, section: 'tools' },
-  { href: '/dashboard/quotes/list', label: 'Quotes', icon: FileText, section: 'tools' },
+const ALL_NAV_ITEMS = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview', roles: null },
+  { href: '/dashboard/pipeline', label: 'Pipeline', icon: TrendingUp, section: 'overview', roles: null },
+  { href: '/dashboard/deals', label: 'Deals', icon: Handshake, section: 'ops', roles: null },
+  { href: '/dashboard/accounts', label: 'Accounts', icon: Building2, section: 'ops', roles: null },
+  { href: '/dashboard/contacts', label: 'Contacts', icon: Users, section: 'ops', roles: null },
+  { href: '/dashboard/leads', label: 'Leads', icon: UserPlus, section: 'ops', roles: null },
+  { href: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, section: 'tools', roles: null },
+  { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar, section: 'tools', roles: ['admin', 'sales', 'operations', 'viewer'] },
+  { href: '/dashboard/emails', label: 'Email', icon: Mail, section: 'tools', roles: ['admin', 'sales', 'operations', 'viewer'] },
+  { href: '/dashboard/quotes/list', label: 'Quotes', icon: FileText, section: 'tools', roles: ['admin', 'sales', 'operations', 'viewer'] },
+  { href: '/dashboard/cold-calling', label: 'Cold Calling', icon: Phone, section: 'tools', roles: null },
+  { href: '/dashboard/va-hours', label: 'VA Hours', icon: Clock, section: 'tools', roles: ['admin'] },
 ];
+
+// VA role: dashboard + leads + tasks + cold-calling only
+const VA_ALLOWED = ['/dashboard', '/dashboard/leads', '/dashboard/tasks', '/dashboard/cold-calling'];
 
 const sections = [
   { key: 'overview', label: 'Overview' },
@@ -48,6 +56,12 @@ export function Sidebar({ mobile }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const { closeSidebar } = useLayout();
+  const { data: session } = useSession();
+  const userRole = session?.user?.role as string | undefined;
+
+  const navItems = userRole === 'va'
+    ? ALL_NAV_ITEMS.filter((item) => VA_ALLOWED.includes(item.href))
+    : ALL_NAV_ITEMS.filter((item) => item.roles === null || item.roles.includes(userRole ?? ''));
 
   // On mobile, never collapse, always full width
   const isCollapsed = mobile ? false : collapsed;

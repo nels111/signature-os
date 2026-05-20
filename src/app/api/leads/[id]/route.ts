@@ -68,7 +68,7 @@ export async function PATCH(
   const adminCaller = isAdmin(session);
   const allowedFields = [
     'companyName', 'contactName', 'email', 'phone', 'source', 'stage',
-    'meetingOutcome', 'notes', 'contactId', 'accountId', 'cadenceStatus',
+    'meetingOutcome', 'notes', 'contactId', 'accountId', 'cadenceStatus', 'sector',
     ...(adminCaller ? ['ownerId'] : []),
   ];
   const updateData: Record<string, unknown> = {};

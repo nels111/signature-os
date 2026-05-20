@@ -25,6 +25,10 @@ export interface SendEmailOptions {
   inReplyTo?: string;
   references?: string;
   attachments?: EmailAttachmentInput[];
+  /** Raw iCalendar content (text/calendar; method=REQUEST). Triggers native invite card in Gmail/Outlook. */
+  icalContent?: string;
+  /** iCal method (REQUEST, CANCEL, REPLY). Defaults to REQUEST. */
+  icalMethod?: string;
 }
 
 const IONOS_SMTP = {
@@ -57,6 +61,19 @@ export async function sendEmail(
     socketTimeout: 30000,
   });
 
+  const icalMethod = options.icalMethod ?? 'REQUEST';
+  const icalAlternative = options.icalContent
+    ? [{ content: options.icalContent, contentType: `text/calendar; method=${icalMethod}; charset=UTF-8` }]
+    : undefined;
+
+  const icalAttachment = options.icalContent
+    ? [{
+        filename: 'invite.ics',
+        content: Buffer.from(options.icalContent, 'utf-8'),
+        contentType: `text/calendar; method=${icalMethod}; charset=UTF-8`,
+      }]
+    : [];
+
   const result = await transporter.sendMail({
     from: options.from,
     to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
@@ -72,11 +89,15 @@ export async function sendEmail(
     replyTo: options.replyTo,
     inReplyTo: options.inReplyTo,
     references: options.references,
-    attachments: options.attachments?.map(a => ({
-      filename: a.filename,
-      content: Buffer.from(a.content, 'base64'),
-      contentType: a.contentType,
-    })),
+    alternatives: icalAlternative,
+    attachments: [
+      ...(options.attachments?.map(a => ({
+        filename: a.filename,
+        content: Buffer.from(a.content, 'base64'),
+        contentType: a.contentType,
+      })) ?? []),
+      ...icalAttachment,
+    ],
   });
 
   return { messageId: result.messageId };

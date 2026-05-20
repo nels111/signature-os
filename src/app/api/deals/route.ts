@@ -80,6 +80,9 @@ export async function POST(request: Request) {
       accountId: (body.accountId as string) || null,
       convertedFromId: (body.convertedFromId as string) || null,
       notes: (body.notes as string) || null,
+      sector: (body.sector as string) || null,
+      closingDate: body.closingDate ? new Date(body.closingDate as string) : null,
+      probability: body.probability ? parseInt(body.probability as string) : null,
     },
     include: { owner: true, contact: true, account: true },
   });

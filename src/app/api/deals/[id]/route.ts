@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { isAdmin } from '@/lib/authz';
 import { notifyDealStageChanged } from '@/lib/notifications';
 import { logDealStageChange } from '@/lib/activities';
+import { sendPushToAdminAndSales } from '@/lib/push';
 
 export async function GET(
   _request: Request,
@@ -71,7 +72,7 @@ export async function PATCH(
   const adminCaller = isAdmin(session);
   const allowedFields = [
     'name', 'stage', 'value', 'contactId', 'accountId',
-    'quoteId', 'notes', 'lossReason',
+    'quoteId', 'notes', 'lossReason', 'sector', 'closingDate', 'probability',
     ...(adminCaller ? ['ownerId'] : []),
   ];
   const updateData: Record<string, unknown> = {};
@@ -80,6 +81,10 @@ export async function PATCH(
     if (body[field] !== undefined) {
       if (field === 'value') {
         updateData[field] = body[field] ? parseFloat(body[field] as string) : null;
+      } else if (field === 'probability') {
+        updateData[field] = body[field] ? parseInt(body[field] as string) : null;
+      } else if (field === 'closingDate') {
+        updateData[field] = body[field] ? new Date(body[field] as string) : null;
       } else {
         updateData[field] = body[field] || null;
       }
@@ -135,6 +140,13 @@ export async function PATCH(
       fromStage: existing.stage,
       toStage: deal.stage,
     });
+
+    // Deal won: create ops handover task for Nelson + push everyone
+    if (deal.stage === 'closed_won') {
+      createDealWonHandover(deal.id, deal.name, deal.value, session.user.id).catch(err =>
+        console.error('[deals] handover task creation failed:', err),
+      );
+    }
   }
 
   return Response.json(deal);
@@ -165,4 +177,51 @@ export async function DELETE(
   });
 
   return Response.json({ success: true });
+}
+
+/**
+ * When a deal is marked closed_won, create an ops handover task for Nelson
+ * and push everyone (admin + sales) so the win is visible immediately.
+ */
+async function createDealWonHandover(
+  dealId: string,
+  dealName: string,
+  dealValue: unknown,
+  actorUserId: string,
+): Promise<void> {
+  // Nelson is admin — find the first admin user to assign handover to
+  const nelson = await prisma.user.findFirst({
+    where: { role: 'admin' },
+    select: { id: true, name: true },
+  });
+  if (!nelson) return;
+
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://os.signature-cleans.co.uk';
+  const valueStr = dealValue ? ` (£${parseFloat(String(dealValue)).toLocaleString('en-GB')}/mo)` : '';
+
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 2);
+  dueDate.setHours(9, 0, 0, 0);
+
+  await prisma.task.create({
+    data: {
+      subject: `Ops handover: ${dealName}`,
+      description: `Deal marked won${valueStr}. Action points:\n\n- Confirm start date and site details with Nick\n- Create site pack\n- Set up Connecteam shifts\n- Brief operative(s)\n- Schedule first audit\n\nDeal: ${baseUrl}/dashboard/deals/${dealId}`,
+      status: 'not_started',
+      priority: 'high',
+      dueDate,
+      ownerId: nelson.id,
+      linkedDealId: dealId,
+    },
+  });
+
+  console.log(`[deals] ops handover task created for ${dealName} — assigned to ${nelson.name}`);
+
+  await sendPushToAdminAndSales({
+    title: 'Deal Won',
+    body: `${dealName}${valueStr} — ops handover task created`,
+    icon: '/icon-192.png',
+    url: `/dashboard/deals/${dealId}`,
+    tag: `deal-won-${dealId}`,
+  });
 }

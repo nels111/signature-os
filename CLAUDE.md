@@ -1,5 +1,16 @@
 # Signature Cleans OS
 
+## MANDATORY: BEFORE ANY UI/FRONTEND WORK
+
+HARD GATE. Before writing a single component, page, or style change:
+
+1. Read `/home/dorabot/.claude/skills/impeccable/skill/SKILL.md` — anti-slop rules, 23 commands
+2. Read `/home/dorabot/.claude/skills/ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max/SKILL.md` — design intelligence
+3. Read `/home/dorabot/.claude/skills/taste-skill/skills/` — aesthetic judgment
+4. Check `/home/dorabot/.claude/skills/awesome-design-md/design-md/` for reference design specs
+
+If you skip this, you are violating build protocol. No exceptions.
+
 ## SPEC
 All build instructions are in SPEC.md — ALWAYS re-read relevant sections before building any module.
 

@@ -199,3 +199,56 @@ export async function notifyShiftAlert(params: {
     dedupWindowHours: 12,
   });
 }
+
+export async function notifyQuoteViewed(params: {
+  creatorUserId: string;
+  quoteId: string;
+  companyName: string;
+}) {
+  return notify({
+    userId: params.creatorUserId,
+    type: 'quote_viewed',
+    title: 'Quote opened',
+    message: `${params.companyName} has viewed your quote`,
+    entityType: 'quote',
+    entityId: params.quoteId,
+    // Fire once per quote view event — suppress repeats within 1h so multiple
+    // rapid pixel loads (image pre-fetch, re-open) don't spam the bell.
+    dedupWindowHours: 1,
+  });
+}
+
+export async function notifyTaskAssigned(params: {
+  assigneeUserId: string;
+  actorUserId?: string | null;
+  taskId: string;
+  taskTitle: string;
+}) {
+  return notify({
+    userId: params.assigneeUserId,
+    actorUserId: params.actorUserId ?? null,
+    type: 'task_assigned',
+    title: 'Task assigned to you',
+    message: params.taskTitle,
+    entityType: 'task',
+    entityId: params.taskId,
+  });
+}
+
+export async function notifyLeadCold(params: {
+  userId: string;
+  leadId: string;
+  leadLabel: string;
+  daysSince: number;
+}) {
+  return notify({
+    userId: params.userId,
+    type: 'lead_cold_alert',
+    title: `Lead gone cold (${params.daysSince}d)`,
+    message: params.leadLabel,
+    entityType: 'lead',
+    entityId: params.leadId,
+    // Alert once every 48h per lead so it resurfaces without spamming
+    dedupWindowHours: 48,
+  });
+}

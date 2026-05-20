@@ -110,21 +110,33 @@ function getFileIcon(contentType: string): string {
   return "📎";
 }
 
-function openAttachment(id: string, contentType: string) {
-  const isOffice =
-    contentType.includes("word") || contentType.includes("document") ||
-    contentType.includes("sheet") || contentType.includes("excel") ||
-    contentType.includes("presentation") || contentType.includes("powerpoint") ||
-    contentType.includes("spreadsheet");
+function isOfficeDoc(contentType: string): boolean {
+  return (
+    contentType.includes('word') ||
+    contentType.includes('spreadsheet') ||
+    contentType.includes('excel') ||
+    contentType.includes('powerpoint') ||
+    contentType.includes('presentation') ||
+    contentType.includes('officedocument')
+  );
+}
 
-  // Office docs: convert to PDF server-side so iOS Quick Look renders natively
-  // without routing to Zoho or another external app.
-  // PDFs and images: serve inline directly.
-  const url = isOffice
-    ? `/api/emails/attachments/${id}/pdf`
-    : `/api/emails/attachments/${id}?inline=1`;
+function isDownloadType(contentType: string): boolean {
+  // Non-previewable binary types: force download.
+  return (
+    contentType.includes('zip') ||
+    contentType.includes('compressed') ||
+    contentType.includes('octet-stream')
+  );
+}
 
-  window.location.href = url;
+function attachmentUrl(id: string, contentType: string): string {
+  // Office docs: route through LibreOffice PDF converter so Safari opens them
+  // inline (as PDF) rather than showing the "Open In" app picker.
+  if (isOfficeDoc(contentType)) {
+    return `/api/emails/attachments/${id}/pdf`;
+  }
+  return `/api/emails/attachments/${id}?inline=1`;
 }
 
 function formatRecipients(addresses: string[]): string {
@@ -407,15 +419,19 @@ function MessageItem({
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {email.attachments.map((att) => (
-                  <button
+                  <a
                     key={att.id}
-                    onClick={() => openAttachment(att.id, att.contentType)}
+                    href={attachmentUrl(att.id, att.contentType)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download={isDownloadType(att.contentType) ? att.filename : undefined}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 8,
                       padding: "8px 12px", borderRadius: 10,
                       border: "1px solid var(--border)",
-                      backgroundColor: "var(--surface-accent, #EEF4FC)",
-                      cursor: "pointer", background: "var(--surface-accent, #EEF4FC)",
+                      background: "var(--surface-accent, #EEF4FC)",
+                      cursor: "pointer",
+                      textDecoration: "none",
                     }}
                   >
                     <span style={{ fontSize: 18, lineHeight: 1 }}>{getFileIcon(att.contentType)}</span>
@@ -427,7 +443,7 @@ function MessageItem({
                         {formatFileSize(att.size)}
                       </div>
                     </div>
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>

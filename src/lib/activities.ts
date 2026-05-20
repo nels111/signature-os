@@ -68,13 +68,14 @@ export async function logLeadCreated(params: {
   userId: string;
   leadId: string;
   companyName: string;
-  contactName: string;
+  contactName: string | null | undefined;
   source: string;
 }) {
+  const nameLabel = params.contactName || 'unknown contact';
   return logActivity({
     userId: params.userId,
     activityType: 'lead_created',
-    description: `Lead created: ${params.companyName} (${params.contactName}) from ${params.source.replace(/_/g, ' ')}`,
+    description: `Lead created: ${params.companyName} (${nameLabel}) from ${params.source.replace(/_/g, ' ')}`,
     entityType: 'lead',
     entityId: params.leadId,
     metadata: { source: params.source },

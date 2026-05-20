@@ -59,18 +59,27 @@ export default function EmailsPage() {
   const silentRefreshRef = useRef(false); // true = background sync, skip loading spinner
 
 
-  // Fetch mailboxes
+  // Fetch mailboxes — clear loading spinner regardless of outcome so we never
+  // get stuck on "Loading emails..." if the mailboxes API is slow or returns empty.
   useEffect(() => {
     let cancelled = false;
     fetch("/api/emails/mailboxes")
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled) {
-          setMailboxes(data.mailboxes || []);
-          if (data.mailboxes?.length > 0) setActiveMailbox(data.mailboxes[0].email);
+          const boxes = data.mailboxes || [];
+          setMailboxes(boxes);
+          if (boxes.length > 0) {
+            setActiveMailbox(boxes[0].email);
+          } else {
+            setLoading(false); // no mailboxes — nothing to load
+          }
         }
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setLoading(false); // fetch failed — don't hang forever
+      });
     return () => { cancelled = true; };
   }, []);
 

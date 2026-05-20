@@ -28,6 +28,7 @@ interface DealItem {
   value: string | number | null;
   owner: { id: string; name: string | null } | null;
   contact: { id: string; firstName: string; lastName: string } | null;
+  stageChangedAt: string | null;
 }
 
 function formatCurrency(val: string | number | null | undefined): string {
@@ -40,6 +41,12 @@ function formatCurrency(val: string | number | null | undefined): string {
 function getInitial(name: string | null | undefined): string {
   if (!name) return '?';
   return name.charAt(0).toUpperCase();
+}
+
+function staleDays(isoDate: string | null | undefined): number {
+  if (!isoDate) return 0;
+  const then = new Date(isoDate).getTime();
+  return Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
 }
 
 export function LeadKanbanCard({ item }: { item: LeadItem }) {
@@ -82,18 +89,42 @@ export function LeadKanbanCard({ item }: { item: LeadItem }) {
 
 export function DealKanbanCard({ item }: { item: DealItem }) {
   const router = useRouter();
+  const days = staleDays(item.stageChangedAt);
+
+  // Only flag stale for active (not closed) stages
+  const isClosed = item.stage === 'closed_won' || item.stage === 'closed_lost';
+  const isStaleAmber = !isClosed && days >= 7 && days < 14;
+  const isStaleRed = !isClosed && days >= 14;
+
+  const staleBorderColor = isStaleRed ? '#dc2626' : isStaleAmber ? '#f59e0b' : 'var(--border)';
 
   return (
     <div
       onClick={() => router.push(`/dashboard/deals/${item.id}`)}
       className="rounded-xl border p-3 shadow-sm hover:shadow-md transition-all cursor-pointer"
-      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
+      style={{ borderColor: staleBorderColor, backgroundColor: 'var(--surface)' }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-            {item.name}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+              {item.name}
+            </p>
+            {isStaleRed && (
+              <span
+                className="flex-shrink-0 w-2 h-2 rounded-full"
+                style={{ backgroundColor: '#dc2626' }}
+                title={`Stale: ${days} days in this stage`}
+              />
+            )}
+            {isStaleAmber && (
+              <span
+                className="flex-shrink-0 w-2 h-2 rounded-full"
+                style={{ backgroundColor: '#f59e0b' }}
+                title={`${days} days in this stage`}
+              />
+            )}
+          </div>
           {item.contact && (
             <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>
               {item.contact.firstName} {item.contact.lastName}
@@ -108,13 +139,21 @@ export function DealKanbanCard({ item }: { item: DealItem }) {
           {getInitial(item.owner?.name)}
         </div>
       </div>
-      {item.value && (
-        <div className="mt-2">
+      <div className="mt-2 flex items-center justify-between gap-2">
+        {item.value && (
           <span className="text-sm font-semibold" style={{ color: 'var(--brand-blue)' }}>
             {formatCurrency(item.value)}
           </span>
-        </div>
-      )}
+        )}
+        {(isStaleAmber || isStaleRed) && (
+          <span
+            className="text-[10px] font-semibold ml-auto"
+            style={{ color: isStaleRed ? '#dc2626' : '#f59e0b' }}
+          >
+            {days}d stale
+          </span>
+        )}
+      </div>
     </div>
   );
 }
