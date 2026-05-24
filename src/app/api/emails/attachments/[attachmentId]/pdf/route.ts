@@ -108,7 +108,7 @@ export async function GET(
     try { mkdirSync(tmpDir, { recursive: true }); } catch {}
 
     // Per-conversion HOME so LibreOffice doesn't fight other users for
-    // /tmp/.cache/dconf (running as the hermes PM2 user, /tmp/.cache may
+    // /tmp/.cache/dconf (running as the dorabot PM2 user, /tmp/.cache may
     // already exist owned by someone else and fail with EACCES).
     const loHome = join(tmpDir, 'home_' + att.id);
     try { mkdirSync(loHome, { recursive: true }); } catch {}

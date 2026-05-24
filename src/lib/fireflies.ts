@@ -41,11 +41,12 @@ async function firefliesRequest<T>(query: string, variables?: Record<string, unk
 
 /**
  * Fetch recent transcripts from Fireflies API.
+ * `mine` and `date` are deprecated; use `fromDate` (ISO 8601) instead.
  */
 export async function fetchRecentTranscripts(since?: Date): Promise<FirefliesTranscriptRaw[]> {
   const query = `
-    query RecentTranscripts($limit: Int) {
-      transcripts(limit: $limit, mine: true) {
+    query RecentTranscripts($limit: Int, $fromDate: DateTime) {
+      transcripts(limit: $limit, fromDate: $fromDate) {
         id
         title
         date
@@ -57,18 +58,15 @@ export async function fetchRecentTranscripts(since?: Date): Promise<FirefliesTra
     }
   `;
 
+  // If no `since` given, default to last 30 days so we don't pull the entire archive.
+  const fromDate = (since ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).toISOString();
+
   const data = await firefliesRequest<{ transcripts: FirefliesTranscriptRaw[] }>(query, {
     limit: 50,
+    fromDate,
   });
 
-  const transcripts = data.transcripts || [];
-
-  if (since) {
-    const sinceMs = since.getTime();
-    return transcripts.filter((t) => t.date >= sinceMs);
-  }
-
-  return transcripts;
+  return data.transcripts || [];
 }
 
 /**

@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasRole } from '@/lib/authz';
 
 export async function GET(
   _request: Request,
@@ -53,6 +54,11 @@ export async function PATCH(
   if (!session?.user?.id) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  // Editing CRM master data is a sales/admin function. Operatives and VAs
+  // should not be reshaping account records.
+  if (!hasRole(session, 'admin', 'sales', 'operations')) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const { id } = await params;
   let body: Record<string, unknown>;
@@ -97,6 +103,10 @@ export async function DELETE(
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // Destructive: soft-delete still hides the account from everyone. Admin only.
+  if (!hasRole(session, 'admin')) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const { id } = await params;

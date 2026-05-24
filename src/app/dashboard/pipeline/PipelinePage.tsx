@@ -58,6 +58,14 @@ export function PipelinePage() {
   const [activeTab, setActiveTab] = useState<'leads' | 'deals'>('leads');
   const [leads, setLeads] = useState<LeadItem[]>([]);
   const [deals, setDeals] = useState<DealItem[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -73,12 +81,14 @@ export function PipelinePage() {
 
   const fetchLeads = useCallback(async () => {
     const res = await fetch('/api/leads?limit=100&sortBy=createdAt&sortDir=desc');
+    if (!res.ok) throw new Error(`Leads API ${res.status}`);
     const json = await res.json();
     return json.data || [];
   }, []);
 
   const fetchDeals = useCallback(async () => {
     const res = await fetch('/api/deals?limit=100&sortBy=createdAt&sortDir=desc');
+    if (!res.ok) throw new Error(`Deals API ${res.status}`);
     const json = await res.json();
     return json.data || [];
   }, []);
@@ -215,7 +225,7 @@ export function PipelinePage() {
     );
 
     try {
-      await fetch(`/api/deals/${pendingLossDealId}`, {
+      const res = await fetch(`/api/deals/${pendingLossDealId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -223,7 +233,7 @@ export function PipelinePage() {
           ...(lossReason ? { lossReason } : {}),
         }),
       });
-      reloadDeals();
+      if (!res.ok) reloadDeals(); else reloadDeals();
     } catch {
       reloadDeals();
     }
@@ -252,9 +262,9 @@ export function PipelinePage() {
           meetingOutcome,
         }),
       });
-      fetchLeads();
+      reloadLeads();
     } catch {
-      fetchLeads();
+      reloadLeads();
     }
 
     setPendingOutcomeLeadId(null);
@@ -332,27 +342,35 @@ export function PipelinePage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+      <div style={{ marginBottom: isMobile ? 14 : 20 }}>
+        <h1 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 700, color: 'var(--text-primary)' }}>
           Pipeline
         </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Drag cards between columns to update stages
-        </p>
+        {!isMobile && (
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            Drag cards between columns to update stages
+          </p>
+        )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b mb-6" style={{ borderColor: 'var(--border)' }}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: isMobile ? 14 : 20 }}>
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors"
-            style={
-              activeTab === tab.key
-                ? { borderColor: 'var(--brand-green-accent)', color: 'var(--brand-green)' }
-                : { borderColor: 'transparent', color: 'var(--text-secondary)' }
-            }
+            style={{
+              padding: isMobile ? '7px 14px' : '8px 16px',
+              fontSize: isMobile ? 13 : 14,
+              fontWeight: 500,
+              border: 'none',
+              borderBottom: `2px solid ${activeTab === tab.key ? 'var(--brand-green-accent)' : 'transparent'}`,
+              marginBottom: -1,
+              background: 'transparent',
+              cursor: 'pointer',
+              color: activeTab === tab.key ? 'var(--brand-green)' : 'var(--text-secondary)',
+              transition: 'color 0.15s, border-color 0.15s',
+            }}
           >
             {tab.label}
           </button>
@@ -380,46 +398,52 @@ export function PipelinePage() {
           />
 
           {/* Summary cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div
-              className="rounded-xl border p-4"
-              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
-            >
-              <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
+            gap: isMobile ? 10 : 16,
+            marginTop: 20,
+          }}>
+            <div style={{
+              borderRadius: 12, border: '1px solid var(--border)',
+              backgroundColor: 'var(--surface)', padding: isMobile ? '12px' : '16px',
+              gridColumn: isMobile ? 'span 2' : 'span 1',
+            }}>
+              <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0 }}>
                 Total Pipeline Value
               </p>
-              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
+              <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0 0' }}>
                 {formatCurrency(pipelineValue)}
               </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0' }}>
                 {pipelineDeals.length} active deal{pipelineDeals.length !== 1 ? 's' : ''}
               </p>
             </div>
-            <div
-              className="rounded-xl border p-4"
-              style={{ borderColor: 'var(--status-success)', backgroundColor: 'var(--status-success-bg)' }}
-            >
-              <p className="text-xs font-medium" style={{ color: 'var(--status-success)' }}>
+            <div style={{
+              borderRadius: 12, border: '1px solid var(--status-success)',
+              backgroundColor: 'var(--status-success-bg)', padding: isMobile ? '12px' : '16px',
+            }}>
+              <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--status-success)', margin: 0 }}>
                 Won
               </p>
-              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--status-success)' }}>
+              <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: 'var(--status-success)', margin: '4px 0 0' }}>
                 {formatCurrency(wonValue)}
               </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0' }}>
                 {wonDeals.length} deal{wonDeals.length !== 1 ? 's' : ''} won
               </p>
             </div>
-            <div
-              className="rounded-xl border p-4"
-              style={{ borderColor: 'var(--status-danger)', backgroundColor: 'var(--status-danger-bg)' }}
-            >
-              <p className="text-xs font-medium" style={{ color: 'var(--status-danger)' }}>
+            <div style={{
+              borderRadius: 12, border: '1px solid var(--status-danger)',
+              backgroundColor: 'var(--status-danger-bg)', padding: isMobile ? '12px' : '16px',
+            }}>
+              <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--status-danger)', margin: 0 }}>
                 Lost
               </p>
-              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--status-danger)' }}>
+              <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: 'var(--status-danger)', margin: '4px 0 0' }}>
                 {lostCount}
               </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0' }}>
                 deal{lostCount !== 1 ? 's' : ''} lost
               </p>
             </div>

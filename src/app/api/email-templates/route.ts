@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { hasRole } from '@/lib/authz';
 import { prisma } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -57,6 +58,10 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // Templates are org-wide and used by cadences. Sales/admin only.
+    if (!hasRole(session, 'admin', 'sales')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     let body;

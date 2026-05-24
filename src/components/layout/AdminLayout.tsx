@@ -18,7 +18,7 @@ function MobileOverlay() {
 }
 
 // Routes that need full-bleed layout (no padding, overflow hidden, fills height)
-const FULL_BLEED_PATHS = ['/dashboard/emails'];
+const FULL_BLEED_PATHS = ['/dashboard/emails', '/dashboard/hub'];
 
 function LayoutInner({ children, currentPath }: { children: React.ReactNode; currentPath?: string }) {
   const isFullBleed = FULL_BLEED_PATHS.some((p) => currentPath?.startsWith(p));

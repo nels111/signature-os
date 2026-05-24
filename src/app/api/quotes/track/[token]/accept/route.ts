@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { prisma } from '@/lib/db';
 import { logQuoteAccepted } from '@/lib/activities';
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit';
 
 const HTML_HEADERS = {
   'Content-Type': 'text/html; charset=utf-8',
@@ -64,13 +65,33 @@ function shell(title: string, heading: string, body: string, status: 'ok' | 'inf
  *  - DB error -> render generic error page (no internal details)
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params;
     if (!token) {
       return new Response(shell('Not found', 'Quote not found', '<p>This link is invalid or expired.</p>', 'error'), { status: 404, headers: HTML_HEADERS });
+    }
+
+    // Per-IP rate limit. Public, unauthenticated endpoint that flips a quote
+    // to 'accepted' (irreversible business state) — keep tight to defeat
+    // brute-force token guessing or accidental double-clicks at scale.
+    const ip = getClientIp(req.headers);
+    const rl = checkRateLimit(`quote-accept:${ip}`, RATE_LIMITS.publicQuoteAccept);
+    if (rl.limited) {
+      return new Response(
+        shell('Too many requests', 'Please slow down',
+          '<p>Too many acceptance attempts from your network. Try again in a little while, or reply to the original quote email.</p>',
+          'error'),
+        {
+          status: 429,
+          headers: {
+            ...HTML_HEADERS,
+            'Retry-After': String(Math.ceil((rl.retryAfterMs ?? 60_000) / 1000)),
+          },
+        },
+      );
     }
 
     // Look up by trackingId (public, random UUID) NOT by id (sequential cuid).

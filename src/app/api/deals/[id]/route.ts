@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { isAdmin } from '@/lib/authz';
+import { isAdmin, hasRole } from '@/lib/authz';
 import { notifyDealStageChanged } from '@/lib/notifications';
 import { logDealStageChange } from '@/lib/activities';
 import { sendPushToAdminAndSales } from '@/lib/push';
@@ -159,6 +159,10 @@ export async function DELETE(
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // Deals carry £values; only admins delete them.
+  if (!hasRole(session, 'admin')) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const { id } = await params;

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getDefaultLabourRate } from '@/lib/org-settings';
 
 // Pricing guardrails
 const BILLING_RATE_TARGET = 27;
 const BILLING_RATE_FLOOR = 25;
-const LABOUR_RATE = 17;
+// LABOUR_RATE now comes from OrgSettings (editable). Default fallback = 17.
 const WEEKS_PER_MONTH = 4.33;
 const PILOT_DISCOUNT = 25; // percent
 const MIN_MARGIN = 25; // percent
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     const numSellRate = parseFloat(String(sellRate));
     const numWeeklyHours = parseFloat(String(weeklyHours));
-    const labourRate = LABOUR_RATE;
+    const labourRate = await getDefaultLabourRate();
     const pilotDiscount = isPilot ? PILOT_DISCOUNT : 0;
 
     // HARD BLOCK: sell rate below floor

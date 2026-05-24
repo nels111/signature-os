@@ -13,10 +13,25 @@
 
 import type { Session } from 'next-auth';
 
-export type Role = 'admin' | 'sales' | 'operations' | 'viewer' | 'va';
+export type Role = 'admin' | 'sales' | 'operations' | 'viewer' | 'va' | 'operative';
 
 export function isAdmin(session: Session | null | undefined): boolean {
   return session?.user?.role === 'admin';
+}
+
+/**
+ * Returns true if the session's role matches any of the given roles.
+ * Used for coarse-grained role gates on routes that should not be open
+ * to every authenticated user (e.g. operatives shouldn't see CRM
+ * financials or delete contacts).
+ */
+export function hasRole(
+  session: Session | null | undefined,
+  ...roles: Role[]
+): boolean {
+  const role = session?.user?.role as Role | undefined;
+  if (!role) return false;
+  return roles.includes(role);
 }
 
 /**

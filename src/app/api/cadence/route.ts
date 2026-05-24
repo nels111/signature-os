@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { hasRole } from '@/lib/authz';
 import { prisma } from '@/lib/db';
 import { getCadenceOverview } from '@/lib/cadence';
 
@@ -11,6 +12,9 @@ export async function GET(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!hasRole(session, 'admin', 'sales', 'va')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

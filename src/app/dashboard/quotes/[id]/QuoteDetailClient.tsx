@@ -483,11 +483,11 @@ export function QuoteDetailClient({ id }: { id: string }) {
               <div className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Public accept link</div>
               <div className="flex items-center gap-2 flex-wrap">
                 <code className="text-xs px-2 py-1 rounded font-mono" style={{ background: 'var(--surface-accent)', color: 'var(--text-primary)' }}>
-                  /api/quotes/track/{quote.id}/accept
+                  /api/quotes/track/{quote.trackingId}/accept
                 </code>
                 <button
                   onClick={() => {
-                    const url = `${window.location.origin}/api/quotes/track/${quote.id}/accept`;
+                    const url = `${window.location.origin}/api/quotes/track/${quote.trackingId}/accept`;
                     navigator.clipboard.writeText(url);
                   }}
                   className="text-xs px-2 py-1 border rounded hover:bg-gray-50"

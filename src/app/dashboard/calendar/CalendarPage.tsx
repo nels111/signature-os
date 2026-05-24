@@ -206,6 +206,8 @@ function WeekView({
 
   return (
     <div className="border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+      <div className="overflow-x-auto">
+      <div style={{ minWidth: 560 }}>
       {/* Day headers */}
       <div className="grid border-b" style={{
         gridTemplateColumns: '56px repeat(7, 1fr)',
@@ -263,7 +265,7 @@ function WeekView({
       )}
 
       {/* Time grid */}
-      <div className="overflow-y-auto" style={{ maxHeight: '60vh' }}>
+      <div className="overflow-y-auto" style={{ maxHeight: '60vh', minWidth: 560 }}>
         {HOURS.map((hour) => (
           <div
             key={hour}
@@ -315,6 +317,8 @@ function WeekView({
             })}
           </div>
         ))}
+      </div>
+      </div>
       </div>
     </div>
   );

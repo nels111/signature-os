@@ -1,12 +1,9 @@
 /**
  * Connecteam time-clock reader for Signature Cleans OS.
- * 
+ *
  * Pulls actual clocked hours from Connecteam Time Activities API.
- * Creds from ~/.hermes/dorabot-api-keys.env
+ * Creds from process.env (loaded by Next.js from /var/www/signature-cleans-os/.env).
  */
-
-import * as fs from 'fs';
-import * as path from 'path';
 
 interface ClockEntry {
   userId: number;
@@ -27,23 +24,9 @@ export interface ActualHoursData {
 }
 
 function loadConnecteamKey(): string {
-  const envPaths = [
-    path.join(process.env.HOME || '/home/hermes', '.hermes/dorabot-api-keys.env'),
-    path.join(process.env.HOME || '/home/hermes', '.hermes/.env'),
-  ];
-
-  for (const envPath of envPaths) {
-    if (!fs.existsSync(envPath)) continue;
-    const content = fs.readFileSync(envPath, 'utf-8');
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('CONNECTEAM_API_KEY=')) {
-        return trimmed.split('=')[1].replace(/^["']|["']$/g, '');
-      }
-    }
-  }
-
-  throw new Error('CONNECTEAM_API_KEY not found');
+  const key = process.env.CONNECTEAM_API_KEY;
+  if (!key) throw new Error('CONNECTEAM_API_KEY not set in environment');
+  return key;
 }
 
 export async function fetchActualHours(): Promise<ActualHoursData> {
@@ -64,7 +47,7 @@ export async function fetchActualHours(): Promise<ActualHoursData> {
   const startStr = weekStart.toISOString().split('T')[0];
   const endStr = weekEnd.toISOString().split('T')[0];
 
-  const url = `https://api.connecteam.com/time-clock/v1/time-clocks/${timeClockId}/time-activities?startDate=${startStr}&endDate=${endStr}&limit=200`;
+  const url = `https://api.connecteam.com/time-clock/v1/time-clocks/${timeClockId}/time-activities?startDate=${startStr}&endDate=${endStr}&limit=500`;
 
   const res = await fetch(url, {
     headers: {

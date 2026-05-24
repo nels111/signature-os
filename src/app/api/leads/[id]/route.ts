@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { isAdmin } from '@/lib/authz';
+import { isAdmin, hasRole } from '@/lib/authz';
 import { notifyLeadAssigned } from '@/lib/notifications';
 import { logLeadStageChange, logDealCreated } from '@/lib/activities';
 
@@ -158,6 +158,10 @@ export async function DELETE(
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // Consistent with /api/leads/bulk DELETE which is admin-only.
+  if (!hasRole(session, 'admin')) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const { id } = await params;

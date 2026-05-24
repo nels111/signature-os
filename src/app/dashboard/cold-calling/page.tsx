@@ -120,26 +120,29 @@ function StatCard({
 }) {
   return (
     <div
-      className="flex flex-col gap-1 p-4 rounded-xl"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      className="sig-stat flex flex-col gap-1 p-5 rounded-2xl"
+      style={{
+        background: `radial-gradient(ellipse at 15% 0%, ${color}18 0%, #ffffff 60%)`,
+        boxShadow: `0 1px 0 rgba(255,255,255,0.9) inset, 0 0 0 1px ${color}22, 0 2px 8px ${color}12, 0 14px 36px ${color}08`,
+      }}
     >
       <div className="flex items-center gap-2">
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: `${color}18` }}
+          style={{ background: `${color}20` }}
         >
           <Icon size={14} style={{ color }} />
         </div>
         <span
-          className="text-xs font-medium"
-          style={{ color: 'var(--text-secondary)' }}
+          className="text-[10px] font-bold uppercase tracking-widest"
+          style={{ color }}
         >
           {label}
         </span>
       </div>
       <p
         className={`font-bold ${small ? 'text-2xl' : 'text-3xl'} mt-1`}
-        style={{ color: 'var(--text-primary)' }}
+        style={{ color: 'var(--text-primary)', letterSpacing: '-0.03em' }}
       >
         {value}
       </p>
@@ -443,7 +446,7 @@ export default function ColdCallingPage() {
               label="Calls Today"
               value={statsLoading ? '—' : stats?.callsToday ?? 0}
               icon={Phone}
-              color="var(--brand-blue)"
+              color="#2056A4"
             />
             <StatCard
               label="Calls This Week"
@@ -479,8 +482,11 @@ export default function ColdCallingPage() {
 
         {/* Outcome breakdown */}
         <section
-          className="rounded-xl p-4"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          className="rounded-2xl p-5"
+          style={{
+            background: 'radial-gradient(ellipse at 100% 0%, rgba(32,86,164,0.07) 0%, #ffffff 55%)',
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 14px 36px rgba(0,0,0,0.04)',
+          }}
         >
           <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
             Call Outcomes — This Week
@@ -499,8 +505,11 @@ export default function ColdCallingPage() {
 
         {/* Activity feed */}
         <section
-          className="rounded-xl"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          className="rounded-2xl"
+          style={{
+            background: '#ffffff',
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 14px 36px rgba(0,0,0,0.04)',
+          }}
         >
           <div
             className="flex items-center justify-between px-4 py-3"

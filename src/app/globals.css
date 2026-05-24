@@ -90,6 +90,9 @@
   --event-calendly: #059669;
   --event-personal: #64748B;
 
+  /* Motion */
+  --ease-expo: cubic-bezier(0.23, 1, 0.32, 1);
+
   /* Sidebar — X/Twitter dark style (unchanged) */
   --sidebar-bg: #0f1419;
   --sidebar-hover: rgba(231, 233, 234, 0.08);
@@ -137,9 +140,9 @@ body {
 .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
 .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-/* Transitions */
+/* Transitions — Emil strong ease-out across all interactions */
 * {
-  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* Selection */
@@ -189,4 +192,46 @@ body {
     flex: 1;
     transform: none;
   }
+}
+
+/* ── SigOS 4D card system ───────────────────────────────────── */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+.sig-stat {
+  animation: cardIn 380ms cubic-bezier(0.23,1,0.32,1) both;
+  transition: transform 160ms cubic-bezier(0.23,1,0.32,1), box-shadow 160ms cubic-bezier(0.23,1,0.32,1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sig-stat-link:hover {
+    transform: translateY(-2px) !important;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.9) inset,
+      0 0 0 1px rgba(0,0,0,0.12),
+      0 4px 14px rgba(0,0,0,0.09),
+      0 16px 40px rgba(0,0,0,0.06) !important;
+  }
+  .sig-contract-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.8) inset,
+      0 0 0 1px rgba(0,0,0,0.12),
+      0 4px 14px rgba(0,0,0,0.09),
+      0 16px 40px rgba(0,0,0,0.05) !important;
+  }
+}
+
+.sig-stat-link:active,
+.sig-contract-card:active {
+  transform: scale(0.98) !important;
+  transition-duration: 80ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sig-stat { animation: none !important; }
+  .sig-stat-link,
+  .sig-contract-card { transition: none !important; }
 }

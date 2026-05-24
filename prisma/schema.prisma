@@ -116,6 +116,17 @@ enum CadenceStatus {
   long_term_nurture
 }
 
+enum CellTier {
+  A
+  B
+  C
+}
+
+enum BillingType {
+  hourly
+  monthly_fixed
+}
+
 enum NotificationType {
   task_due
   task_overdue
@@ -589,6 +600,84 @@ model Activity {
   @@index([entityType, entityId])
   @@index([userId, createdAt])
   @@map("activities")
+}
+
+model Site {
+  id                       String      @id @default(cuid())
+  name                     String      // Display name e.g. "Porsche Centre Exeter"
+  connecteamJobName        String?     // Exact title from Connecteam (for hours lookup)
+  cellTier                 CellTier    @default(A)
+  billingType              BillingType @default(hourly)
+  billingRatePerHour       Decimal?    // £/hr — used when billingType = hourly
+  monthlyBillingValue      Decimal?    // £/month — used when billingType = monthly_fixed
+  labourRatePerHour        Decimal     @default(17) // £/hr standard operative pay
+  // Subcontractor fixed-cost override (e.g. Cleanz4U/Lisa invoices flat per contract).
+  // When set, weekly cost = fixedMonthlyCost / 4.33 instead of hours × labourRatePerHour.
+  fixedMonthlyCost         Decimal?
+  rateConfirmed            Boolean     @default(false) // false = estimated, true = verified
+  active                   Boolean     @default(true)
+  notes                    String?
+  regularHoursSheetRowId   String?     // Optional FK to canonical sheet row
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+
+  // Relations
+  regularHoursSheetRow RegularHoursSheetRow? @relation(fields: [regularHoursSheetRowId], references: [id])
+
+  @@index([active])
+  @@index([regularHoursSheetRowId])
+  @@map("sites")
+}
+
+// ============ REGULAR HOURS SHEET ============
+// Canonical contracted-hours and revenue source.
+// Synced from Dropbox: "Regular Hours Sheet 2025.xlsx" (Financial Projections folder).
+// CT scheduler hours are PERMISSION WINDOWS, not work durations — these are the truth.
+// Margin = avgWeeklyEarnings (revenue) − avgWeeklyHours × labour rate (cost).
+
+enum HoursSheetRowStatus {
+  active   // weeklyHours > 0, contract live
+  pipeline // in sheet but no weekly hours yet (signed pending start)
+}
+
+model RegularHoursSheetRow {
+  id                  String              @id @default(cuid())
+  businessName        String              @unique // matches sheet "Business Name" column
+  cleanType           String?             // sheet "Type Of Clean"
+  hoursPerVisit       Decimal             @default(0)
+  frequencyPerWeek    Decimal             @default(0)
+  avgWeeklyHours      Decimal             @default(0) // truth for cost basis + delivery target
+  avgWeeklyEarnings   Decimal             @default(0) // truth for revenue
+  avgMonthlyEarnings  Decimal             @default(0)
+  signedTerms         Boolean             @default(false)
+  annualValue         Decimal             @default(0)
+  firstAuditDate      DateTime?
+  status              HoursSheetRowStatus @default(active)
+  syncedAt            DateTime            @default(now())
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relations
+  sites Site[]
+
+  @@index([status])
+  @@index([syncedAt])
+  @@map("regular_hours_sheet_rows")
+}
+
+// ============ ORG SETTINGS (singleton) ============
+// One row, id = "singleton". Holds editable org-wide defaults.
+// Currently: default labour rate used for new sites + quote builder.
+// Per-site labourRatePerHour overrides this when set.
+
+model OrgSettings {
+  id                       String   @id @default("singleton")
+  defaultLabourRatePerHour Decimal  @default(17)
+  updatedBy                String?
+  updatedAt                DateTime @updatedAt
+  createdAt                DateTime @default(now())
+
+  @@map("org_settings")
 }
 
 model Cadence {

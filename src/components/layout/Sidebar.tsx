@@ -15,37 +15,40 @@ import {
   CheckSquare,
   Calendar,
   Mail,
-  FileText,
-  Phone,
-  Clock,
+  LayoutGrid,
   ChevronLeft,
   ChevronRight,
   X,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { useLayout } from './LayoutContext';
 
 const ALL_NAV_ITEMS = [
+  // Overview
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview', roles: null },
-  { href: '/dashboard/pipeline', label: 'Pipeline', icon: TrendingUp, section: 'overview', roles: null },
-  { href: '/dashboard/deals', label: 'Deals', icon: Handshake, section: 'ops', roles: null },
-  { href: '/dashboard/accounts', label: 'Accounts', icon: Building2, section: 'ops', roles: null },
-  { href: '/dashboard/contacts', label: 'Contacts', icon: Users, section: 'ops', roles: null },
-  { href: '/dashboard/leads', label: 'Leads', icon: UserPlus, section: 'ops', roles: null },
-  { href: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, section: 'tools', roles: null },
-  { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar, section: 'tools', roles: ['admin', 'sales', 'operations', 'viewer'] },
-  { href: '/dashboard/emails', label: 'Email', icon: Mail, section: 'tools', roles: ['admin', 'sales', 'operations', 'viewer'] },
-  { href: '/dashboard/quotes/list', label: 'Quotes', icon: FileText, section: 'tools', roles: ['admin', 'sales', 'operations', 'viewer'] },
-  { href: '/dashboard/cold-calling', label: 'Cold Calling', icon: Phone, section: 'tools', roles: null },
-  { href: '/dashboard/va-hours', label: 'VA Hours', icon: Clock, section: 'tools', roles: ['admin'] },
+  { href: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, section: 'overview', roles: null },
+  { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar, section: 'overview', roles: ['admin', 'sales', 'operations', 'viewer'] },
+  { href: '/dashboard/emails', label: 'Email', icon: Mail, section: 'overview', roles: ['admin', 'sales', 'operations', 'viewer'] },
+  // CRM
+  { href: '/dashboard/pipeline', label: 'Pipeline', icon: TrendingUp, section: 'crm', roles: null },
+  { href: '/dashboard/deals', label: 'Deals', icon: Handshake, section: 'crm', roles: null },
+  { href: '/dashboard/accounts', label: 'Accounts', icon: Building2, section: 'crm', roles: null },
+  { href: '/dashboard/contacts', label: 'Contacts', icon: Users, section: 'crm', roles: null },
+  { href: '/dashboard/leads', label: 'Leads', icon: UserPlus, section: 'crm', roles: null },
+  // Business Hub
+  { href: '/dashboard/hub', label: 'Business Hub', icon: LayoutGrid, section: 'hub', roles: null },
+  // System
+  { href: '/dashboard/settings', label: 'Settings', icon: SettingsIcon, section: 'system', roles: ['admin'] },
 ];
 
-// VA role: dashboard + leads + tasks + cold-calling only
-const VA_ALLOWED = ['/dashboard', '/dashboard/leads', '/dashboard/tasks', '/dashboard/cold-calling'];
+// VA role: dashboard + leads + tasks + hub (cold calling accessible from hub)
+const VA_ALLOWED = ['/dashboard', '/dashboard/leads', '/dashboard/tasks', '/dashboard/hub'];
 
 const sections = [
   { key: 'overview', label: 'Overview' },
-  { key: 'ops', label: 'Operations' },
-  { key: 'tools', label: 'Tools' },
+  { key: 'crm', label: 'CRM' },
+  { key: 'hub', label: 'Business Hub' },
+  { key: 'system', label: null },
 ];
 
 interface SidebarProps {
@@ -70,6 +73,14 @@ export function Sidebar({ mobile }: SidebarProps) {
   const handleNavClick = () => {
     if (mobile) closeSidebar();
   };
+
+  // Hub page active: treat any /dashboard/hub/* as hub active
+  const isHubActive = (href: string) =>
+    href === '/dashboard/hub'
+      ? pathname === '/dashboard/hub' || pathname.startsWith('/dashboard/hub/')
+      : href === '/dashboard'
+        ? pathname === '/dashboard'
+        : pathname === href || pathname.startsWith(href + '/');
 
   return (
     <aside
@@ -117,38 +128,38 @@ export function Sidebar({ mobile }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 py-3 overflow-y-auto sidebar-scroll">
-        {sections.map((section) => (
-          <div key={section.key} className="mb-1">
-            {!isCollapsed && (
-              <div
-                className="px-5 pt-5 pb-1.5"
-                style={{
-                  color: 'var(--sidebar-text-muted)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {section.label}
-              </div>
-            )}
-            {isCollapsed && section.key !== 'overview' && (
-              <div
-                className="mx-4 my-2"
-                style={{
-                  height: '1px',
-                  background: 'var(--sidebar-border)',
-                }}
-              />
-            )}
-            {navItems
-              .filter((item) => item.section === section.key)
-              .map((item) => {
+        {sections.map((section) => {
+          const sectionItems = navItems.filter((item) => item.section === section.key);
+          if (sectionItems.length === 0) return null;
+
+          return (
+            <div key={section.key} className="mb-1">
+              {!isCollapsed && section.label && (
+                <div
+                  className="px-5 pt-5 pb-1.5"
+                  style={{
+                    color: 'var(--sidebar-text-muted)',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {section.label}
+                </div>
+              )}
+              {isCollapsed && section.key !== 'overview' && (
+                <div
+                  className="mx-4 my-2"
+                  style={{
+                    height: '1px',
+                    background: 'var(--sidebar-border)',
+                  }}
+                />
+              )}
+              {sectionItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = item.href === '/dashboard'
-                  ? pathname === '/dashboard'
-                  : pathname === item.href || pathname.startsWith(item.href + '/');
+                const isActive = isHubActive(item.href);
                 return (
                   <Link
                     key={item.href}
@@ -163,7 +174,7 @@ export function Sidebar({ mobile }: SidebarProps) {
                       fontWeight: isActive ? 600 : 400,
                       fontSize: '14px',
                       borderLeft: isActive && !isCollapsed ? '3px solid var(--brand-green-accent)' : '3px solid transparent',
-                      paddingLeft: isCollapsed ? undefined : isActive ? '10px' : '10px',
+                      paddingLeft: isCollapsed ? undefined : '10px',
                     }}
                     onMouseEnter={(e) => {
                       if (!isActive) {
@@ -178,13 +189,14 @@ export function Sidebar({ mobile }: SidebarProps) {
                       }
                     }}
                   >
-                    <Icon size={18} strokeWidth={isActive ? 2 : 1.5} style={isActive ? {color: 'var(--brand-green-accent)'} : undefined} />
+                    <Icon size={18} strokeWidth={isActive ? 2 : 1.5} style={isActive ? { color: 'var(--brand-green-accent)' } : undefined} />
                     {!isCollapsed && <span>{item.label}</span>}
                   </Link>
                 );
               })}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Collapse toggle - desktop only */}

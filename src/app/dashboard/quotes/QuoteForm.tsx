@@ -44,8 +44,8 @@ export function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
 
   // Load deals and accounts
   useEffect(() => {
-    fetch("/api/deals?limit=100").then(r => r.json()).then(d => setDeals(d.deals || [])).catch(() => {});
-    fetch("/api/accounts?limit=100").then(r => r.json()).then(d => setAccounts(d.accounts || [])).catch(() => {});
+    fetch("/api/deals?limit=100").then(r => r.json()).then(d => setDeals(d.data || [])).catch(() => {});
+    fetch("/api/accounts?limit=100").then(r => r.json()).then(d => setAccounts(d.data || [])).catch(() => {});
   }, []);
 
   // Live pricing preview
