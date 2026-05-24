@@ -114,9 +114,14 @@
    The app-shell uses position:fixed; inset:0 which anchors directly to the viewport,
    guaranteed to cover the full screen including the safe area bottom on iPhone.
    This is the only approach immune to iOS svh/dvh calculation bugs. */
+html, body {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 html {
-  background: var(--background); /* safety net: no white flash on overscroll */
-  overscroll-behavior: none;     /* prevent rubber-band exposing html background on iOS */
+  background: var(--background);
+  overscroll-behavior: none;
 }
 
 body {
