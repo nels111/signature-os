@@ -109,20 +109,16 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Mobile layout foundation — research-backed pattern:
-   - html uses 100svh (stable viewport height, doesn't shift as browser chrome appears/disappears)
-   - body: overflow:hidden on BODY (not html) is safe for position:fixed — overflow:hidden on
-     *html* is what breaks fixed elements in iOS Safari (known WebKit bug)
-   - No overflow-x:hidden here — that also breaks fixed positioning in some browsers.
-     Horizontal overflow is contained by the app-shell flex layout instead. */
+/* iOS PWA viewport fix:
+   html/body are left at natural size — no height chain that can calculate wrong.
+   The app-shell uses position:fixed; inset:0 which anchors directly to the viewport,
+   guaranteed to cover the full screen including the safe area bottom on iPhone.
+   This is the only approach immune to iOS svh/dvh calculation bugs. */
 html {
-  height: 100vh;    /* fallback */
-  height: 100svh;   /* stable small viewport — correct for app shells */
+  background: var(--background); /* safety net: no white flash on overscroll */
 }
 
 body {
-  height: 100%;
-  overflow: hidden; /* lock body scroll — safe on body, only html breaks fixed */
   background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
@@ -131,10 +127,11 @@ body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
-/* App shell fills body exactly. overflow:hidden on a div (not html/body) is safe —
-   it clips layout without affecting position:fixed children (BottomNav, overlays). */
+/* App shell: fixed to viewport edges — bypasses all iOS height calculation quirks.
+   position:fixed children (overlays, etc.) are unaffected. */
 .app-shell {
-  height: 100%;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
 }
 
