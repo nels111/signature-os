@@ -35,14 +35,14 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center"
+      className="min-h-[100svh] flex items-center justify-center"
       style={{ background: 'var(--sidebar-bg)' }}
     >
       {/* Subtle gradient overlay */}
       <div
         className="absolute inset-0"
         style={{
-          background: 'radial-gradient(ellipse at 50% 0%, rgba(32, 86, 164, 0.15) 0%, transparent 60%)',
+          background: 'radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--brand-blue) 15%, transparent) 0%, transparent 60%)',
         }}
       />
 
@@ -51,13 +51,13 @@ export default function LoginPage() {
           className="rounded-2xl p-8"
           style={{
             background: 'var(--surface)',
-            boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
+            boxShadow: '0 24px 80px color-mix(in srgb, var(--text-primary) 30%, transparent)',
           }}
         >
           <div className="text-center mb-8">
             <div className="flex justify-center mb-5">
               <Image
-                src="/logo-badge.jpg"
+                src="/logo-badge.svg"
                 alt="Signature Cleans"
                 width={56}
                 height={56}
@@ -115,7 +115,7 @@ export default function LoginPage() {
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = 'var(--brand-blue)';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(32, 86, 164, 0.1)';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--brand-blue) 10%, transparent)';
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderColor = 'var(--border)';
@@ -145,7 +145,7 @@ export default function LoginPage() {
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = 'var(--brand-blue)';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(32, 86, 164, 0.1)';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--brand-blue) 10%, transparent)';
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderColor = 'var(--border)';
@@ -158,9 +158,10 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-50"
+              className="w-full py-3 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-50"
               style={{
                 background: 'var(--brand-blue)',
+                color: 'var(--surface)',
               }}
               onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = 'var(--brand-blue-hover)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--brand-blue)'; }}

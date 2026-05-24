@@ -547,7 +547,7 @@ export default function QuotesPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] overflow-y-auto">
+    <div>
       {/* Page header — only show on form screen */}
       {screen === "form" && (
         <div className="flex items-center justify-between px-4 pt-6 pb-2" style={{ maxWidth: 600, margin: "0 auto" }}>

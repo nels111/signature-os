@@ -140,8 +140,6 @@ export default function HubPage() {
 
   const liveCount = apps.filter((a) => a.status === 'live').length;
   const soonCount = apps.filter((a) => a.status === 'soon').length;
-  const cols = 3;
-  const rows = Math.ceil(apps.length / cols);
 
   return (
     <>
@@ -226,16 +224,29 @@ export default function HubPage() {
             transition: none;
           }
         }
+
+        .hub-grid {
+          flex: 1;
+          min-height: 0;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+        }
+        @media (max-width: 639px) {
+          .hub-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
       `}</style>
 
       <div
         style={{
           height: '100%',
           background: '#f5f5f3',
-          padding: '32px 40px 28px',
+          padding: 'clamp(16px, 4vw, 32px) clamp(16px, 4vw, 40px) 24px',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
+          overflow: 'auto',
         }}
       >
         {/* Header */}
@@ -272,16 +283,7 @@ export default function HubPage() {
         </div>
 
         {/* Grid */}
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: 'grid',
-            gridTemplateColumns: `repeat(${cols}, 1fr)`,
-            gridTemplateRows: `repeat(${rows}, 1fr)`,
-            gap: '12px',
-          }}
-        >
+        <div className="hub-grid">
           {apps.map((app, i) => (
             <AppCard key={app.id} app={app} index={i} />
           ))}

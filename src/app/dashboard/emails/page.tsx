@@ -355,7 +355,7 @@ export default function EmailsPage() {
                 cursor: "pointer",
                 border: "none",
                 background: activeMailbox === mb.email ? "var(--brand-blue)" : "transparent",
-                color: activeMailbox === mb.email ? "#fff" : "var(--text-secondary)",
+                color: activeMailbox === mb.email ? "var(--surface)" : "var(--text-secondary)",
                 transition: "all 120ms ease",
               }}
             >
@@ -383,7 +383,7 @@ export default function EmailsPage() {
             style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "6px 12px", borderRadius: 8,
-              background: "var(--brand-blue)", color: "#fff",
+              background: "var(--brand-blue)", color: "var(--surface)",
               border: "none", cursor: "pointer",
               fontSize: 13, fontWeight: 600,
             }}
@@ -443,7 +443,7 @@ export default function EmailsPage() {
                   fontSize: 10, fontWeight: 700,
                   padding: "1px 5px", borderRadius: 10,
                   backgroundColor: isActive ? "var(--brand-blue)" : "var(--border-strong)",
-                  color: isActive ? "#fff" : "var(--text-muted)",
+                  color: isActive ? "var(--surface)" : "var(--text-muted)",
                   lineHeight: "16px",
                 }}>
                   {count}
@@ -551,11 +551,7 @@ export default function EmailsPage() {
 
           {/* Email list */}
           <div
-            ref={listRef}
-            style={{ flex: 1, overflowY: "auto" }}
-            onTouchStart={handlePullStart}
-            onTouchMove={handlePullMove}
-            onTouchEnd={handlePullEnd}
+            style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
           >
             <EmailList
               emails={emails}
@@ -569,6 +565,10 @@ export default function EmailsPage() {
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}
+              scrollRef={listRef}
+              onScrollTouchStart={handlePullStart}
+              onScrollTouchMove={handlePullMove}
+              onScrollTouchEnd={handlePullEnd}
             />
           </div>
         </div>

@@ -109,18 +109,33 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Mobile layout foundation — research-backed pattern:
+   - html uses 100svh (stable viewport height, doesn't shift as browser chrome appears/disappears)
+   - body: overflow:hidden on BODY (not html) is safe for position:fixed — overflow:hidden on
+     *html* is what breaks fixed elements in iOS Safari (known WebKit bug)
+   - No overflow-x:hidden here — that also breaks fixed positioning in some browsers.
+     Horizontal overflow is contained by the app-shell flex layout instead. */
+html {
+  height: 100vh;    /* fallback */
+  height: 100svh;   /* stable small viewport — correct for app shells */
+}
+
 body {
+  height: 100%;
+  overflow: hidden; /* lock body scroll — safe on body, only html breaks fixed */
   background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  /* PWA safe areas for notch/Dynamic Island */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+}
+
+/* App shell fills body exactly. overflow:hidden on a div (not html/body) is safe —
+   it clips layout without affecting position:fixed children (BottomNav, overlays). */
+.app-shell {
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Focus ring utility */
@@ -140,8 +155,11 @@ body {
 .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
 .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-/* Transitions — Emil strong ease-out across all interactions */
-* {
+/* Transitions — Emil strong ease-out on interactive elements only.
+   Deliberately NOT applied to * — that breaks native scroll momentum on iOS. */
+button, a, input, select, textarea,
+[class*="sig-"], [class*="hub-"],
+.focus-brand {
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 

@@ -27,7 +27,13 @@ export function KanbanBoard<T>({
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const dragRef = useRef<{ itemId: string; fromCol: string } | null>(null);
-  const touchRef = useRef<{ itemId: string; fromCol: string } | null>(null);
+  const touchRef = useRef<{
+    itemId: string;
+    fromCol: string;
+    startX: number;
+    startY: number;
+    dragging: boolean;
+  } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -99,18 +105,42 @@ export function KanbanBoard<T>({
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent, itemId: string, columnId: string) => {
-      touchRef.current = { itemId, fromCol: columnId };
-      setDragItemId(itemId);
-      setDragFromCol(columnId);
+      const touch = e.touches[0];
+      touchRef.current = {
+        itemId,
+        fromCol: columnId,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        dragging: false,
+      };
     },
     []
   );
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
-      if (!touchRef.current) return;
-      e.preventDefault();
+      const ref = touchRef.current;
+      if (!ref) return;
       const touch = e.touches[0];
+      const dx = touch.clientX - ref.startX;
+      const dy = touch.clientY - ref.startY;
+
+      if (!ref.dragging) {
+        if (Math.abs(dy) > Math.abs(dx) + 8) {
+          touchRef.current = null;
+          setDragItemId(null);
+          setDragFromCol(null);
+          setDragOverCol(null);
+          return;
+        }
+        if (Math.abs(dx) < 8) return;
+
+        ref.dragging = true;
+        setDragItemId(ref.itemId);
+        setDragFromCol(ref.fromCol);
+      }
+
+      e.preventDefault();
       const colId = getColumnIdFromPoint(touch.clientX, touch.clientY);
       setDragOverCol(colId);
     },
@@ -121,6 +151,10 @@ export function KanbanBoard<T>({
     (e: React.TouchEvent) => {
       const ref = touchRef.current;
       if (!ref) return;
+      if (!ref.dragging) {
+        touchRef.current = null;
+        return;
+      }
       const touch = e.changedTouches[0];
       const toColId = getColumnIdFromPoint(touch.clientX, touch.clientY);
       if (toColId && toColId !== ref.fromCol) {
@@ -158,8 +192,6 @@ export function KanbanBoard<T>({
           overflowX: 'auto',
           paddingBottom: 16,
           minHeight: 360,
-          // Show scrollbar on mobile for discoverability
-          WebkitOverflowScrolling: 'touch',
         }}
       >
         {columns.map((column) => (
@@ -215,7 +247,6 @@ export function KanbanBoard<T>({
             <div style={{
               padding: 8,
               display: 'flex', flexDirection: 'column', gap: 8,
-              overflowY: 'auto', maxHeight: '55vh',
             }}>
               {column.items.map((item) => {
                 const itemId = getItemId(item);
@@ -229,7 +260,7 @@ export function KanbanBoard<T>({
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                     style={{
-                      touchAction: 'none',
+                      touchAction: 'pan-y',
                       opacity: dragItemId === itemId && dragFromCol === column.id ? 0.4 : 1,
                       cursor: 'grab',
                       transition: 'opacity 0.15s',

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, type Ref, type TouchEventHandler } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -43,6 +43,10 @@ interface EmailListProps {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  scrollRef?: Ref<HTMLDivElement>;
+  onScrollTouchStart?: TouchEventHandler<HTMLDivElement>;
+  onScrollTouchMove?: TouchEventHandler<HTMLDivElement>;
+  onScrollTouchEnd?: TouchEventHandler<HTMLDivElement>;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -548,6 +552,10 @@ export function EmailList({
   page,
   totalPages,
   onPageChange,
+  scrollRef,
+  onScrollTouchStart,
+  onScrollTouchMove,
+  onScrollTouchEnd,
 }: EmailListProps) {
   const threads = useMemo(() => groupIntoThreads(emails), [emails]);
   const sections = useMemo(() => groupThreadsByDate(threads), [threads]);
@@ -594,7 +602,14 @@ export function EmailList({
         .skeleton-pulse { animation: skeleton-shimmer 1.6s ease-in-out infinite; }
       `}</style>
 
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div
+        ref={scrollRef}
+        style={{ flex: 1, overflowY: "auto" }}
+        onTouchStart={onScrollTouchStart}
+        onTouchMove={onScrollTouchMove}
+        onTouchEnd={onScrollTouchEnd}
+        onTouchCancel={onScrollTouchEnd}
+      >
         {sections.map((section) => (
           <div key={section.label}>
             {/* Section header */}

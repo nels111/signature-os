@@ -84,22 +84,26 @@ export function Sidebar({ mobile }: SidebarProps) {
 
   return (
     <aside
-      className={`h-screen flex flex-col transition-all duration-300 ${width}`}
+      className={`h-full flex flex-col ${width}`}
       style={{
         background: 'var(--sidebar-bg)',
+        transition: 'width 280ms cubic-bezier(0.23,1,0.32,1)',
       }}
     >
-      {/* Logo */}
+      {/* Logo — padding-top accounts for iOS status bar when sidebar slides in on mobile */}
       <div
         className="flex items-center justify-between"
         style={{
-          padding: isCollapsed ? '20px 16px' : '20px 20px',
+          paddingTop: mobile ? 'max(20px, env(safe-area-inset-top))' : '20px',
+          paddingBottom: '20px',
+          paddingLeft: isCollapsed ? '16px' : '20px',
+          paddingRight: isCollapsed ? '16px' : '20px',
           borderBottom: '1px solid var(--sidebar-border)',
         }}
       >
         <div className="flex items-center gap-3">
           <Image
-            src="/logo-badge.jpg"
+            src="/logo-badge.svg"
             alt="Signature Cleans"
             width={32}
             height={32}
@@ -170,7 +174,7 @@ export function Sidebar({ mobile }: SidebarProps) {
                     }`}
                     style={{
                       background: isActive ? 'var(--sidebar-active)' : 'transparent',
-                      color: isActive ? '#ffffff' : 'var(--sidebar-text-muted)',
+                      color: isActive ? 'var(--sidebar-text)' : 'var(--sidebar-text-muted)',
                       fontWeight: isActive ? 600 : 400,
                       fontSize: '14px',
                       borderLeft: isActive && !isCollapsed ? '3px solid var(--brand-green-accent)' : '3px solid transparent',
