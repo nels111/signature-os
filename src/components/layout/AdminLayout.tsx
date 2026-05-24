@@ -79,7 +79,11 @@ function LayoutInner({ children, currentPath }: { children: React.ReactNode; cur
         ) : (
           <main
             className="flex-1 min-h-0 overflow-y-auto"
-            style={{ background: 'var(--background)', willChange: 'scroll-position' }}
+            style={{
+              background: 'var(--background)',
+              overscrollBehavior: 'none',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            }}
           >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
               {children}
