@@ -129,11 +129,14 @@ body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
-/* App shell: fixed to viewport edges — bypasses all iOS height calculation quirks.
-   position:fixed children (overlays, etc.) are unaffected. */
+/* App shell: fixed to viewport edges + explicit 100dvh.
+   dvh = dynamic viewport height — always the full visible height on iOS,
+   even in standalone PWA mode. Explicit height lets child h-full resolve
+   correctly without relying on top/bottom anchor propagation. */
 .app-shell {
   position: fixed;
   inset: 0;
+  height: 100dvh;
   overflow: hidden;
 }
 

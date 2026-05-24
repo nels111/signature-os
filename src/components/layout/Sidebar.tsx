@@ -84,8 +84,9 @@ export function Sidebar({ mobile }: SidebarProps) {
 
   return (
     <aside
-      className={`h-full flex flex-col ${width}`}
+      className={`flex flex-col ${width}`}
       style={{
+        height: '100dvh',
         background: 'var(--sidebar-bg)',
         transition: 'width 280ms cubic-bezier(0.23,1,0.32,1)',
       }}

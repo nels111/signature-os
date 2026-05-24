@@ -56,7 +56,7 @@ function LayoutInner({ children, currentPath }: { children: React.ReactNode; cur
         className={`fixed inset-y-0 left-0 z-50 lg:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{ transition: 'transform 280ms cubic-bezier(0.23,1,0.32,1)', willChange: 'transform' }}
+        style={{ transition: 'transform 280ms cubic-bezier(0.23,1,0.32,1)', willChange: 'transform', height: '100dvh' }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
