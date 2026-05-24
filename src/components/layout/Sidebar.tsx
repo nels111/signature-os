@@ -103,7 +103,7 @@ export function Sidebar({ mobile }: SidebarProps) {
       >
         <div className="flex items-center gap-3">
           <Image
-            src="/logo-badge.svg"
+            src="/logo-badge.jpg"
             alt="Signature Cleans"
             width={32}
             height={32}

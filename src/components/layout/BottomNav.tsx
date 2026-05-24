@@ -33,61 +33,62 @@ export function BottomNav() {
         zIndex: 40,
         background: 'var(--sidebar-bg)',
         borderTop: '1px solid var(--sidebar-border)',
-        display: 'flex',
-        alignItems: 'stretch',
+        /* paddingBottom extends the dark background behind the iOS home indicator.
+           Tabs themselves live in the inner 58px row — they do NOT stretch into the safe area. */
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      {TABS.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = tab.exact
-          ? pathname === tab.href
-          : pathname === tab.href || pathname.startsWith(tab.href + '/');
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '3px',
-              padding: '10px 4px',
-              color: isActive ? 'var(--brand-green-accent)' : 'var(--sidebar-text-muted)',
-              textDecoration: 'none',
-              transition: 'color 120ms ease',
-            }}
-          >
-            <Icon size={22} strokeWidth={isActive ? 2 : 1.5} />
-            <span style={{ fontSize: 10, fontWeight: isActive ? 600 : 400, letterSpacing: '0.01em' }}>
-              {tab.label}
-            </span>
-          </Link>
-        );
-      })}
+      {/* 58px tab row — explicit height keeps tabs out of the safe area zone */}
+      <div style={{ display: 'flex', height: 58, width: '100%' }}>
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = tab.exact
+            ? pathname === tab.href
+            : pathname === tab.href || pathname.startsWith(tab.href + '/');
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 3,
+                color: isActive ? 'var(--brand-green-accent)' : 'var(--sidebar-text-muted)',
+                textDecoration: 'none',
+                transition: 'color 120ms ease',
+              }}
+            >
+              <Icon size={22} strokeWidth={isActive ? 2 : 1.5} />
+              <span style={{ fontSize: 10, fontWeight: isActive ? 600 : 400, letterSpacing: '0.01em' }}>
+                {tab.label}
+              </span>
+            </Link>
+          );
+        })}
 
-      {/* More — opens the full sidebar */}
-      <button
-        onClick={toggleSidebar}
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '3px',
-          padding: '10px 4px',
-          color: 'var(--sidebar-text-muted)',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        <MoreHorizontal size={22} strokeWidth={1.5} />
-        <span style={{ fontSize: 10, fontWeight: 400, letterSpacing: '0.01em' }}>More</span>
-      </button>
+        {/* More — opens the full sidebar nav */}
+        <button
+          onClick={toggleSidebar}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 3,
+            color: 'var(--sidebar-text-muted)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <MoreHorizontal size={22} strokeWidth={1.5} />
+          <span style={{ fontSize: 10, fontWeight: 400, letterSpacing: '0.01em' }}>More</span>
+        </button>
+      </div>
     </nav>
   );
 }
