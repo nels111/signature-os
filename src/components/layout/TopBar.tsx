@@ -3,8 +3,9 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Bell, BellRing, BellOff, LogOut, ChevronDown, Clock, Timer } from 'lucide-react';
+import { Search, Bell, BellRing, BellOff, LogOut, ChevronDown, Clock, Timer, Menu } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useLayout } from './LayoutContext';
 
 interface Notification {
   id: string;
@@ -78,6 +79,7 @@ function useClockStatus(isVa: boolean) {
 export function TopBar() {
   const { data: session } = useSession();
   const router = useRouter();
+  const { toggleSidebar } = useLayout();
   const { state: pushState, enable: enablePush, disable: disablePush } = usePushNotifications();
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -167,6 +169,24 @@ export function TopBar() {
     >
     <div className="h-14 flex items-center justify-between w-full">
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Hamburger — mobile only */}
+        <button
+          type="button"
+          aria-label="Open navigation"
+          onClick={toggleSidebar}
+          className="p-2 rounded-lg lg:hidden"
+          style={{
+            color: 'var(--text-secondary)',
+            minWidth: 44,
+            minHeight: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Menu size={20} />
+        </button>
+
         {/* Search */}
         <div
           className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200"
@@ -204,22 +224,6 @@ export function TopBar() {
           )}
         </div>
 
-        {/* Mobile search icon */}
-        <button
-          type="button"
-          aria-label="Search"
-          className="p-2 rounded-lg sm:hidden"
-          style={{
-            color: 'var(--text-secondary)',
-            minWidth: 44,
-            minHeight: 44,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Search size={18} />
-        </button>
       </div>
 
       <div className="flex items-center gap-1">

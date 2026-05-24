@@ -3,7 +3,6 @@
 import { useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
-import { BottomNav } from './BottomNav';
 import { LayoutProvider, useLayout } from './LayoutContext';
 
 function MobileOverlay() {
@@ -76,8 +75,6 @@ function LayoutInner({ children, currentPath }: { children: React.ReactNode; cur
             <div className="flex-1 min-h-0 overflow-hidden">
               {children}
             </div>
-            {/* Spacer so content clears the bottom nav on mobile */}
-            <div className="lg:hidden" style={{ height: 'calc(58px + env(safe-area-inset-bottom))', flexShrink: 0 }} />
           </main>
         ) : (
           <main
@@ -87,14 +84,10 @@ function LayoutInner({ children, currentPath }: { children: React.ReactNode; cur
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
               {children}
             </div>
-            {/* Spacer so scrollable content clears the bottom nav on mobile */}
-            <div className="lg:hidden" style={{ height: 'calc(58px + env(safe-area-inset-bottom))' }} />
           </main>
         )}
       </div>
 
-      {/* Bottom tab bar — mobile only, replaces hamburger nav */}
-      <BottomNav />
     </div>
   );
 }
