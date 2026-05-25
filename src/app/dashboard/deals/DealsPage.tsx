@@ -6,7 +6,7 @@ import { DataTable } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { DealForm } from './DealForm';
-import type { DealFormData } from './DealForm';
+import type { DealFormData } from '@/lib/schemas/deal';
 
 interface Deal {
   id: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import DOMPurify from "dompurify";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -205,6 +206,17 @@ function EmailBodyIframe({ html }: { html: string }) {
     };
   }, [html]);
 
+  // Sanitize HTML before injecting into iframe — DOMPurify strips XSS vectors
+  // FORCE_BODY keeps the content as-is; ADD_TAGS allows style/link for email styling
+  const sanitizedHtml =
+    typeof window !== "undefined"
+      ? DOMPurify.sanitize(html, {
+          FORCE_BODY: true,
+          ADD_TAGS: ["style", "link"],
+          ADD_ATTR: ["target", "rel"],
+        })
+      : html; // SSR fallback (iframe is client-only anyway)
+
   const srcDoc = `<!DOCTYPE html>
 <html>
 <head>
@@ -240,7 +252,7 @@ function EmailBodyIframe({ html }: { html: string }) {
   center { display: block; }
 </style>
 </head>
-<body>${html}</body>
+<body>${sanitizedHtml}</body>
 </html>`;
 
   return (

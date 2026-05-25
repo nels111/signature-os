@@ -7,7 +7,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ContactForm } from './ContactForm';
-import type { ContactFormData } from './ContactForm';
+import type { ContactFormData } from '@/lib/schemas/contact';
 
 interface Contact {
   id: string;

@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, Bell, BellRing, BellOff, LogOut, ChevronDown, Clock, Timer, Menu } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useLayout } from './LayoutContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface Notification {
   id: string;
@@ -83,28 +84,25 @@ export function TopBar() {
   const { state: pushState, enable: enablePush, disable: disablePush } = usePushNotifications();
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [searchFocused, setSearchFocused] = useState(false);
   const isVa = session?.user?.role === 'va';
   const clock = useClockStatus(isVa);
+  const queryClient = useQueryClient();
 
-  const fetchNotifications = useCallback(async () => {
-    try {
+  // Notifications — TanStack Query replaces manual setInterval + useState
+  const { data: notifData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
       const res = await fetch('/api/notifications?limit=10');
-      const data = await res.json();
-      setNotifications(data.notifications || []);
-      setUnreadCount(data.unreadCount || 0);
-    } catch {
-      // ignore fetch errors
-    }
-  }, []);
+      if (!res.ok) throw new Error('Failed to fetch notifications');
+      return res.json() as Promise<{ notifications: Notification[]; unreadCount: number }>;
+    },
+    refetchInterval: 30_000,   // poll every 30 s — matches previous setInterval
+    refetchOnWindowFocus: true,
+  });
 
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  const notifications = notifData?.notifications ?? [];
+  const unreadCount  = notifData?.unreadCount  ?? 0;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -124,8 +122,8 @@ export function TopBar() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ markAll: true }),
     });
-    setUnreadCount(0);
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    // Invalidate so TanStack Query re-fetches fresh data
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
   };
 
   const handleNotifClick = (notif: Notification) => {
@@ -133,7 +131,7 @@ export function TopBar() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: [notif.id] }),
-    });
+    }).then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }));
 
     if (notif.entityType && notif.entityId) {
       const routes: Record<string, string> = {
@@ -150,7 +148,6 @@ export function TopBar() {
     }
 
     setShowNotifs(false);
-    fetchNotifications();
   };
 
   return (

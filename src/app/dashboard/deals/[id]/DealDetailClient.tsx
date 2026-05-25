@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { DealForm } from '../DealForm';
-import type { DealFormData } from '../DealForm';
+import type { DealFormData } from '@/lib/schemas/deal';
 
 interface Deal {
   id: string;

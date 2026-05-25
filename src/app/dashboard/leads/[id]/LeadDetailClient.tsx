@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { LeadForm } from '../LeadForm';
-import type { LeadFormData } from '../LeadForm';
+import type { LeadFormData } from '@/lib/schemas/lead';
 
 interface Lead {
   id: string;

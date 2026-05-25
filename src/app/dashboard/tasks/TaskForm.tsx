@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { taskSchema } from '@/lib/schemas/task';
 
 const PRIORITIES = ['highest', 'high', 'normal', 'low', 'lowest'];
 const STATUSES = ['not_started', 'in_progress', 'completed', 'deferred', 'waiting'];
@@ -56,7 +57,8 @@ export function TaskForm({ initialData, onSubmit, onCancel, loading }: TaskFormP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subject || !dueDate) return;
+    const parsed = taskSchema.safeParse({ subject, dueDate, priority, status, taskType, description, ownerId });
+    if (!parsed.success) return; // zod catches missing required fields
     onSubmit({
       subject,
       dueDate: new Date(dueDate).toISOString(),

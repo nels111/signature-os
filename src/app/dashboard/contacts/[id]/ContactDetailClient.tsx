@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { ContactForm } from '../ContactForm';
-import type { ContactFormData } from '../ContactForm';
+import type { ContactFormData } from '@/lib/schemas/contact';
 
 interface Contact {
   id: string;

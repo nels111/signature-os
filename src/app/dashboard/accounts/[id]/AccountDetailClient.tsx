@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { AccountForm } from '../AccountForm';
-import type { AccountFormData } from '../AccountForm';
+import type { AccountFormData } from '@/lib/schemas/account';
 
 interface Account {
   id: string;

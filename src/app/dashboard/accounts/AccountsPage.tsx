@@ -6,7 +6,7 @@ import { DataTable } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { AccountForm } from './AccountForm';
-import type { AccountFormData } from './AccountForm';
+import type { AccountFormData } from '@/lib/schemas/account';
 
 interface Account {
   id: string;

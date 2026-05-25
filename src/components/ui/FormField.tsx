@@ -24,6 +24,7 @@ interface SelectFieldProps {
   options: { label: string; value: string }[];
   required?: boolean;
   placeholder?: string;
+  error?: string;
 }
 
 const inputStyle = {
@@ -87,7 +88,7 @@ export function TextareaField({
 }
 
 export function SelectField({
-  label, value, onChange, options, required, placeholder,
+  label, value, onChange, options, required, placeholder, error,
 }: SelectFieldProps) {
   return (
     <div>
@@ -99,13 +100,16 @@ export function SelectField({
         onChange={(e) => onChange(e.target.value)}
         required={required}
         className={inputFocusClass}
-        style={inputStyle}
+        style={{ ...inputStyle, ...(error ? { borderColor: 'var(--status-danger)' } : {}) }}
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
+      {error && (
+        <p className="text-xs mt-1" style={{ color: 'var(--status-danger)' }}>{error}</p>
+      )}
     </div>
   );
 }
