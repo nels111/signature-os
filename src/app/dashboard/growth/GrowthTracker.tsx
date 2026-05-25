@@ -57,10 +57,6 @@ export default function GrowthTracker() {
   }
 
   const pct = Math.min(100, (data.currentHours / data.targetHours) * 100);
-  const now = new Date();
-  const start = new Date('2026-01-01');
-  const totalMs = TARGET_DATE.getTime() - start.getTime();
-  const timePct = Math.min(100, Math.max(0, (now.getTime() - start.getTime()) / totalMs * 100));
   const coveragePct = data.pipelineHours > 0 ? Math.round((data.pipelineHours / data.gap) * 100) : 0;
   const requiredNewContracts = Math.ceil(data.weeklyGainNeeded / 15);
   const visibleActive = showAllActive ? data.activeContracts : data.activeContracts.slice(0, 6);
@@ -93,48 +89,94 @@ export default function GrowthTracker() {
         </span>
       </div>
 
-      {/* Compact progress bar */}
-      <div style={{
-        background: 'radial-gradient(ellipse at 50% 0%, rgba(74,222,128,0.08) 0%, #ffffff 55%)',
-        boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 0 0 1px rgba(74,222,128,0.2), 0 2px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.03)',
-        borderRadius: 12, padding: '14px 16px',
-      }}>
-        {/* Month labels */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-          {['Jan', 'Jun', 'Aug', 'Oct', 'Dec'].map(m => (
-            <span key={m} style={{ color: 'var(--text-muted)', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              {m}
-            </span>
-          ))}
-        </div>
-
-        {/* Track */}
-        <div style={{ position: 'relative', height: 36, display: 'flex', alignItems: 'center' }}>
-          {/* Background */}
-          <div style={{ position: 'absolute', left: 0, right: 0, height: 6, background: 'var(--border)', borderRadius: 3 }} />
-          {/* Fill */}
-          <div style={{ position: 'absolute', left: 0, width: `${pct}%`, height: 6, background: '#4ade80', borderRadius: 3, transition: 'width 0.8s ease' }} />
-          {/* Milestone ticks */}
-          {[{ pct: 20, val: 200 }, { pct: 40, val: 400 }, { pct: 65, val: 650 }, { pct: 100, val: 1000 }].map(m => (
-            <div key={m.val} style={{ position: 'absolute', left: `${m.pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ width: 2, height: 12, background: data.currentHours >= m.val ? '#4ade80' : 'var(--border)', borderRadius: 1 }} />
-              <span style={{ color: data.currentHours >= m.val ? '#4ade80' : 'var(--text-muted)', fontSize: '9px', fontWeight: 700, marginTop: 2 }}>
-                {m.val >= 1000 ? '1k' : m.val}
+      {/* Milestone Gates */}
+      {(() => {
+        const gates = [
+          { hours: 200, label: '200', month: 'Jun', position: 0 },
+          { hours: 400, label: '400', month: 'Aug', position: 1 },
+          { hours: 650, label: '650', month: 'Oct', position: 2 },
+          { hours: 1000, label: '1k',  month: 'Dec', position: 3 },
+        ];
+        const nextIdx = gates.findIndex(g => data.currentHours < g.hours);
+        return (
+          <div style={{
+            background: 'radial-gradient(ellipse at 50% 0%, rgba(74,222,128,0.07) 0%, #ffffff 60%)',
+            boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 0 0 1px rgba(74,222,128,0.18), 0 2px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.03)',
+            borderRadius: 12, padding: '16px',
+          }}>
+            {/* Current hours */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 18 }}>
+              <span style={{ fontSize: 30, fontWeight: 800, color: '#4ade80', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                {data.currentHours.toFixed(0)}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>hrs/wk</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+                target 1,000 · Dec 2026
               </span>
             </div>
-          ))}
-          {/* Now pin */}
-          <div style={{ position: 'absolute', left: `${timePct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ width: 2, height: 18, background: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
-            <span style={{ color: 'var(--text-muted)', fontSize: '8px', fontWeight: 700, marginTop: 2 }}>NOW</span>
-          </div>
-        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>0</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>1,000 hrs</span>
-        </div>
-      </div>
+            {/* Gate track */}
+            <div style={{ position: 'relative' }}>
+              {/* Track line — sits at node centre height (16px from top of this div) */}
+              <div style={{
+                position: 'absolute', top: 16, left: 16, right: 16,
+                height: 2, background: 'rgba(0,0,0,0.06)', borderRadius: 1,
+              }} />
+              {/* Progress fill — proportional to hours, scaled across gate span */}
+              <div style={{
+                position: 'absolute', top: 16, left: 16,
+                width: `calc(${Math.min(pct, 100) / 100} * (100% - 32px))`,
+                height: 2, background: '#4ade80', borderRadius: 1,
+                transition: 'width 0.9s ease',
+              }} />
+
+              {/* Gates */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                {gates.map((g, i) => {
+                  const passed = data.currentHours >= g.hours;
+                  const isNext = i === nextIdx;
+                  const nodeColor = passed ? '#4ade80' : isNext ? '#fbbf24' : 'var(--border)';
+                  const textColor = passed ? '#4ade80' : isNext ? '#f59e0b' : 'var(--text-muted)';
+                  return (
+                    <div key={g.hours} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                      {/* Node */}
+                      <div style={{
+                        width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                        background: passed ? '#4ade80' : isNext ? 'rgba(251,191,36,0.12)' : 'rgba(0,0,0,0.04)',
+                        border: `2px solid ${nodeColor}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, fontWeight: 700, color: passed ? '#fff' : textColor,
+                        boxShadow: isNext ? '0 0 0 4px rgba(251,191,36,0.12)' : passed ? '0 0 0 3px rgba(74,222,128,0.15)' : 'none',
+                        position: 'relative', zIndex: 1,
+                        transition: 'all 0.3s ease',
+                      }}>
+                        {passed ? '✓' : g.position + 1}
+                      </div>
+                      {/* Labels */}
+                      <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: textColor, letterSpacing: '-0.02em' }}>
+                          {g.label}
+                          <span style={{ fontSize: 9, fontWeight: 600, marginLeft: 1 }}>hrs</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 1 }}>
+                          {g.month}
+                        </div>
+                        <div style={{
+                          fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                          color: passed ? '#4ade80' : isNext ? '#f59e0b' : 'rgba(0,0,0,0.2)',
+                          marginTop: 2,
+                        }}>
+                          {passed ? 'Done' : isNext ? 'Next' : '·'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Key metrics — 2×2 grid, no overflow */}
       <div style={{
