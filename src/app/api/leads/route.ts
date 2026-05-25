@@ -25,10 +25,16 @@ export async function GET(request: Request) {
   const allowedSortFields = ['companyName', 'contactName', 'email', 'stage', 'source', 'createdAt', 'updatedAt'];
   const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
 
+  // Always exclude smoke/test leads. Merge with excludeStage NOT if present.
+  const notClauses = [
+    { companyName: { startsWith: '__Smoke_' } },
+    ...(excludeStage && !stage ? [{ stage: excludeStage as never }] : []),
+  ];
+
   const where = {
     deletedAt: null,
+    NOT: notClauses,
     ...(stage ? { stage: stage as never } : {}),
-    ...(excludeStage && !stage ? { NOT: { stage: excludeStage as never } } : {}),
     ...(ownerId ? { ownerId } : {}),
     ...(search
       ? {
