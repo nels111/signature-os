@@ -181,8 +181,10 @@ model User {
   emails          Email[]
   emailTemplates  EmailTemplate[]
   quotes          Quote[]
-  notifications   Notification[]
-  activities      Activity[]
+  notifications      Notification[]
+  activities         Activity[]
+  pushSubscriptions  PushSubscription[]
+  timeSessions       TimeSession[]
 
   @@map("users")
 }
@@ -287,8 +289,8 @@ model Deal {
   id              String    @id @default(cuid())
   name            String
   stage           DealStage @default(quote_sent)
-  value           Decimal?
-  weeklyHours     Decimal?
+  value           Decimal?  @db.Decimal(12, 2)
+  weeklyHours     Decimal?  @db.Decimal(10, 4)
   ownerId         String
   contactId       String?
   accountId       String?
@@ -377,8 +379,9 @@ model CalendarEvent {
   deletedAt    DateTime?
 
   // Relations
-  owner   User             @relation(fields: [ownerId], references: [id])
-  invites CalendarInvite[]
+  owner            User                      @relation(fields: [ownerId], references: [id])
+  invites          CalendarInvite[]
+  externalInvites  CalendarExternalInvite[]
 
   @@index([ownerId])
   @@index([startDate])
@@ -488,22 +491,22 @@ model Quote {
   contactEmail  String?
   contactPhone  String?
   siteType      String?
-  hoursPerDay   Decimal?
+  hoursPerDay   Decimal?    @db.Decimal(10, 4)
   frequency     Int?
   days          String[]
-  productCost   Decimal?    @default(0)
-  overheadCost  Decimal?    @default(0)
+  productCost   Decimal?    @default(0) @db.Decimal(12, 2)
+  overheadCost  Decimal?    @default(0) @db.Decimal(12, 2)
 
   // Calculated pricing
-  weeklyHours   Decimal
-  sellRate      Decimal
-  labourRate    Decimal     @default(17)
-  weeksPerMonth Decimal     @default(4.33)
+  weeklyHours   Decimal     @db.Decimal(10, 4)
+  sellRate      Decimal     @db.Decimal(12, 2)
+  labourRate    Decimal     @default(17) @db.Decimal(10, 4)
+  weeksPerMonth Decimal     @default(4.33) @db.Decimal(10, 4)
   isPilot       Boolean     @default(false)
-  pilotDiscount Decimal?    @default(25)
-  monthlyTotal  Decimal
-  annualTotal   Decimal
-  margin        Decimal
+  pilotDiscount Decimal?    @default(25) @db.Decimal(10, 4)
+  monthlyTotal  Decimal     @db.Decimal(12, 2)
+  annualTotal   Decimal     @db.Decimal(12, 2)
+  margin        Decimal     @db.Decimal(10, 4)
 
   // PDF and email
   pdfPath       String?
@@ -608,12 +611,12 @@ model Site {
   connecteamJobName        String?     // Exact title from Connecteam (for hours lookup)
   cellTier                 CellTier    @default(A)
   billingType              BillingType @default(hourly)
-  billingRatePerHour       Decimal?    // £/hr — used when billingType = hourly
-  monthlyBillingValue      Decimal?    // £/month — used when billingType = monthly_fixed
-  labourRatePerHour        Decimal     @default(17) // £/hr standard operative pay
+  billingRatePerHour       Decimal?    @db.Decimal(10, 2) // £/hr — used when billingType = hourly
+  monthlyBillingValue      Decimal?    @db.Decimal(12, 2) // £/month — used when billingType = monthly_fixed
+  labourRatePerHour        Decimal     @default(17) @db.Decimal(10, 4) // £/hr standard operative pay
   // Subcontractor fixed-cost override (e.g. Cleanz4U/Lisa invoices flat per contract).
   // When set, weekly cost = fixedMonthlyCost / 4.33 instead of hours × labourRatePerHour.
-  fixedMonthlyCost         Decimal?
+  fixedMonthlyCost         Decimal?    @db.Decimal(12, 2)
   rateConfirmed            Boolean     @default(false) // false = estimated, true = verified
   active                   Boolean     @default(true)
   notes                    String?
@@ -644,13 +647,13 @@ model RegularHoursSheetRow {
   id                  String              @id @default(cuid())
   businessName        String              @unique // matches sheet "Business Name" column
   cleanType           String?             // sheet "Type Of Clean"
-  hoursPerVisit       Decimal             @default(0)
-  frequencyPerWeek    Decimal             @default(0)
-  avgWeeklyHours      Decimal             @default(0) // truth for cost basis + delivery target
-  avgWeeklyEarnings   Decimal             @default(0) // truth for revenue
-  avgMonthlyEarnings  Decimal             @default(0)
+  hoursPerVisit       Decimal             @default(0) @db.Decimal(10, 4)
+  frequencyPerWeek    Decimal             @default(0) @db.Decimal(10, 4)
+  avgWeeklyHours      Decimal             @default(0) @db.Decimal(10, 4) // truth for cost basis + delivery target
+  avgWeeklyEarnings   Decimal             @default(0) @db.Decimal(12, 2) // truth for revenue
+  avgMonthlyEarnings  Decimal             @default(0) @db.Decimal(12, 2)
   signedTerms         Boolean             @default(false)
-  annualValue         Decimal             @default(0)
+  annualValue         Decimal             @default(0) @db.Decimal(12, 2)
   firstAuditDate      DateTime?
   status              HoursSheetRowStatus @default(active)
   syncedAt            DateTime            @default(now())
@@ -672,7 +675,7 @@ model RegularHoursSheetRow {
 
 model OrgSettings {
   id                       String   @id @default("singleton")
-  defaultLabourRatePerHour Decimal  @default(17)
+  defaultLabourRatePerHour Decimal  @default(17) @db.Decimal(10, 4)
   updatedBy                String?
   updatedAt                DateTime @updatedAt
   createdAt                DateTime @default(now())
@@ -718,4 +721,66 @@ model CadenceStep {
   @@unique([cadenceId, stepNumber])
   @@index([templateId])
   @@map("cadence_steps")
+}
+
+// ============ UNDECLARED LIVE TABLES (added by schema-drift fix 2026-05-26) ============
+
+/// External (non-user) invites to calendar events. Live table with no prior Prisma model.
+model CalendarExternalInvite {
+  id          String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  eventId     String
+  email       String
+  name        String?
+  status      String    @default("pending")
+  sentAt      DateTime?
+  respondedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, email])
+  @@index([email])
+  @@index([eventId])
+  @@map("calendar_external_invites")
+}
+
+/// Web-push subscriptions per user. Live table with no prior Prisma model.
+model PushSubscription {
+  id        String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId    String    @map("user_id")
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+/// Clock-in / clock-out sessions. Live table with no prior Prisma model.
+/// user_id is VARCHAR(255) NOT NULL in the DB (not a cuid/uuid).
+/// REVIEW NOTE: Task requested onDelete: SetNull but live column is NOT NULL.
+/// To use SetNull the migration must first ALTER COLUMN user_id DROP NOT NULL.
+/// Using Restrict here to match the live constraint safely; see data.md for options.
+model TimeSession {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String    @map("user_id") @db.VarChar(255)
+  clockedInAt     DateTime  @map("clocked_in_at") @db.Timestamptz(6)
+  clockedOutAt    DateTime? @map("clocked_out_at") @db.Timestamptz(6)
+  durationMinutes Int?      @map("duration_minutes")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations — Restrict to match NOT NULL constraint; change to SetNull only after making userId optional
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([clockedInAt])
+  @@map("time_sessions")
 }
