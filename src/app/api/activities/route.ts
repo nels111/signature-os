@@ -301,6 +301,9 @@ async function createSiteVisitTask(
   });
   if (!lead) return;
 
+  // Skip smoke-test leads — never send push or create tasks for __Smoke_* entries
+  if (lead.companyName.startsWith('__Smoke_')) return;
+
   // Find Nick (sales role)
   const nick = await prisma.user.findFirst({
     where: { role: 'sales' },
