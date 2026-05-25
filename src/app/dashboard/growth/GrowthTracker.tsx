@@ -115,64 +115,52 @@ export default function GrowthTracker() {
               </span>
             </div>
 
-            {/* Gate track */}
-            <div style={{ position: 'relative' }}>
-              {/* Track line — sits at node centre height (16px from top of this div) */}
-              <div style={{
-                position: 'absolute', top: 16, left: 16, right: 16,
-                height: 2, background: 'rgba(0,0,0,0.06)', borderRadius: 1,
-              }} />
-              {/* Progress fill — proportional to hours, scaled across gate span */}
-              <div style={{
-                position: 'absolute', top: 16, left: 16,
-                width: `calc(${Math.min(pct, 100) / 100} * (100% - 32px))`,
-                height: 2, background: '#4ade80', borderRadius: 1,
-                transition: 'width 0.9s ease',
-              }} />
-
-              {/* Gates */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
-                {gates.map((g, i) => {
+            {/* Gate track — flex row: node · segment · node · segment · node · segment · node */}
+            <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+              {gates.map((g, i) => {
                   const passed = data.currentHours >= g.hours;
                   const isNext = i === nextIdx;
-                  const nodeColor = passed ? '#4ade80' : isNext ? '#fbbf24' : 'var(--border)';
+                  const nodeColor = passed ? '#4ade80' : isNext ? '#fbbf24' : 'rgba(0,0,0,0.12)';
                   const textColor = passed ? '#4ade80' : isNext ? '#f59e0b' : 'var(--text-muted)';
+                  // Segment after this gate (not after last)
+                  const segmentPassed = i < 3 && data.currentHours >= gates[i + 1].hours;
+                  const segmentActive = i < 3 && !segmentPassed && data.currentHours >= g.hours;
                   return (
-                    <div key={g.hours} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                      {/* Node */}
-                      <div style={{
-                        width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                        background: passed ? '#4ade80' : isNext ? 'rgba(251,191,36,0.12)' : 'rgba(0,0,0,0.04)',
-                        border: `2px solid ${nodeColor}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 12, fontWeight: 700, color: passed ? '#fff' : textColor,
-                        boxShadow: isNext ? '0 0 0 4px rgba(251,191,36,0.12)' : passed ? '0 0 0 3px rgba(74,222,128,0.15)' : 'none',
-                        position: 'relative', zIndex: 1,
-                        transition: 'all 0.3s ease',
-                      }}>
-                        {passed ? '✓' : g.position + 1}
-                      </div>
-                      {/* Labels */}
-                      <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: textColor, letterSpacing: '-0.02em' }}>
-                          {g.label}
-                          <span style={{ fontSize: 9, fontWeight: 600, marginLeft: 1 }}>hrs</span>
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 1 }}>
-                          {g.month}
-                        </div>
+                    <div key={g.hours} style={{ display: 'flex', alignItems: 'flex-start', flex: i < 3 ? 'none' : 'none' }}>
+                      {/* Gate: node + labels */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, width: 60 }}>
+                        {/* Node */}
                         <div style={{
-                          fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
-                          color: passed ? '#4ade80' : isNext ? '#f59e0b' : 'rgba(0,0,0,0.2)',
-                          marginTop: 2,
+                          width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                          background: passed ? '#4ade80' : isNext ? 'rgba(251,191,36,0.1)' : 'rgba(0,0,0,0.03)',
+                          border: `2px solid ${nodeColor}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 700, color: passed ? '#fff' : textColor,
+                          boxShadow: isNext ? '0 0 0 4px rgba(251,191,36,0.1)' : passed ? '0 0 0 3px rgba(74,222,128,0.12)' : 'none',
                         }}>
-                          {passed ? 'Done' : isNext ? 'Next' : '·'}
+                          {passed ? '✓' : i + 1}
+                        </div>
+                        {/* Labels */}
+                        <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: textColor, letterSpacing: '-0.02em' }}>
+                            {g.label}
+                            <span style={{ fontSize: 9, fontWeight: 600, marginLeft: 1 }}>h</span>
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>{g.month}</div>
+                          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: passed ? '#4ade80' : isNext ? '#f59e0b' : 'rgba(0,0,0,0.18)', marginTop: 1 }}>
+                            {passed ? 'Done' : isNext ? 'Next' : '·'}
+                          </div>
                         </div>
                       </div>
+                      {/* Connector segment between this gate and the next */}
+                      {i < 3 && (
+                        <div style={{ flex: 1, paddingTop: 14 }}>
+                          <div style={{ height: 2, borderRadius: 1, background: segmentPassed ? '#4ade80' : segmentActive ? 'rgba(74,222,128,0.3)' : 'rgba(0,0,0,0.07)' }} />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
-              </div>
             </div>
           </div>
         );
