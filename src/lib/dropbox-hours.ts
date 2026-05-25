@@ -1,13 +1,11 @@
 /**
  * Dropbox Hours Sheet reader for Signature Cleans OS.
- * 
+ *
  * Reads the Regular Hours Sheet from Dropbox, parses the xlsx,
  * and returns structured contract data.
- * 
- * Creds loaded from /var/www/portal/.env (shared with portal).
+ *
+ * Creds loaded from DROPBOX_APP_KEY / DROPBOX_APP_SECRET / DROPBOX_REFRESH_TOKEN env vars.
  */
-
-import * as fs from 'fs';
 
 interface DropboxCreds {
   appKey: string;
@@ -43,20 +41,13 @@ export interface HoursSheetData {
 }
 
 function loadDropboxCreds(): DropboxCreds {
-  const envPath = '/var/www/portal/.env';
-  const content = fs.readFileSync(envPath, 'utf-8');
-  const env: Record<string, string> = {};
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
-    const [k, ...rest] = trimmed.split('=');
-    env[k] = rest.join('=').replace(/^["']|["']$/g, '');
+  const appKey = process.env.DROPBOX_APP_KEY;
+  const appSecret = process.env.DROPBOX_APP_SECRET;
+  const refreshToken = process.env.DROPBOX_REFRESH_TOKEN;
+  if (!appKey || !appSecret || !refreshToken) {
+    throw new Error('Missing Dropbox credentials in environment (DROPBOX_APP_KEY / DROPBOX_APP_SECRET / DROPBOX_REFRESH_TOKEN)');
   }
-  return {
-    appKey: env.DROPBOX_APP_KEY,
-    appSecret: env.DROPBOX_APP_SECRET,
-    refreshToken: env.DROPBOX_REFRESH_TOKEN,
-  };
+  return { appKey, appSecret, refreshToken };
 }
 
 async function getDropboxToken(creds: DropboxCreds): Promise<string> {
