@@ -219,8 +219,6 @@ async function createDealWonHandover(
     },
   });
 
-  console.log(`[deals] ops handover task created for ${dealName} — assigned to ${nelson.name}`);
-
   await sendPushToAdminAndSales({
     title: 'Deal Won',
     body: `${dealName}${valueStr} — ops handover task created`,

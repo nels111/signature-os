@@ -238,8 +238,6 @@ async function attachRecordingAsync(activityId: string, callSid: string): Promis
     },
   });
 
-  console.log(`attachRecording: activity ${activityId} — recording ${rec.sid} attached`);
-
   // Transcribe with ElevenLabs if key is available
   const elKey = process.env.ELEVENLABS_API_KEY;
   if (elKey) {
@@ -288,7 +286,6 @@ async function transcribeRecording(
     data: { metadata: { ...latestMeta, transcriptText, transcriptStatus: 'completed' } },
   });
 
-  console.log(`ElevenLabs: activity ${activityId} transcribed (${transcriptText.length} chars)`);
 }
 
 // Creates a task assigned to Nick (sales user) when the VA flags a site visit request.
@@ -335,8 +332,6 @@ async function createSiteVisitTask(
       linkedLeadId: leadId,
     },
   });
-
-  console.log(`Site visit task created for ${lead.companyName} — assigned to ${owner.name}`);
 
   // Push notification to Nelson + Nick
   sendPushToAdminAndSales({

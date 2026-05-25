@@ -546,8 +546,7 @@ export function EmailDetail({
         for (const email of validEmails) {
           if (!email.isRead) onMarkRead(email.id, true);
         }
-      } catch (err) {
-        console.error("Failed to fetch thread:", err);
+      } catch {
       } finally {
         if (!cancelled) setLoading(false);
       }

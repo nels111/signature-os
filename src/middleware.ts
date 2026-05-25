@@ -104,7 +104,7 @@ export function middleware(request: NextRequest) {
     pathname === '/login' ||
     pathname === '/favicon.ico' ||
     pathname.startsWith('/api/quotes/track/') ||
-    pathname.startsWith('/q/') ||
+    pathname.startsWith('/q/track/') ||
     // Twilio webhooks come from Twilio's servers (no Origin/session cookie)
     pathname.startsWith('/api/webhooks/twilio/')
   ) {

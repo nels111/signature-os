@@ -401,7 +401,7 @@ export default function ColdCallingPage() {
         <div className="flex items-center gap-3">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: 'var(--brand-blue)20' }}
+            style={{ background: 'color-mix(in srgb, var(--brand-blue) 12.5%, transparent)' }}
           >
             <Phone size={18} style={{ color: 'var(--brand-blue)' }} />
           </div>

@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
         pdfPath,
         emailSubject: clientEmailSubject,
         emailHtml: clientEmailHtml,
-        trackingId: pricing.quoteRef,
+        trackingId: crypto.randomUUID(),
         status: 'draft',
         createdBy: session.user.id,
       },

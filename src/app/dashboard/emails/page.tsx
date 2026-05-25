@@ -76,8 +76,7 @@ export default function EmailsPage() {
           }
         }
       })
-      .catch((err) => {
-        console.error(err);
+      .catch(() => {
         if (!cancelled) setLoading(false); // fetch failed — don't hang forever
       });
     return () => { cancelled = true; };
@@ -157,7 +156,7 @@ export default function EmailsPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isRead: read }),
-    }).catch(console.error);
+    }).catch(() => {});
   }, []);
 
   const handleMarkAllRead = useCallback(async () => {

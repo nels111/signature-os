@@ -16,11 +16,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const formData = await request.formData();
-    const callSid = formData.get('CallSid');
-    const callStatus = formData.get('CallStatus');
-    const duration = formData.get('CallDuration');
-    console.log('Twilio status update:', { callSid, callStatus, duration });
     return new NextResponse('OK', { status: 200 });
   } catch {
     return new NextResponse('OK', { status: 200 });

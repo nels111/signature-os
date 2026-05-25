@@ -45,8 +45,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('Twilio recording webhook received:', { callSid, recordingUrl, recordingDuration, recordingSid, toNumber });
-
     if (!callSid || !recordingUrl) {
       return new NextResponse('OK', { status: 200 });
     }
@@ -79,13 +77,9 @@ export async function POST(request: NextRequest) {
         ORDER BY a."createdAt" DESC
         LIMIT 1
       `;
-      if (activities.length > 0) {
-        console.log('Twilio recording: matched activity by phone number', toNumber);
-      }
     }
 
     if (activities.length === 0) {
-      console.warn('Twilio recording: no activity found for CallSid', callSid, 'To', toNumber);
       return new NextResponse('OK', { status: 200 });
     }
 
@@ -108,8 +102,6 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
-    console.log('Twilio recording: activity', activityId, 'updated — recordingUrl attached');
 
     // Kick off transcription asynchronously if ElevenLabs key is available
     const elKey = process.env.ELEVENLABS_API_KEY;
@@ -185,5 +177,4 @@ async function transcribeWithElevenLabs(
     data: { metadata: { ...latestMeta, transcriptText, transcriptStatus: 'completed' } },
   });
 
-  console.log(`ElevenLabs: activity ${activityId} transcribed (${transcriptText.length} chars)`);
 }

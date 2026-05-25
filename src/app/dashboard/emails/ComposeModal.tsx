@@ -112,8 +112,7 @@ export function ComposeModal({ onClose, onSent, replyTo, mailbox }: ComposeModal
         const data = await res.json();
         alert(`Failed to send: ${data.error}`);
       }
-    } catch (err) {
-      console.error("Send error:", err);
+    } catch {
       alert("Failed to send email");
     } finally {
       setSending(false);

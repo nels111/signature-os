@@ -2,6 +2,8 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { SalesContent } from './SalesContent';
 
+export const metadata = { title: 'Sales' };
+
 export default async function SalesPage() {
   const session = await auth();
   if (!session) redirect('/login');

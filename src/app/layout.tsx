@@ -6,7 +6,7 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Signature Cleans OS',
+  title: { template: '%s — Signature Cleans OS', default: 'Signature Cleans OS' },
   description: 'PEACE OF MIND, EVERY TIME',
   manifest: '/manifest.json',
   appleWebApp: {
@@ -24,8 +24,6 @@ export const viewport: Viewport = {
   themeColor: '#0f1419',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
 };
 
