@@ -392,13 +392,12 @@ export function ContractDetailPage() {
       {/* Back nav */}
       <button
         onClick={() => router.push('/dashboard/financials')}
+        className="hover:text-[var(--brand-blue)] transition-colors"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 20,
           background: 'none', border: 'none', cursor: 'pointer',
           color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, padding: 0,
         }}
-        onMouseEnter={e => (e.currentTarget.style.color = 'var(--brand-blue)')}
-        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
       >
         ← Financials
       </button>
@@ -433,19 +432,11 @@ export function ContractDetailPage() {
         </div>
         <button
           onClick={() => setEditingRate(true)}
+          className="inline-flex items-center gap-1.5 text-[var(--text-secondary)] border-[1.5px] border-[var(--border)] hover:text-[var(--brand-blue)] hover:border-[var(--brand-blue)] transition-colors"
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+            padding: '8px 16px',
             borderRadius: 'var(--radius-sm)', background: 'var(--surface)',
-            border: '1.5px solid var(--border)', color: 'var(--text-secondary)',
             fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--brand-blue)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--brand-blue)';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
           }}
         >
           ✏ Edit rate

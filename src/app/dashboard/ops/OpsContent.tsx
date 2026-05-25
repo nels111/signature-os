@@ -131,10 +131,8 @@ function ContractList({ contracts }: { contracts: HoursSheetData['contracts'] })
         <Link
           key={i}
           href="/dashboard/financials"
-          className="px-5 py-3.5 flex items-center justify-between transition-colors duration-150 block"
+          className="px-5 py-3.5 flex items-center justify-between transition-colors duration-150 block hover:bg-[var(--surface-hover)]"
           style={{ borderBottom: i < top.length - 1 ? '1px solid var(--border)' : 'none', textDecoration: 'none' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: `hsl(${(i * 47) % 360}, 30%, 95%)`, color: `hsl(${(i * 47) % 360}, 40%, 40%)` }}>
@@ -176,10 +174,8 @@ export function OpsContent() {
       <div className="mb-6">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-[var(--brand-blue)]"
           style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
-          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--brand-blue)')}
-          onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--text-muted)')}
         >
           <ArrowLeft size={14} />
           Dashboard

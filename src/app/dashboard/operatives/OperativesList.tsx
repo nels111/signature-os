@@ -148,9 +148,7 @@ function OperativeRow({ op, onClick }: { op: OperativeSummary; onClick: () => vo
   return (
     <tr
       onClick={onClick}
-      style={{ cursor: 'pointer', transition: 'background 0.1s' }}
-      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-raised)')}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      className="hover:bg-[var(--surface-raised)] transition-colors duration-100 cursor-pointer"
     >
       <td style={{ padding: '12px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

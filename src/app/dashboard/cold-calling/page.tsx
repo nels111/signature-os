@@ -416,19 +416,10 @@ export default function ColdCallingPage() {
         </div>
         <button
           onClick={handleRefresh}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
           style={{
             background: 'var(--surface)',
             border: '1px solid var(--border)',
-            color: 'var(--text-secondary)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--surface-hover)';
-            e.currentTarget.style.color = 'var(--text-primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--surface)';
-            e.currentTarget.style.color = 'var(--text-secondary)';
           }}
         >
           <RefreshCw size={12} />

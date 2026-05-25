@@ -36,15 +36,13 @@ export function MessageItem({
       {/* Message header — always visible, click to expand/collapse */}
       <button
         onClick={onToggle}
+        className="hover:bg-[var(--surface-hover)] transition-colors duration-100"
         style={{
           width: '100%', textAlign: 'left',
           padding: '14px 16px',
           display: 'flex', alignItems: 'center', gap: 12,
           background: 'none', border: 'none', cursor: 'pointer',
-          transition: 'background-color 100ms ease',
         }}
-        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface-hover)'; }}
-        onMouseOut={(e)  => { e.currentTarget.style.backgroundColor = 'transparent'; }}
       >
         {/* Avatar */}
         <div style={{

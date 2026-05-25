@@ -117,10 +117,8 @@ export function SalesContent() {
       <div className="mb-6">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-[var(--brand-blue)]"
           style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
-          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--brand-blue)')}
-          onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--text-muted)')}
         >
           <ArrowLeft size={14} />
           Dashboard

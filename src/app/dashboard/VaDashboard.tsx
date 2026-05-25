@@ -85,10 +85,8 @@ export function VaDashboard({ userName }: { userName: string }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <Link href="/dashboard/cold-calling" className="block">
               <div
-                className="rounded-2xl p-5 transition-all duration-200 cursor-pointer"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-hover)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-card)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; }}
+                className="rounded-2xl p-5 transition-all duration-200 cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-hover)] hover:-translate-y-px"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
               >
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-[11px] font-semibold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}>Call Queue</p>
@@ -125,14 +123,11 @@ export function VaDashboard({ userName }: { userName: string }) {
 
             <Link href="/dashboard/tasks" className="block">
               <div
-                className="rounded-2xl p-5 transition-all duration-200 cursor-pointer"
+                className="rounded-2xl p-5 transition-all duration-200 cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-hover)] hover:-translate-y-px"
                 style={{
                   background: (data?.overdueTasks ?? 0) > 0 ? 'rgba(220,38,38,0.03)' : 'var(--surface)',
                   border: (data?.overdueTasks ?? 0) > 0 ? '1px solid rgba(220,38,38,0.15)' : '1px solid var(--border)',
-                  boxShadow: 'var(--shadow-card)',
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-hover)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-card)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; }}
               >
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-[11px] font-semibold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}>Open Tasks</p>

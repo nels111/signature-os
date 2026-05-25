@@ -320,10 +320,8 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
               {data.overdueTasks > 0 && (
                 <Link href="/dashboard/tasks" style={{ textDecoration: 'none' }}>
                   <div
-                    className="rounded-xl"
-                    style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', transition: 'background 150ms ease' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.05)'; }}
+                    className="rounded-xl flex items-center gap-3 cursor-pointer transition-colors duration-150 bg-[rgba(220,38,38,0.05)] hover:bg-[rgba(220,38,38,0.08)]"
+                    style={{ border: '1px solid rgba(220,38,38,0.15)', padding: '12px 16px' }}
                   >
                     <span style={{ fontSize: 18, fontWeight: 700, color: '#dc2626', minWidth: 28, textAlign: 'center', lineHeight: 1 }}>{data.overdueTasks}</span>
                     <div>
@@ -336,10 +334,8 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
               {data.upcomingEvents > 0 && (
                 <Link href="/dashboard/calendar" style={{ textDecoration: 'none' }}>
                   <div
-                    className="rounded-xl"
-                    style={{ background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.15)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', transition: 'background 150ms ease' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.08)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.05)'; }}
+                    className="rounded-xl flex items-center gap-3 cursor-pointer transition-colors duration-150 bg-[rgba(37,99,235,0.05)] hover:bg-[rgba(37,99,235,0.08)]"
+                    style={{ border: '1px solid rgba(37,99,235,0.15)', padding: '12px 16px' }}
                   >
                     <span style={{ fontSize: 18, fontWeight: 700, color: '#2563eb', minWidth: 28, textAlign: 'center', lineHeight: 1 }}>{data.upcomingEvents}</span>
                     <div>
