@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface OrgSettings {
   defaultLabourRatePerHour: number;
@@ -11,6 +12,7 @@ interface OrgSettings {
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [settings, setSettings] = useState<OrgSettings | null>(null);
   const [labourRateInput, setLabourRateInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -72,12 +74,8 @@ export default function SettingsPage() {
   }
 
   if (!isAdmin) {
-    return (
-      <div style={{ padding: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>Settings</h1>
-        <p style={{ marginTop: 12, color: 'var(--text-secondary)' }}>Admin role required to view settings.</p>
-      </div>
-    );
+    router.replace('/dashboard');
+    return null;
   }
 
   const dirty = settings && labourRateInput !== String(settings.defaultLabourRatePerHour);

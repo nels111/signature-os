@@ -1,5 +1,6 @@
 {
   "name": "sig-os-init",
+  "version": "1.0.0",
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
   },

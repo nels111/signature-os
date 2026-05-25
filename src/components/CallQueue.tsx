@@ -202,7 +202,7 @@ function CallDialer({ lead, onClose, onLogged }: CallDialerProps) {
             {phase === 'calling' ? CALL_STATE_LABEL[callState] : phase === 'log-outcome' ? 'Log Outcome' : phase === 'done' ? 'Logged' : 'Call Lead'}
           </span>
         </div>
-        <button onClick={onClose} disabled={isActiveCall} className="p-1 rounded hover:opacity-70 disabled:opacity-30">
+        <button onClick={onClose} disabled={isActiveCall} aria-label="Close call panel" className="p-1 rounded hover:opacity-70 disabled:opacity-30">
           <X size={16} style={{ color: 'var(--text-secondary)' }} />
         </button>
       </div>
@@ -566,7 +566,7 @@ export function CallQueue({ isVa: _isVa }: CallQueueProps) {
               {loading ? 'Loading...' : `${freshLeads.length} to call${callbackLeads.length > 0 ? ` · ${callbackLeads.length} callback${callbackLeads.length !== 1 ? 's' : ''}` : ''}`}
             </p>
           </div>
-          <button onClick={fetchQueue} className="p-1.5 rounded hover:opacity-70">
+          <button onClick={fetchQueue} aria-label="Refresh call queue" className="p-1.5 rounded hover:opacity-70">
             <RefreshCw size={14} style={{ color: 'var(--text-secondary)' }} />
           </button>
         </div>

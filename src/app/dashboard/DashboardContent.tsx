@@ -385,7 +385,7 @@ function VaDashboard({ userName }: { userName: string }) {
       .catch(() => setLoading(false));
   }, []);
 
-  const firstName = userName.split(' ')[0];
+  const firstName = userName ? userName.split(' ')[0] : null;
 
   const OUTCOME_COLORS: Record<string, string> = {
     answered: '#22c55e',
@@ -402,7 +402,7 @@ function VaDashboard({ userName }: { userName: string }) {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-[28px] font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
-            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {firstName}
+            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}{firstName ? `, ${firstName}` : ','}
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -529,7 +529,7 @@ function VaDashboard({ userName }: { userName: string }) {
               <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-2">
                   <Clock size={16} style={{ color: 'var(--brand-blue)' }} />
-                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Recent Calls</h3>
+                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Your recent calls</h3>
                 </div>
                 <Link href="/dashboard/cold-calling" className="text-xs font-medium" style={{ color: 'var(--brand-blue)' }}>
                   View all
@@ -662,7 +662,7 @@ function PipelineBar({ stages }: { stages: PipelineStage[] }) {
 // ── Main dashboard ─────────────────────────────────────────────────────────
 interface DashboardContentProps {
   role: string;
-  userName: string;
+  userName: string | null | undefined;
 }
 
 export function DashboardContent({ role, userName }: DashboardContentProps) {
@@ -677,13 +677,13 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
       .catch(() => setLoading(false));
   }, [role]);
 
-  if (role === 'va') return <VaDashboard userName={userName} />;
+  if (role === 'va') return <VaDashboard userName={userName ?? ''} />;
 
   const isSales = role === 'sales' || role === 'admin';
   const isOps = role === 'operations' || role === 'admin';
   const hs = data?.hoursSheet;
   const ah = data?.actualHours;
-  const firstName = userName.split(' ')[0];
+  const firstName = userName ? userName.split(' ')[0] : null;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -760,7 +760,7 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
                 fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em',
                 color: 'var(--text-primary)', margin: 0, lineHeight: 1.2,
               }}>
-                {greeting}, {firstName}
+                {greeting}{firstName ? `, ${firstName}` : ','}
               </h1>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, marginBottom: 0 }}>
                 {dateStr}

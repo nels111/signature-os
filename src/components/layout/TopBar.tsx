@@ -368,7 +368,7 @@ export function TopBar() {
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold"
               style={{ backgroundColor: 'var(--brand-blue)', color: 'var(--surface)' }}
             >
-              {session?.user?.name?.charAt(0) || '?'}
+              {(session?.user?.name?.charAt(0) ?? 'U').toUpperCase()}
             </div>
             <span
               className="text-sm font-medium hidden sm:inline"

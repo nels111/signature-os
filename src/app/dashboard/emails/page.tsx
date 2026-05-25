@@ -367,6 +367,7 @@ export default function EmailsPage() {
           <button
             onClick={syncAndRefresh}
             disabled={syncing}
+            aria-label="Sync emails"
             style={{
               width: 32, height: 32, borderRadius: 8,
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -508,7 +509,7 @@ export default function EmailsPage() {
                 }}
               />
               {search && (
-                <button onClick={() => setSearch("")} style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}>
+                <button onClick={() => setSearch("")} aria-label="Clear search" style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}>
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                   </svg>

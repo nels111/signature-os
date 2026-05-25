@@ -123,6 +123,7 @@ export function Sidebar({ mobile }: SidebarProps) {
         {mobile && (
           <button
             onClick={closeSidebar}
+            aria-label="Close navigation"
             className="p-1.5 rounded-lg transition-all duration-150"
             style={{ color: 'var(--sidebar-text-muted)' }}
           >
@@ -170,6 +171,7 @@ export function Sidebar({ mobile }: SidebarProps) {
                     key={item.href}
                     href={item.href}
                     onClick={handleNavClick}
+                    aria-current={isActive ? 'page' : undefined}
                     className={`flex items-center gap-3 transition-all duration-150 mx-2 rounded-lg ${
                       isCollapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2'
                     }`}
@@ -208,6 +210,7 @@ export function Sidebar({ mobile }: SidebarProps) {
       {!mobile && (
         <button
           onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className="flex items-center justify-center p-2 mx-3 mb-2 rounded-lg transition-all duration-150"
           style={{ color: 'var(--sidebar-text-muted)' }}
           onMouseEnter={(e) => {
@@ -232,7 +235,7 @@ export function Sidebar({ mobile }: SidebarProps) {
           fontSize: '11px',
         }}
       >
-        {!isCollapsed && 'Signature Cleans OS v1.0'}
+        {!isCollapsed && `Signature Cleans OS v${process.env.NEXT_PUBLIC_APP_VERSION ?? '1.0.0'}`}
       </div>
     </aside>
   );
