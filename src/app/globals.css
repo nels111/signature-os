@@ -117,6 +117,7 @@
 html, body {
   height: 100dvh;
   overflow: hidden;
+  overflow-x: hidden;
 }
 
 html {
@@ -143,6 +144,7 @@ body {
   inset: 0;
   height: 100dvh;
   overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* Focus ring utility */

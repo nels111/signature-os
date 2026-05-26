@@ -246,7 +246,8 @@ export default function HubPage() {
           padding: 'clamp(16px, 4vw, 32px) clamp(16px, 4vw, 40px) 24px',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'auto',
+          overflowY: 'auto',
+          overflowX: 'hidden',
         }}
       >
         {/* Header */}

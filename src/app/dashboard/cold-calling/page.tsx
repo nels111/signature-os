@@ -428,7 +428,7 @@ export default function ColdCallingPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-5">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-5">
 
         {/* Stats bar */}
         <section>

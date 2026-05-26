@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Plus, Mail, Building2, AlertCircle, CheckCircle2, Clock, Ban, ChevronRight } from 'lucide-react';
 
@@ -146,9 +146,9 @@ export function ClientsPage() {
           </div>
 
           {/* Filters */}
-          <div className="flex items-center gap-3 mt-4">
+          <div className="flex flex-col gap-2 mt-4">
             {/* Search */}
-            <div className="relative flex-1 max-w-xs">
+            <div className="relative w-full max-w-xs">
               <Search
                 size={15}
                 className="absolute left-3 top-1/2 -translate-y-1/2"
@@ -171,19 +171,35 @@ export function ClientsPage() {
               />
             </div>
 
-            {/* Status filter pills */}
-            <div className="flex items-center gap-1.5">
+            {/* Status filter pills — horizontally scrollable, no visible scrollbar */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                overflowX: 'auto',
+                overflowY: 'hidden',
+                msOverflowStyle: 'none',
+                scrollbarWidth: 'none',
+                paddingBottom: '2px',
+              }}
+            >
               {STATUS_FILTERS.map((f) => (
                 <button
                   key={f.value}
                   onClick={() => { setStatusFilter(f.value); setPage(1); }}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150"
                   style={{
+                    flexShrink: 0,
+                    padding: '6px 12px',
+                    borderRadius: '999px',
+                    fontSize: '12px',
+                    fontWeight: 500,
                     background: statusFilter === f.value ? 'var(--brand-blue)' : 'var(--surface-hover)',
                     color: statusFilter === f.value ? '#fff' : 'var(--text-secondary)',
                     border: '1px solid',
                     borderColor: statusFilter === f.value ? 'var(--brand-blue)' : 'transparent',
                     cursor: 'pointer',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {f.label}
@@ -404,6 +420,55 @@ function CreateClientModal({ onClose, onCreated }: { onClose: () => void; onCrea
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Dropbox folder picker state
+  const [folders, setFolders] = useState<{ name: string; path: string }[]>([]);
+  const [foldersLoading, setFoldersLoading] = useState(true);
+  const [foldersError, setFoldersError] = useState('');
+  const [folderSearch, setFolderSearch] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedFolderName, setSelectedFolderName] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch Dropbox folders on mount
+  useEffect(() => {
+    fetch('/api/dropbox/client-folders')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.error) throw new Error(d.error);
+        setFolders(d.folders ?? []);
+      })
+      .catch((e: unknown) => setFoldersError(e instanceof Error ? e.message : 'Failed to load folders'))
+      .finally(() => setFoldersLoading(false));
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
+
+  const filteredFolders = folders.filter((f) =>
+    f.name.toLowerCase().includes(folderSearch.toLowerCase())
+  );
+
+  const selectFolder = (folder: { name: string; path: string }) => {
+    setSelectedFolderName(folder.name);
+    setForm((f) => ({ ...f, dropboxFolderPath: folder.path }));
+    setFolderSearch('');
+    setDropdownOpen(false);
+  };
+
+  const clearFolder = () => {
+    setSelectedFolderName('');
+    setForm((f) => ({ ...f, dropboxFolderPath: '' }));
+    setFolderSearch('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -440,28 +505,141 @@ function CreateClientModal({ onClose, onCreated }: { onClose: () => void; onCrea
           Add client account
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {[
-            { key: 'contactName', label: 'Contact name', placeholder: 'e.g. Jane Smith', required: true },
-            { key: 'contactEmail', label: 'Contact email', placeholder: 'jane@example.com', required: true, type: 'email' },
-            { key: 'dropboxFolderPath', label: 'Dropbox folder path', placeholder: '/Signature Cleans (1)/.../Client Name', required: false },
-          ].map((field) => (
-            <div key={field.key}>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                {field.label}{field.required && <span style={{ color: 'var(--status-danger)', marginLeft: '2px' }}>*</span>}
-              </label>
-              <input
-                type={field.type ?? 'text'}
-                placeholder={field.placeholder}
-                required={field.required}
-                value={form[field.key as keyof typeof form]}
-                onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
+          {/* Contact name */}
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              Contact name<span style={{ color: 'var(--status-danger)', marginLeft: '2px' }}>*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Jane Smith"
+              required
+              value={form.contactName}
+              onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))}
+              className="w-full px-3 py-2 rounded-lg text-sm"
+              style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)', outline: 'none' }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-blue)'; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+            />
+          </div>
+
+          {/* Contact email */}
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              Contact email<span style={{ color: 'var(--status-danger)', marginLeft: '2px' }}>*</span>
+            </label>
+            <input
+              type="email"
+              placeholder="jane@example.com"
+              required
+              value={form.contactEmail}
+              onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))}
+              className="w-full px-3 py-2 rounded-lg text-sm"
+              style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)', outline: 'none' }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-blue)'; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+            />
+          </div>
+
+          {/* Dropbox folder picker */}
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              Dropbox folder
+            </label>
+
+            {foldersError ? (
+              <p style={{ fontSize: '12px', color: 'var(--status-danger)' }}>
+                Could not load folders: {foldersError}
+              </p>
+            ) : foldersLoading ? (
+              <div
                 className="w-full px-3 py-2 rounded-lg text-sm"
-                style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)', outline: 'none' }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-blue)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
-              />
-            </div>
-          ))}
+                style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-muted)' }}
+              >
+                Loading folders...
+              </div>
+            ) : selectedFolderName ? (
+              /* Selected state */
+              <div
+                className="w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between gap-2"
+                style={{ border: '1px solid var(--brand-blue)', background: 'var(--background)', color: 'var(--text-primary)' }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {selectedFolderName}
+                </span>
+                <button
+                  type="button"
+                  onClick={clearFolder}
+                  style={{ flexShrink: 0, fontSize: '16px', lineHeight: 1, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}
+                  aria-label="Clear selection"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              /* Combobox */
+              <div ref={dropdownRef} style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Search folders..."
+                  value={folderSearch}
+                  onChange={(e) => { setFolderSearch(e.target.value); setDropdownOpen(true); }}
+                  onFocus={() => setDropdownOpen(true)}
+                  className="w-full px-3 py-2 rounded-lg text-sm"
+                  style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-primary)', outline: 'none' }}
+                  onFocusCapture={(e) => { e.currentTarget.style.borderColor = 'var(--brand-blue)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+                />
+                {dropdownOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      right: 0,
+                      zIndex: 100,
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      boxShadow: 'var(--shadow-lg)',
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {filteredFolders.length === 0 ? (
+                      <div style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                        No folders match
+                      </div>
+                    ) : (
+                      filteredFolders.map((folder) => (
+                        <button
+                          key={folder.path}
+                          type="button"
+                          onClick={() => selectFolder(folder)}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '9px 12px',
+                            fontSize: '13px',
+                            color: 'var(--text-primary)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid var(--border-subtle, var(--border))',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-accent)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                        >
+                          {folder.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {error && (
             <p style={{ fontSize: '13px', color: 'var(--status-danger)' }}>{error}</p>

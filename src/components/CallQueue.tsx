@@ -207,7 +207,7 @@ function CallDialer({ lead, onClose, onLogged }: CallDialerProps) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
         {/* Lead info card — always visible */}
         <div className="rounded-lg p-3 space-y-1" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{lead.companyName}</p>
