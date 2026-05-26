@@ -243,62 +243,66 @@ export function LeadDetailClient({ id }: { id: string }) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => router.push('/dashboard/leads')}
-          className="p-1 hover:bg-gray-100 rounded"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          ← Back
-        </button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {lead.companyName}
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            {lead.contactName}
-          </p>
+      <div className="mb-6">
+        {/* Title row */}
+        <div className="flex items-start gap-2">
+          <button
+            onClick={() => router.push('/dashboard/leads')}
+            className="p-1 mt-1 hover:bg-gray-100 rounded shrink-0"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            ← Back
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
+              {lead.companyName}
+            </h1>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              {lead.contactName}
+            </p>
+          </div>
+          <span
+            className="shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white mt-1"
+            style={{ backgroundColor: STAGE_COLOURS[lead.stage] || '#6b7280' }}
+          >
+            {STAGE_LABELS[lead.stage] || lead.stage}
+          </span>
         </div>
-        <span
-          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white"
-          style={{ backgroundColor: STAGE_COLOURS[lead.stage] || '#6b7280' }}
-        >
-          {STAGE_LABELS[lead.stage] || lead.stage}
-        </span>
-        <button
-          onClick={() => { setShowBookVisit(true); setBookVisitError(null); }}
-          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
-          style={{ backgroundColor: '#7c3aed' }}
-          title="Book a site visit for this lead"
-        >
-          Book Site Visit
-        </button>
-        {convertError && (
-          <span className="text-xs text-red-600">{convertError}</span>
-        )}
-        <button
-          onClick={handleConvertToDeal}
-          disabled={converting}
-          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-          style={{ backgroundColor: '#16a34a' }}
-          title="Create a deal from this lead"
-        >
-          {converting ? 'Converting...' : '+ Deal'}
-        </button>
-        <button
-          onClick={() => setShowEditModal(true)}
-          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
-          style={{ backgroundColor: 'var(--brand-blue)' }}
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          className="px-4 py-2 text-sm border rounded-lg hover:bg-red-50 text-red-600"
-          style={{ borderColor: '#fca5a5' }}
-        >
-          Delete
-        </button>
+        {/* Action buttons — wrap on mobile */}
+        <div className="flex flex-wrap gap-2 mt-3">
+          <button
+            onClick={() => { setShowBookVisit(true); setBookVisitError(null); }}
+            className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
+            style={{ backgroundColor: '#7c3aed' }}
+          >
+            Book Site Visit
+          </button>
+          <button
+            onClick={handleConvertToDeal}
+            disabled={converting}
+            className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: '#16a34a' }}
+          >
+            {converting ? 'Converting...' : '+ Deal'}
+          </button>
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
+            style={{ backgroundColor: 'var(--brand-blue)' }}
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-4 py-2 text-sm border rounded-lg hover:bg-red-50 text-red-600"
+            style={{ borderColor: '#fca5a5' }}
+          >
+            Delete
+          </button>
+          {convertError && (
+            <span className="text-xs text-red-600 self-center">{convertError}</span>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}

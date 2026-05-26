@@ -164,44 +164,48 @@ export function DealDetailClient({ id }: { id: string }) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => router.push('/dashboard/deals')}
-          className="p-1 hover:bg-gray-100 rounded"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          ← Back
-        </button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {deal.name}
-          </h1>
-          {deal.value && (
-            <p className="text-sm mt-0.5 font-semibold" style={{ color: 'var(--brand-blue)' }}>
-              {formatCurrency(deal.value)}
-            </p>
-          )}
+      <div className="mb-6">
+        <div className="flex items-start gap-2">
+          <button
+            onClick={() => router.push('/dashboard/deals')}
+            className="p-1 mt-1 hover:bg-gray-100 rounded shrink-0"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            ← Back
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
+              {deal.name}
+            </h1>
+            {deal.value && (
+              <p className="text-sm mt-0.5 font-semibold" style={{ color: 'var(--brand-blue)' }}>
+                {formatCurrency(deal.value)}
+              </p>
+            )}
+          </div>
+          <span
+            className="shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white mt-1"
+            style={{ backgroundColor: STAGE_COLOURS[deal.stage] || '#6b7280' }}
+          >
+            {STAGE_LABELS[deal.stage] || deal.stage}
+          </span>
         </div>
-        <span
-          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white"
-          style={{ backgroundColor: STAGE_COLOURS[deal.stage] || '#6b7280' }}
-        >
-          {STAGE_LABELS[deal.stage] || deal.stage}
-        </span>
-        <button
-          onClick={() => setShowEditModal(true)}
-          className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
-          style={{ backgroundColor: 'var(--brand-blue)' }}
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          className="px-4 py-2 text-sm border rounded-lg hover:bg-red-50 text-red-600"
-          style={{ borderColor: '#fca5a5' }}
-        >
-          Delete
-        </button>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90"
+            style={{ backgroundColor: 'var(--brand-blue)' }}
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-4 py-2 text-sm border rounded-lg hover:bg-red-50 text-red-600"
+            style={{ borderColor: '#fca5a5' }}
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
