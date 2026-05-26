@@ -52,6 +52,13 @@ export async function validateTwilioSignature(
 
   const sigBuf = Buffer.from(signature);
   const expBuf = Buffer.from(expected);
-  if (sigBuf.length !== expBuf.length) return false;
-  return timingSafeEqual(sigBuf, expBuf);
+  if (sigBuf.length !== expBuf.length) {
+    console.warn('[twilio-verify] signature length mismatch — reconstructed URL:', publicUrl, '| got sig:', signature, '| expected sig:', expected);
+    return false;
+  }
+  const match = timingSafeEqual(sigBuf, expBuf);
+  if (!match) {
+    console.warn('[twilio-verify] signature mismatch — reconstructed URL:', publicUrl, '| params:', params.map(([k]) => k).join(','), '| got sig:', signature, '| expected sig:', expected);
+  }
+  return match;
 }
