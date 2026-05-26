@@ -1,0 +1,142 @@
+export const runtime = 'nodejs';
+
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/role-gate';
+
+function calcOverallScore(scores: {
+  scorePresentation: number;
+  scoreCleanliness: number;
+  scoreCompliance: number;
+  scoreEquipment: number;
+  scoreTeamConduct: number;
+}): number {
+  const avg =
+    (scores.scorePresentation +
+      scores.scoreCleanliness +
+      scores.scoreCompliance +
+      scores.scoreEquipment +
+      scores.scoreTeamConduct) /
+    5;
+  return Math.round(avg * 10);
+}
+
+export async function GET(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  await requireRole(['admin', 'sales', 'operations']);
+
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get('siteId') || '';
+  const status = url.searchParams.get('status') || '';
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+  const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '20')));
+
+  const where = {
+    ...(siteId ? { siteId } : {}),
+    ...(status ? { status: status as never } : {}),
+  };
+
+  const [data, total] = await Promise.all([
+    prisma.audit.findMany({
+      where,
+      include: {
+        auditedBy: { select: { id: true, name: true } },
+        site: { select: { id: true, name: true, cellTier: true } },
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { auditedAt: 'desc' },
+    }),
+    prisma.audit.count({ where }),
+  ]);
+
+  return Response.json({ data, total, page, limit });
+}
+
+export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  await requireRole(['admin', 'operations']);
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  if (!body.siteId) {
+    return Response.json({ error: 'siteId is required' }, { status: 400 });
+  }
+
+  // Validate category scores (0-10)
+  const scoreFields = [
+    'scorePresentation',
+    'scoreCleanliness',
+    'scoreCompliance',
+    'scoreEquipment',
+    'scoreTeamConduct',
+  ] as const;
+
+  const scores: Record<string, number> = {};
+  for (const field of scoreFields) {
+    const val = Number(body[field] ?? 0);
+    if (isNaN(val) || val < 0 || val > 10) {
+      return Response.json({ error: `${field} must be 0-10` }, { status: 400 });
+    }
+    scores[field] = val;
+  }
+
+  const overallScore = calcOverallScore(scores as Parameters<typeof calcOverallScore>[0]);
+
+  const audit = await prisma.audit.create({
+    data: {
+      siteId: body.siteId as string,
+      auditedById: session.user.id,
+      auditedAt: body.auditedAt ? new Date(body.auditedAt as string) : new Date(),
+      scorePresentation: scores.scorePresentation,
+      scoreCleanliness: scores.scoreCleanliness,
+      scoreCompliance: scores.scoreCompliance,
+      scoreEquipment: scores.scoreEquipment,
+      scoreTeamConduct: scores.scoreTeamConduct,
+      overallScore,
+      notePresentation: (body.notePresentation as string) || null,
+      noteCleanliness: (body.noteCleanliness as string) || null,
+      noteCompliance: (body.noteCompliance as string) || null,
+      noteEquipment: (body.noteEquipment as string) || null,
+      noteTeamConduct: (body.noteTeamConduct as string) || null,
+      headlineNotes: (body.headlineNotes as string) || null,
+      actionItems: (body.actionItems as never) || [],
+      photos: (body.photos as never) || [],
+      status: 'draft',
+    },
+    include: {
+      auditedBy: { select: { id: true, name: true } },
+      site: { select: { id: true, name: true } },
+    },
+  });
+
+  // Auto-create action task if score < 70 (below intervention threshold)
+  if (overallScore < 70) {
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + (overallScore < 60 ? 1 : 3)); // 1 day for <60, 3 for 70-79
+    await prisma.task.create({
+      data: {
+        subject: `Audit action required: ${audit.site.name} — score ${overallScore}/100`,
+        description: `Audit from ${audit.auditedAt.toDateString()} scored ${overallScore}/100, below the intervention threshold. Review findings and resolve open issues.`,
+        taskType: 'audit_action',
+        status: 'not_started',
+        priority: overallScore < 60 ? 'highest' : 'high',
+        ownerId: session.user.id,
+        dueDate,
+      },
+    });
+  }
+
+  return Response.json(audit, { status: 201 });
+}

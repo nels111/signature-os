@@ -19,13 +19,13 @@ export default function GlobalError({
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      minHeight: "100vh",
+      minHeight: "100%",
       fontFamily: "-apple-system, sans-serif",
       padding: 40,
     }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>⚠</div>
-      <h2 style={{ color: "#333", marginBottom: 8 }}>Something went wrong</h2>
-      <p style={{ color: "#666", marginBottom: 24, maxWidth: 400, textAlign: "center" }}>
+      <h2 style={{ color: "var(--text-primary)", marginBottom: 8 }}>Something went wrong</h2>
+      <p style={{ color: "var(--text-secondary)", marginBottom: 24, maxWidth: 400, textAlign: "center" }}>
         An unexpected error occurred. Please try again or contact Nelson.
       </p>
       <button
@@ -33,7 +33,7 @@ export default function GlobalError({
         style={{
           padding: "12px 32px",
           background: "var(--brand-blue)",
-          color: "white",
+          color: "var(--surface)",
           border: "none",
           borderRadius: 8,
           fontSize: 15,

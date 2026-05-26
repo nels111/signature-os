@@ -6,7 +6,7 @@ import { DataTable } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { AccountForm } from './AccountForm';
-import type { AccountFormData } from './AccountForm';
+import type { AccountFormData } from '@/lib/schemas/account';
 
 interface Account {
   id: string;
@@ -286,6 +286,42 @@ export function AccountsPage() {
         emptyMessage="No accounts found. Create your first account to get started."
         isLoading={loading}
         meta={metaText}
+        mobileCard={(item) => (
+          <div className="flex items-center gap-3 px-4 py-3.5">
+            <div
+              className="flex-shrink-0 flex items-center justify-center rounded-full text-white text-sm font-bold"
+              style={{ width: 40, height: 40, backgroundColor: 'var(--brand-blue)' }}
+            >
+              {accountInitials(item.name)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                {item.name}
+              </div>
+              {item.phone && (
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  {item.phone}
+                </div>
+              )}
+              {item.website && (
+                <div className="text-xs truncate" style={{ color: 'var(--brand-blue)' }}>
+                  {item.website.replace(/^https?:\/\//, '')}
+                </div>
+              )}
+              {item.industry && (
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {item.industry}
+                </div>
+              )}
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <div className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                {item._count?.contacts ?? 0}
+              </div>
+              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>contacts</div>
+            </div>
+          </div>
+        )}
       />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />

@@ -1,12 +1,9 @@
 /**
  * Connecteam time-clock reader for Signature Cleans OS.
- * 
+ *
  * Pulls actual clocked hours from Connecteam Time Activities API.
- * Creds from ~/.hermes/dorabot-api-keys.env
+ * Creds from process.env (loaded by Next.js from /var/www/signature-cleans-os/.env).
  */
-
-import * as fs from 'fs';
-import * as path from 'path';
 
 interface ClockEntry {
   userId: number;
@@ -27,28 +24,16 @@ export interface ActualHoursData {
 }
 
 function loadConnecteamKey(): string {
-  const envPaths = [
-    path.join(process.env.HOME || '/home/hermes', '.hermes/dorabot-api-keys.env'),
-    path.join(process.env.HOME || '/home/hermes', '.hermes/.env'),
-  ];
-
-  for (const envPath of envPaths) {
-    if (!fs.existsSync(envPath)) continue;
-    const content = fs.readFileSync(envPath, 'utf-8');
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('CONNECTEAM_API_KEY=')) {
-        return trimmed.split('=')[1].replace(/^["']|["']$/g, '');
-      }
-    }
-  }
-
-  throw new Error('CONNECTEAM_API_KEY not found');
+  const key = process.env.CONNECTEAM_API_KEY;
+  if (!key) throw new Error('CONNECTEAM_API_KEY not set in environment');
+  return key;
 }
+
+// Both Connecteam time clocks — 6814166 (main) and 16824311 (Cleanz4U/Lisa)
+const TIME_CLOCK_IDS = ['6814166', '16824311'];
 
 export async function fetchActualHours(): Promise<ActualHoursData> {
   const apiKey = loadConnecteamKey();
-  const timeClockId = '6814166';
 
   // This week Mon-Sun (Europe/London)
   const now = new Date();
@@ -64,40 +49,33 @@ export async function fetchActualHours(): Promise<ActualHoursData> {
   const startStr = weekStart.toISOString().split('T')[0];
   const endStr = weekEnd.toISOString().split('T')[0];
 
-  const url = `https://api.connecteam.com/time-clock/v1/time-clocks/${timeClockId}/time-activities?startDate=${startStr}&endDate=${endStr}&limit=200`;
-
-  const res = await fetch(url, {
-    headers: {
-      'X-API-KEY': apiKey,
-      'User-Agent': 'jaz/2.0',
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error(`Connecteam API error: ${res.status}`);
-  }
-
-  const json = await res.json();
-  const users = json.data?.timeActivitiesByUsers || [];
+  // Fetch both clocks in parallel and merge by userId
+  const clockResults = await Promise.all(
+    TIME_CLOCK_IDS.map(async (clockId) => {
+      const url = `https://api.connecteam.com/time-clock/v1/time-clocks/${clockId}/time-activities?startDate=${startStr}&endDate=${endStr}&limit=500`;
+      const res = await fetch(url, {
+        headers: { 'X-API-KEY': apiKey, 'User-Agent': 'jaz/2.0' },
+      });
+      if (!res.ok) throw new Error(`Connecteam API error (clock ${clockId}): ${res.status}`);
+      const json = await res.json();
+      return json.data?.timeActivitiesByUsers || [];
+    })
+  );
 
   const entries: ClockEntry[] = [];
   const operativeIds = new Set<number>();
 
-  for (const u of users) {
-    const userId = u.userId;
-    for (const s of u.shifts || []) {
-      const startTs = s.start?.timestamp;
-      const endTs = s.end?.timestamp;
-      if (startTs && endTs) {
-        const hours = (endTs - startTs) / 3600;
-        entries.push({
-          userId,
-          startTs,
-          endTs,
-          hours,
-          jobId: s.jobId || null,
-        });
-        operativeIds.add(userId);
+  for (const users of clockResults) {
+    for (const u of users) {
+      const userId = u.userId;
+      for (const s of u.shifts || []) {
+        const startTs = s.start?.timestamp;
+        const endTs = s.end?.timestamp;
+        if (startTs && endTs) {
+          const hours = (endTs - startTs) / 3600;
+          entries.push({ userId, startTs, endTs, hours, jobId: s.jobId || null });
+          operativeIds.add(userId);
+        }
       }
     }
   }

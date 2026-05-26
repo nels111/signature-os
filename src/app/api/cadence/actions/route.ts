@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { hasRole } from '@/lib/authz';
 import { startCadence, pauseCadence, resumeCadence } from '@/lib/cadence';
 
 export const runtime = 'nodejs';
@@ -12,6 +13,10 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // Cadences send email under the company name. Sales/admin/va only.
+    if (!hasRole(session, 'admin', 'sales', 'va')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     if (!CADENCE_ENABLED) {

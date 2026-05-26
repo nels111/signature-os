@@ -9,7 +9,7 @@ export default function NotFound() {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      minHeight: "100vh",
+      minHeight: "100%",
       fontFamily: "-apple-system, sans-serif",
       padding: 40,
     }}>
@@ -23,7 +23,7 @@ export default function NotFound() {
         style={{
           padding: "12px 32px",
           background: "var(--brand-blue)",
-          color: "white",
+          color: "var(--surface)",
           textDecoration: "none",
           borderRadius: 8,
           fontSize: 15,

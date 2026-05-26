@@ -202,12 +202,12 @@ function CallDialer({ lead, onClose, onLogged }: CallDialerProps) {
             {phase === 'calling' ? CALL_STATE_LABEL[callState] : phase === 'log-outcome' ? 'Log Outcome' : phase === 'done' ? 'Logged' : 'Call Lead'}
           </span>
         </div>
-        <button onClick={onClose} disabled={isActiveCall} className="p-1 rounded hover:opacity-70 disabled:opacity-30">
+        <button onClick={onClose} disabled={isActiveCall} aria-label="Close call panel" className="p-1 rounded hover:opacity-70 disabled:opacity-30">
           <X size={16} style={{ color: 'var(--text-secondary)' }} />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
         {/* Lead info card — always visible */}
         <div className="rounded-lg p-3 space-y-1" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{lead.companyName}</p>
@@ -566,7 +566,7 @@ export function CallQueue({ isVa: _isVa }: CallQueueProps) {
               {loading ? 'Loading...' : `${freshLeads.length} to call${callbackLeads.length > 0 ? ` · ${callbackLeads.length} callback${callbackLeads.length !== 1 ? 's' : ''}` : ''}`}
             </p>
           </div>
-          <button onClick={fetchQueue} className="p-1.5 rounded hover:opacity-70">
+          <button onClick={fetchQueue} aria-label="Refresh call queue" className="p-1.5 rounded hover:opacity-70">
             <RefreshCw size={14} style={{ color: 'var(--text-secondary)' }} />
           </button>
         </div>

@@ -26,6 +26,8 @@ export interface QuoteEmailData {
   productCost: number;
   overheadCost: number;
   isPilot: boolean;
+  /** Optional override. Defaults to 17 when omitted. */
+  labourRate?: number;
 }
 
 export interface QuoteCalcData {
@@ -103,7 +105,7 @@ ${isPilot ? `<p style="margin-top:20px;font-size:13px;color:#856404"><strong>Pil
 
 export function buildInternalEmailHtml(d: QuoteEmailData, calc: QuoteCalcData): string {
   const isPilot = d.isPilot;
-  const LABOUR_RATE = 17;
+  const LABOUR_RATE = d.labourRate ?? 17;
   return `<!DOCTYPE html>
 <html><head><style>
 body{font-family:Arial,sans-serif;line-height:1.6;color:#333}

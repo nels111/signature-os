@@ -293,6 +293,52 @@ export function QuotesListPage() {
         emptyMessage="No quotes found. Generate your first quote to get started."
         isLoading={loading}
         meta={metaText}
+        mobileCard={(item) => (
+          <div className="flex items-center gap-3 px-4 py-3.5">
+            <div
+              className="flex-shrink-0 flex items-center justify-center rounded-full text-white text-sm font-bold"
+              style={{ width: 40, height: 40, backgroundColor: STATUS_COLOURS[item.status] || '#6b7280' }}
+            >
+              {(item.companyName || item.account?.name || item.deal?.name || 'Q').charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                {item.companyName || item.account?.name || item.deal?.name || '—'}
+              </div>
+              {item.contactName && (
+                <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                  {item.contactName}
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <span
+                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                  style={{ backgroundColor: STATUS_COLOURS[item.status] || '#6b7280' }}
+                >
+                  {STATUS_LABELS[item.status] || item.status}
+                </span>
+                {item.isPilot && (
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                    style={{ backgroundColor: '#fff3cd', color: '#856404' }}
+                  >
+                    Pilot
+                  </span>
+                )}
+              </div>
+              {item.sentAt && (
+                <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Sent {formatDate(item.sentAt)}
+                </div>
+              )}
+            </div>
+            {item.monthlyTotal && (
+              <div className="flex-shrink-0 font-bold text-sm" style={{ color: 'var(--brand-blue)' }}>
+                {formatCurrency(item.monthlyTotal)}/mo
+              </div>
+            )}
+          </div>
+        )}
       />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />

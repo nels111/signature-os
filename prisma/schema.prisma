@@ -116,6 +116,51 @@ enum CadenceStatus {
   long_term_nurture
 }
 
+enum CellTier {
+  A
+  B
+  C
+}
+
+enum BillingType {
+  hourly
+  monthly_fixed
+}
+
+enum PortalStatus {
+  not_invited  // site exists, no portal account yet
+  invited      // magic link sent, not yet activated
+  active       // client has logged in at least once
+  suspended    // access revoked
+}
+
+enum TicketSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+enum ServiceRequestStatus {
+  pending    // submitted, awaiting admin review
+  reviewing  // Nelson/Nick acknowledged
+  approved   // scheduled
+  completed
+  declined
+}
+
+enum AuditStatus {
+  draft      // form being filled
+  published  // visible to client via portal
+}
+
 enum NotificationType {
   task_due
   task_overdue
@@ -170,8 +215,12 @@ model User {
   emails          Email[]
   emailTemplates  EmailTemplate[]
   quotes          Quote[]
-  notifications   Notification[]
-  activities      Activity[]
+  notifications      Notification[]
+  activities         Activity[]
+  pushSubscriptions  PushSubscription[]
+  timeSessions       TimeSession[]
+  assignedTickets    ClientTicket[]
+  audits             Audit[]
 
   @@map("users")
 }
@@ -276,8 +325,8 @@ model Deal {
   id              String    @id @default(cuid())
   name            String
   stage           DealStage @default(quote_sent)
-  value           Decimal?
-  weeklyHours     Decimal?
+  value           Decimal?  @db.Decimal(12, 2)
+  weeklyHours     Decimal?  @db.Decimal(10, 4)
   ownerId         String
   contactId       String?
   accountId       String?
@@ -366,8 +415,9 @@ model CalendarEvent {
   deletedAt    DateTime?
 
   // Relations
-  owner   User             @relation(fields: [ownerId], references: [id])
-  invites CalendarInvite[]
+  owner            User                      @relation(fields: [ownerId], references: [id])
+  invites          CalendarInvite[]
+  externalInvites  CalendarExternalInvite[]
 
   @@index([ownerId])
   @@index([startDate])
@@ -477,22 +527,22 @@ model Quote {
   contactEmail  String?
   contactPhone  String?
   siteType      String?
-  hoursPerDay   Decimal?
+  hoursPerDay   Decimal?    @db.Decimal(10, 4)
   frequency     Int?
   days          String[]
-  productCost   Decimal?    @default(0)
-  overheadCost  Decimal?    @default(0)
+  productCost   Decimal?    @default(0) @db.Decimal(12, 2)
+  overheadCost  Decimal?    @default(0) @db.Decimal(12, 2)
 
   // Calculated pricing
-  weeklyHours   Decimal
-  sellRate      Decimal
-  labourRate    Decimal     @default(17)
-  weeksPerMonth Decimal     @default(4.33)
+  weeklyHours   Decimal     @db.Decimal(10, 4)
+  sellRate      Decimal     @db.Decimal(12, 2)
+  labourRate    Decimal     @default(17) @db.Decimal(10, 4)
+  weeksPerMonth Decimal     @default(4.33) @db.Decimal(10, 4)
   isPilot       Boolean     @default(false)
-  pilotDiscount Decimal?    @default(25)
-  monthlyTotal  Decimal
-  annualTotal   Decimal
-  margin        Decimal
+  pilotDiscount Decimal?    @default(25) @db.Decimal(10, 4)
+  monthlyTotal  Decimal     @db.Decimal(12, 2)
+  annualTotal   Decimal     @db.Decimal(12, 2)
+  margin        Decimal     @db.Decimal(10, 4)
 
   // PDF and email
   pdfPath       String?
@@ -591,6 +641,90 @@ model Activity {
   @@map("activities")
 }
 
+model Site {
+  id                       String      @id @default(cuid())
+  name                     String      // Display name e.g. "Porsche Centre Exeter"
+  connecteamJobName        String?     // Exact title from Connecteam (for hours lookup)
+  cellTier                 CellTier    @default(A)
+  billingType              BillingType @default(hourly)
+  billingRatePerHour       Decimal?    @db.Decimal(10, 2) // £/hr — used when billingType = hourly
+  monthlyBillingValue      Decimal?    @db.Decimal(12, 2) // £/month — used when billingType = monthly_fixed
+  labourRatePerHour        Decimal     @default(17) @db.Decimal(10, 4) // £/hr standard operative pay
+  // Subcontractor fixed-cost override (e.g. Cleanz4U/Lisa invoices flat per contract).
+  // When set, weekly cost = fixedMonthlyCost / 4.33 instead of hours × labourRatePerHour.
+  fixedMonthlyCost         Decimal?    @db.Decimal(12, 2)
+  rateConfirmed            Boolean     @default(false) // false = estimated, true = verified
+  active                   Boolean     @default(true)
+  notes                    String?
+  regularHoursSheetRowId   String?     // Optional FK to canonical sheet row
+  clientAccountId          String?     // FK to ClientAccount (one portal account per site)
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+
+  // Relations
+  regularHoursSheetRow RegularHoursSheetRow? @relation(fields: [regularHoursSheetRowId], references: [id])
+  clientAccount        ClientAccount?        @relation(fields: [clientAccountId], references: [id])
+  tickets              ClientTicket[]
+  serviceRequests      ServiceRequest[]
+  audits               Audit[]
+
+  @@index([active])
+  @@index([regularHoursSheetRowId])
+  @@index([clientAccountId])
+  @@map("sites")
+}
+
+// ============ REGULAR HOURS SHEET ============
+// Canonical contracted-hours and revenue source.
+// Synced from Dropbox: "Regular Hours Sheet 2025.xlsx" (Financial Projections folder).
+// CT scheduler hours are PERMISSION WINDOWS, not work durations — these are the truth.
+// Margin = avgWeeklyEarnings (revenue) − avgWeeklyHours × labour rate (cost).
+
+enum HoursSheetRowStatus {
+  active   // weeklyHours > 0, contract live
+  pipeline // in sheet but no weekly hours yet (signed pending start)
+}
+
+model RegularHoursSheetRow {
+  id                  String              @id @default(cuid())
+  businessName        String              @unique // matches sheet "Business Name" column
+  cleanType           String?             // sheet "Type Of Clean"
+  hoursPerVisit       Decimal             @default(0) @db.Decimal(10, 4)
+  frequencyPerWeek    Decimal             @default(0) @db.Decimal(10, 4)
+  avgWeeklyHours      Decimal             @default(0) @db.Decimal(10, 4) // truth for cost basis + delivery target
+  avgWeeklyEarnings   Decimal             @default(0) @db.Decimal(12, 2) // truth for revenue
+  avgMonthlyEarnings  Decimal             @default(0) @db.Decimal(12, 2)
+  signedTerms         Boolean             @default(false)
+  annualValue         Decimal             @default(0) @db.Decimal(12, 2)
+  firstAuditDate      DateTime?
+  status              HoursSheetRowStatus @default(active)
+  syncedAt            DateTime            @default(now())
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relations
+  sites Site[]
+
+  @@index([status])
+  @@index([syncedAt])
+  @@map("regular_hours_sheet_rows")
+}
+
+// ============ ORG SETTINGS (singleton) ============
+// One row, id = "singleton". Holds editable org-wide defaults.
+// Currently: default labour rate used for new sites + quote builder.
+// Per-site labourRatePerHour overrides this when set.
+
+model OrgSettings {
+  id                       String   @id @default("singleton")
+  defaultLabourRatePerHour Decimal  @default(17) @db.Decimal(10, 4)
+  updatedBy                String?
+  updatedAt                DateTime @updatedAt
+  createdAt                DateTime @default(now())
+
+  @@map("org_settings")
+}
+
 model Cadence {
   id          String        @id @default(cuid())
   leadId      String
@@ -629,4 +763,188 @@ model CadenceStep {
   @@unique([cadenceId, stepNumber])
   @@index([templateId])
   @@map("cadence_steps")
+}
+
+// ============ UNDECLARED LIVE TABLES (added by schema-drift fix 2026-05-26) ============
+
+/// External (non-user) invites to calendar events. Live table with no prior Prisma model.
+model CalendarExternalInvite {
+  id          String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  eventId     String
+  email       String
+  name        String?
+  status      String    @default("pending")
+  sentAt      DateTime?
+  respondedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, email])
+  @@index([email])
+  @@index([eventId])
+  @@map("calendar_external_invites")
+}
+
+/// Web-push subscriptions per user. Live table with no prior Prisma model.
+model PushSubscription {
+  id        String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId    String    @map("user_id")
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+/// Clock-in / clock-out sessions. Live table with no prior Prisma model.
+/// user_id is VARCHAR(255) NOT NULL in the DB (not a cuid/uuid).
+/// REVIEW NOTE: Task requested onDelete: SetNull but live column is NOT NULL.
+/// To use SetNull the migration must first ALTER COLUMN user_id DROP NOT NULL.
+/// Using Restrict here to match the live constraint safely; see data.md for options.
+model TimeSession {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String    @map("user_id") @db.VarChar(255)
+  clockedInAt     DateTime  @map("clocked_in_at") @db.Timestamptz(6)
+  clockedOutAt    DateTime? @map("clocked_out_at") @db.Timestamptz(6)
+  durationMinutes Int?      @map("duration_minutes")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations — Restrict to match NOT NULL constraint; change to SetNull only after making userId optional
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([clockedInAt])
+  @@map("time_sessions")
+}
+
+// ============ CLIENT PORTAL ============
+// ClientAccount  — one per site/contract. The portal login identity for a client.
+// ClientTicket   — issues raised by client or admin (complaints, access problems, etc.)
+// ServiceRequest — client-initiated upsell / add-on / service change request.
+// Audit          — SigOS-native audit replacing the Connecteam form → Dropbox pipeline.
+
+model ClientAccount {
+  id                  String       @id @default(cuid())
+  contactName         String       // Primary contact at the client
+  contactEmail        String       @unique // Portal login email
+  dropboxFolderPath   String?      // e.g. "/Signature Cleans (1)/.../Contract Cleaning Clients/Bott Ltd"
+  portalStatus        PortalStatus @default(not_invited)
+  invitedAt           DateTime?
+  lastLoginAt         DateTime?
+  magicLinkToken      String?      @unique // bcrypt hash stored, never plain
+  magicLinkExpiresAt  DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  // Relations — site has FK to this (Site.clientAccountId). Reverse to get the site:
+  sites           Site[]
+  tickets         ClientTicket[]
+  serviceRequests ServiceRequest[]
+
+  @@index([portalStatus])
+  @@index([contactEmail])
+  @@map("client_accounts")
+}
+
+model ClientTicket {
+  id               String         @id @default(cuid())
+  clientAccountId  String
+  siteId           String?        // which site the issue relates to (optional — may span sites)
+  title            String
+  description      String
+  severity         TicketSeverity @default(medium)
+  photos           Json?          @default("[]") // array of Dropbox paths or base64 thumbnails
+  status           TicketStatus   @default(open)
+  assignedToId     String?        // User (Nelson/Nick) the ticket is assigned to
+  resolvedAt       DateTime?
+  resolutionNotes  String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relations
+  clientAccount ClientAccount @relation(fields: [clientAccountId], references: [id], onDelete: Cascade)
+  site          Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  assignedTo    User?         @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([clientAccountId])
+  @@index([siteId])
+  @@index([status, severity])
+  @@index([assignedToId])
+  @@map("client_tickets")
+}
+
+model ServiceRequest {
+  id               String               @id @default(cuid())
+  clientAccountId  String
+  siteId           String?
+  serviceType      String               // e.g. "Deep Clean", "Window Clean", "Ad Hoc Cover"
+  description      String
+  preferredDates   Json?               @default("[]") // array of ISO date strings client suggested
+  status           ServiceRequestStatus @default(pending)
+  adminNotes       String?              // internal notes from Nelson/Nick
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  // Relations
+  clientAccount ClientAccount @relation(fields: [clientAccountId], references: [id], onDelete: Cascade)
+  site          Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@index([clientAccountId])
+  @@index([siteId])
+  @@index([status])
+  @@map("service_requests")
+}
+
+model Audit {
+  id String @id @default(cuid())
+  siteId     String
+  auditedById String   // User who conducted the audit
+  auditedAt  DateTime  @default(now())
+
+  // 5 scoring categories — each 0-10
+  // overall = average of five × 10 → preserves 0-100 scale and 80/70 threshold bands
+  scorePresentation   Int // Presentation & appearance
+  scoreCleanliness    Int // Cleanliness standards
+  scoreCompliance     Int // Health & safety / COSHH compliance
+  scoreEquipment      Int // Equipment & materials condition
+  scoreTeamConduct    Int // Operative conduct & professionalism
+  overallScore        Int // Stored: avg(5 categories) * 10 — always recalculated on save
+
+  // Notes per category (optional)
+  notePresentation  String?
+  noteCleanliness   String?
+  noteCompliance    String?
+  noteEquipment     String?
+  noteTeamConduct   String?
+
+  headlineNotes     String?  // Executive summary for the client portal
+  actionItems       Json?    @default("[]") // [{title, dueDate, assignedToId, completedAt}]
+  photos            Json?    @default("[]") // Dropbox paths or upload refs
+
+  status            AuditStatus @default(draft)
+  publishedAt       DateTime?   // When status flipped to published — visible in client portal
+  dropboxPdfPath    String?     // Path after PDF is uploaded to Dropbox client folder
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  site       Site @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  auditedBy  User @relation(fields: [auditedById], references: [id], onDelete: Restrict)
+
+  @@index([siteId, auditedAt])
+  @@index([auditedById])
+  @@index([status])
+  @@index([overallScore])
+  @@map("audits")
 }

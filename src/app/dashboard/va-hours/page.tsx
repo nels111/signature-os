@@ -124,29 +124,41 @@ export default function VaHoursPage() {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
+        {/* Total Hours — blue */}
         <div
-          className="rounded-xl p-4"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: '3px solid var(--brand-blue)' }}
+          className="sig-stat rounded-2xl p-5"
+          style={{
+            background: 'radial-gradient(ellipse at 15% 0%, rgba(32,86,164,0.10) 0%, #ffffff 60%)',
+            boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 0 0 1px rgba(32,86,164,0.13), 0 2px 8px rgba(32,86,164,0.07), 0 14px 36px rgba(32,86,164,0.05)',
+          }}
         >
-          <p className="text-[11px] font-semibold uppercase mb-2" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}>Total Hours</p>
+          <p className="text-[10px] font-bold uppercase mb-3" style={{ color: '#2056A4', letterSpacing: '0.07em' }}>Total Hours</p>
           <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>{totalHours}h</p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>in selected period</p>
         </div>
+        {/* Sessions — green */}
         <div
-          className="rounded-xl p-4"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: '3px solid #22c55e' }}
+          className="sig-stat rounded-2xl p-5"
+          style={{
+            background: 'radial-gradient(ellipse at 15% 0%, rgba(22,163,74,0.10) 0%, #ffffff 60%)',
+            boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 0 0 1px rgba(22,163,74,0.13), 0 2px 8px rgba(22,163,74,0.07), 0 14px 36px rgba(22,163,74,0.05)',
+          }}
         >
-          <p className="text-[11px] font-semibold uppercase mb-2" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}>Sessions</p>
+          <p className="text-[10px] font-bold uppercase mb-3" style={{ color: '#16a34a', letterSpacing: '0.07em' }}>Sessions</p>
           <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
             {sessions.filter(s => s.clocked_out_at).length}
           </p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>completed</p>
         </div>
+        {/* Avg per Day — amber */}
         <div
-          className="rounded-xl p-4"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: '3px solid #f59e0b' }}
+          className="sig-stat rounded-2xl p-5"
+          style={{
+            background: 'radial-gradient(ellipse at 15% 0%, rgba(245,158,11,0.10) 0%, #ffffff 60%)',
+            boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 0 0 1px rgba(245,158,11,0.13), 0 2px 8px rgba(245,158,11,0.07), 0 14px 36px rgba(245,158,11,0.05)',
+          }}
         >
-          <p className="text-[11px] font-semibold uppercase mb-2" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}>Avg per Day</p>
+          <p className="text-[10px] font-bold uppercase mb-3" style={{ color: '#d97706', letterSpacing: '0.07em' }}>Avg per Day</p>
           <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
             {sortedDates.length > 0 ? (Number(totalHours) / sortedDates.length).toFixed(1) : '0.0'}h
           </p>
@@ -163,7 +175,7 @@ export default function VaHoursPage() {
       ) : sortedDates.length === 0 ? (
         <div
           className="rounded-xl p-10 text-center"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          style={{ background: '#ffffff', boxShadow: '0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05)' }}
         >
           <Clock size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
           <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>No sessions in this period</p>
@@ -180,7 +192,10 @@ export default function VaHoursPage() {
               <div
                 key={date}
                 className="rounded-xl overflow-hidden"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                style={{
+                  background: '#ffffff',
+                  boxShadow: '0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 10px 28px rgba(0,0,0,0.04)',
+                }}
               >
                 <div
                   className="px-4 py-3 flex items-center justify-between"

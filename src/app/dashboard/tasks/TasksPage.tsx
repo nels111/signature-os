@@ -260,116 +260,189 @@ export function TasksPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
-          <table className="w-full text-sm min-w-[600px]">
-            <tbody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                  {[40, 20, 15, 15, 10].map((w, j) => (
-                    <td key={j} className="px-4 py-3">
-                      <div className="h-4 rounded animate-pulse" style={{ background: 'var(--border)', width: `${w}%` }} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Mobile skeleton */}
+          <div className="sm:hidden rounded-2xl overflow-hidden" style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05)', background: '#ffffff' }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: '1px solid var(--border)' }}>
+                <div className="rounded-full animate-pulse flex-shrink-0" style={{ width: 40, height: 40, background: 'var(--border)' }} />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 rounded animate-pulse" style={{ background: 'var(--border)', width: '60%' }} />
+                  <div className="h-3 rounded animate-pulse" style={{ background: 'var(--border)', width: '40%' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop skeleton */}
+          <div className="hidden sm:block rounded-2xl overflow-hidden" style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05)', background: '#ffffff' }}>
+            <table className="w-full text-sm">
+              <tbody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                    {[40, 20, 15, 15, 10].map((w, j) => (
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 rounded animate-pulse" style={{ background: 'var(--border)', width: `${w}%` }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : tasks.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No tasks found.</p>
       ) : (
-        <div className="border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[640px]">
-            <thead style={{ backgroundColor: 'var(--surface-accent)' }}>
-              <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
-                <th className="px-3 py-3 w-10">
-                  <input
-                    type="checkbox"
-                    aria-label="Select all on page"
-                    checked={allOnPageSelected}
-                    ref={el => { if (el) el.indeterminate = someOnPageSelected; }}
-                    onChange={toggleSelectAll}
-                    className="w-4 h-4 cursor-pointer"
-                  />
-                </th>
-                <th className="px-2 py-3 w-10" aria-label="Done"></th>
-                <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Subject</th>
-                <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Due Date</th>
-                <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Priority</th>
-                <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Status</th>
-                <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Owner</th>
-                <th className="px-2 py-3 w-10" aria-label="Edit"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map(task => {
-                const done = task.status === 'completed';
-                const overdue = isOverdue(task.dueDate, task.status);
-                const isSelected = selected.has(task.id);
-                return (
-                  <tr key={task.id}
-                    className="border-b cursor-pointer transition-colors group"
-                    style={{
-                      borderColor: 'var(--border)',
-                      borderLeft: overdue ? '3px solid var(--status-danger, #D1242F)' : undefined,
-                      backgroundColor: isSelected ? 'var(--surface-accent)' : undefined,
-                    }}
-                    onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'; }}
-                    onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                    onClick={() => router.push('/dashboard/tasks/' + task.id)}>
-                    <td className="px-3 py-3 align-middle" onClick={e => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        aria-label={`Select task ${task.subject}`}
-                        checked={isSelected}
-                        onChange={e => toggleSelect(task.id, e)}
-                        className="w-4 h-4 cursor-pointer"
-                      />
-                    </td>
-                    <td className="px-2 py-3 align-middle" onClick={e => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        aria-label={done ? `Mark "${task.subject}" undone` : `Mark "${task.subject}" done`}
-                        checked={done}
-                        onChange={e => toggleDone(task, e)}
-                        className="w-5 h-5 cursor-pointer"
-                        style={{ accentColor: 'var(--brand-green, #6B8E23)' }}
-                      />
-                    </td>
-                    <td className="px-4 py-3 font-medium" style={{
+        <>
+          {/* Mobile card list */}
+          <div className="sm:hidden rounded-2xl overflow-hidden" style={{ background: '#ffffff', boxShadow: '0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 14px 40px rgba(0,0,0,0.05)' }}>
+            {tasks.map((task, i) => {
+              const done = task.status === 'completed';
+              const overdue = isOverdue(task.dueDate, task.status);
+              const isSelected = selected.has(task.id);
+              return (
+                <div
+                  key={task.id}
+                  className="flex items-start gap-3 px-4 py-3.5 cursor-pointer active:opacity-80"
+                  style={{
+                    borderBottom: i < tasks.length - 1 ? '1px solid var(--border)' : undefined,
+                    backgroundColor: isSelected ? 'var(--surface-accent)' : overdue ? 'rgba(220,38,38,0.04)' : undefined,
+                  }}
+                  onClick={() => router.push('/dashboard/tasks/' + task.id)}
+                >
+                  {/* Select + done checkboxes stacked */}
+                  <div className="flex-shrink-0 flex flex-col items-center gap-2 pt-0.5" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select task ${task.subject}`}
+                      checked={isSelected}
+                      onChange={e => toggleSelect(task.id, e)}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                    <input
+                      type="checkbox"
+                      aria-label={done ? `Mark "${task.subject}" undone` : `Mark "${task.subject}" done`}
+                      checked={done}
+                      onChange={e => toggleDone(task, e)}
+                      className="w-5 h-5 cursor-pointer"
+                      style={{ accentColor: 'var(--brand-green, #6B8E23)' }}
+                    />
+                  </div>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm leading-snug" style={{
                       color: done ? 'var(--text-muted)' : 'var(--text-primary)',
                       textDecoration: done ? 'line-through' : undefined,
-                    }}>{task.subject}</td>
-                    <td className="px-4 py-3" style={{ color: overdue ? 'var(--status-danger, #D1242F)' : 'var(--text-secondary)' }}>
-                      {formatDate(task.dueDate)}
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      <Badge color={PRIORITY_COLORS[task.priority] || '#6b7280'}>{formatLabel(task.priority)}</Badge>
-                    </td>
-                    <td className="px-4 py-3">
+                    }}>
+                      {task.subject}
+                    </div>
+                    <div className="text-xs mt-0.5" style={{ color: overdue ? 'var(--status-danger, #D1242F)' : 'var(--text-muted)' }}>
+                      Due {formatDate(task.dueDate)}
+                      {task.owner?.name && <> · {task.owner.name}</>}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       <Badge color={STATUS_COLORS[task.status] || '#6b7280'}>{formatLabel(task.status)}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-xs hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>{task.owner?.name || '\u2014'}</td>
-                    <td className="px-2 py-3 align-middle" onClick={e => e.stopPropagation()}>
-                      <button
-                        aria-label={`Edit ${task.subject}`}
-                        onClick={() => router.push('/dashboard/tasks/' + task.id)}
-                        className="opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/5"
-                        style={{ color: 'var(--text-secondary)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M12 20h9"/>
-                          <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/>
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <Badge color={PRIORITY_COLORS[task.priority] || '#6b7280'}>{formatLabel(task.priority)}</Badge>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block rounded-2xl overflow-hidden" style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 14px 40px rgba(0,0,0,0.05)', background: '#ffffff' }}>
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead style={{ backgroundColor: 'var(--surface-accent)' }}>
+                <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+                  <th className="px-3 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all on page"
+                      checked={allOnPageSelected}
+                      ref={el => { if (el) el.indeterminate = someOnPageSelected; }}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                  </th>
+                  <th className="px-2 py-3 w-10" aria-label="Done"></th>
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Subject</th>
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Due Date</th>
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Priority</th>
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Status</th>
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Owner</th>
+                  <th className="px-2 py-3 w-10" aria-label="Edit"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map(task => {
+                  const done = task.status === 'completed';
+                  const overdue = isOverdue(task.dueDate, task.status);
+                  const isSelected = selected.has(task.id);
+                  return (
+                    <tr key={task.id}
+                      className="border-b cursor-pointer transition-colors group"
+                      style={{
+                        borderColor: 'var(--border)',
+                        backgroundColor: isSelected ? 'var(--surface-accent)' : overdue ? 'rgba(220,38,38,0.04)' : undefined,
+                      }}
+                      onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = overdue ? 'rgba(220,38,38,0.06)' : 'var(--surface-hover)'; }}
+                      onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = overdue ? 'rgba(220,38,38,0.04)' : 'transparent'; }}
+                      onClick={() => router.push('/dashboard/tasks/' + task.id)}>
+                      <td className="px-3 py-3 align-middle" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select task ${task.subject}`}
+                          checked={isSelected}
+                          onChange={e => toggleSelect(task.id, e)}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                      </td>
+                      <td className="px-2 py-3 align-middle" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label={done ? `Mark "${task.subject}" undone` : `Mark "${task.subject}" done`}
+                          checked={done}
+                          onChange={e => toggleDone(task, e)}
+                          className="w-5 h-5 cursor-pointer"
+                          style={{ accentColor: 'var(--brand-green, #6B8E23)' }}
+                        />
+                      </td>
+                      <td className="px-4 py-3 font-medium" style={{
+                        color: done ? 'var(--text-muted)' : 'var(--text-primary)',
+                        textDecoration: done ? 'line-through' : undefined,
+                      }}>{task.subject}</td>
+                      <td className="px-4 py-3" style={{ color: overdue ? 'var(--status-danger, #D1242F)' : 'var(--text-secondary)' }}>
+                        {formatDate(task.dueDate)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge color={PRIORITY_COLORS[task.priority] || '#6b7280'}>{formatLabel(task.priority)}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge color={STATUS_COLORS[task.status] || '#6b7280'}>{formatLabel(task.status)}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>{task.owner?.name || '\u2014'}</td>
+                      <td className="px-2 py-3 align-middle" onClick={e => e.stopPropagation()}>
+                        <button
+                          aria-label={`Edit ${task.subject}`}
+                          onClick={() => router.push('/dashboard/tasks/' + task.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/5"
+                          style={{ color: 'var(--text-secondary)' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/>
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Pagination */}

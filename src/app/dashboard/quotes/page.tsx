@@ -270,7 +270,7 @@ const QUOTE_HTML = `
             <div class="pilot-save" id="calc-pilot-save"></div>
           </div>
           <div class="calc-breakdown">
-            <div class="calc-row"><span>Labour (per hr)</span><span>£17.00</span></div>
+            <div class="calc-row"><span>Labour (per hr)</span><span id="calc-labour-rate">£17.00</span></div>
             <div class="calc-row"><span>Weekly labour</span><span id="calc-labour">£0.00</span></div>
             <div class="calc-row"><span>Weekly products</span><span id="calc-products">£0.00</span></div>
             <div class="calc-row"><span>Weekly overhead</span><span id="calc-overhead">£0.00</span></div>
@@ -315,10 +315,22 @@ export default function QuotesPage() {
   useEffect(() => {
     if (!containerRef.current || screen !== "form") return;
 
-    const LABOUR_RATE = 17;
+    // Labour rate comes from org settings — fetched async, falls back to 17 until loaded
+    let LABOUR_RATE = 17;
     const WEEKS_PER_MONTH = 4.33;
     let pilotActive = false;
     let selectedDays: string[] = [];
+
+    // Fetch the editable default; update display + recalc once it arrives.
+    fetch('/api/settings').then(r => r.ok ? r.json() : null).then(data => {
+      const rate = data?.settings?.defaultLabourRatePerHour;
+      if (typeof rate === 'number' && rate > 0) {
+        LABOUR_RATE = rate;
+        const rateEl = el.querySelector('#calc-labour-rate');
+        if (rateEl) rateEl.textContent = '\u00A3' + rate.toFixed(2);
+        recalc();
+      }
+    }).catch(() => { /* keep default */ });
 
     const el = containerRef.current;
     const form = el.querySelector("#quote-form") as HTMLFormElement;
@@ -535,7 +547,7 @@ export default function QuotesPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] overflow-y-auto">
+    <div>
       {/* Page header — only show on form screen */}
       {screen === "form" && (
         <div className="flex items-center justify-between px-4 pt-6 pb-2" style={{ maxWidth: 600, margin: "0 auto" }}>

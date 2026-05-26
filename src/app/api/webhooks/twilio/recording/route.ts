@@ -2,6 +2,12 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { validateTwilioSignature } from '@/lib/twilio-verify';
+
+// Only allow transcription downloads from the canonical Twilio recording host.
+// Without this an attacker can craft a RecordingUrl to anywhere and we'll
+// dutifully send TWILIO_AUTH_TOKEN over the wire as Basic auth.
+const TWILIO_RECORDING_HOST = 'api.twilio.com';
 
 // POST /api/webhooks/twilio/recording
 // Called by Twilio when a call recording is complete.
@@ -9,6 +15,14 @@ import { prisma } from '@/lib/db';
 // Transcription is handled separately after recording is attached.
 export async function POST(request: NextRequest) {
   try {
+    const skipValidation = process.env.TWILIO_SKIP_SIGNATURE_VALIDATION === 'true';
+    if (!skipValidation) {
+      const valid = await validateTwilioSignature(request);
+      if (!valid) {
+        return new NextResponse('Forbidden', { status: 403 });
+      }
+    }
+
     const formData = await request.formData();
 
     const callSid = formData.get('CallSid') as string | null;
@@ -18,7 +32,18 @@ export async function POST(request: NextRequest) {
     // "To" = the lead's phone number (normalised E.164 by Twilio)
     const toNumber = formData.get('To') as string | null;
 
-    console.log('Twilio recording webhook received:', { callSid, recordingUrl, recordingDuration, recordingSid, toNumber });
+    // Hard-validate the recording URL hostname before we ever touch it.
+    if (recordingUrl) {
+      try {
+        const u = new URL(recordingUrl);
+        if (u.hostname !== TWILIO_RECORDING_HOST) {
+          console.warn('[twilio recording] rejecting non-Twilio host:', u.hostname);
+          return new NextResponse('OK', { status: 200 });
+        }
+      } catch {
+        return new NextResponse('OK', { status: 200 });
+      }
+    }
 
     if (!callSid || !recordingUrl) {
       return new NextResponse('OK', { status: 200 });
@@ -52,13 +77,9 @@ export async function POST(request: NextRequest) {
         ORDER BY a."createdAt" DESC
         LIMIT 1
       `;
-      if (activities.length > 0) {
-        console.log('Twilio recording: matched activity by phone number', toNumber);
-      }
     }
 
     if (activities.length === 0) {
-      console.warn('Twilio recording: no activity found for CallSid', callSid, 'To', toNumber);
       return new NextResponse('OK', { status: 200 });
     }
 
@@ -82,8 +103,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log('Twilio recording: activity', activityId, 'updated — recordingUrl attached');
-
     // Kick off transcription asynchronously if ElevenLabs key is available
     const elKey = process.env.ELEVENLABS_API_KEY;
     if (elKey) {
@@ -105,6 +124,18 @@ async function transcribeWithElevenLabs(
   currentMeta: Record<string, unknown>,
   apiKey: string,
 ): Promise<void> {
+  // Defence-in-depth: validate the URL host one more time before sending Basic auth.
+  // If anything ever bypasses the route handler check, this is the last line.
+  try {
+    const u = new URL(audioUrl);
+    if (u.hostname !== TWILIO_RECORDING_HOST) {
+      console.error('[transcribe] refusing to fetch non-Twilio URL:', u.hostname);
+      return;
+    }
+  } catch {
+    return;
+  }
+
   // Download the recording (Twilio auth required)
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -146,5 +177,4 @@ async function transcribeWithElevenLabs(
     data: { metadata: { ...latestMeta, transcriptText, transcriptStatus: 'completed' } },
   });
 
-  console.log(`ElevenLabs: activity ${activityId} transcribed (${transcriptText.length} chars)`);
 }

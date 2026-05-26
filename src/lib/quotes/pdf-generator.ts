@@ -28,9 +28,12 @@ export interface QuotePdfData {
   productCost: number;
   overheadCost: number;
   isPilot: boolean;
+  /** Optional override. Defaults to org-wide default labour rate when omitted. */
+  labourRate?: number;
 }
 
-const LABOUR_RATE = 17;
+// Default fallback when no rate is passed in. Real default lives in OrgSettings.
+const DEFAULT_LABOUR_RATE = 17;
 const WEEKS_PER_MONTH = 4.33;
 const PILOT_DISCOUNT = 0.25;
 const PILOT_DAYS = 30;
@@ -164,7 +167,8 @@ function addBusinessDays(date: Date, days: number): Date {
 
 export function calculateQuotePricing(data: QuotePdfData) {
   const now = new Date();
-  const weeklyLabour = data.hoursPerDay * LABOUR_RATE * data.frequency;
+  const labourRate = data.labourRate ?? DEFAULT_LABOUR_RATE;
+  const weeklyLabour = data.hoursPerDay * labourRate * data.frequency;
   const weeklySpend = weeklyLabour + data.productCost + data.overheadCost;
   const marginDecimal = data.margin / 100;
   const weeklyCharge = marginDecimal < 1 ? weeklySpend / (1 - marginDecimal) : 0;

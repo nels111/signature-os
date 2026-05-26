@@ -1,7 +1,11 @@
 export const runtime = 'nodejs';
 
-import { DealsPage } from './DealsPage';
+export const metadata = { title: 'Deals' };
 
-export default function DealsListPage() {
+import { DealsPage } from './DealsPage';
+import { requireRole } from '@/lib/role-gate';
+
+export default async function DealsListPage() {
+  await requireRole(['admin', 'sales']);
   return <DealsPage />;
 }

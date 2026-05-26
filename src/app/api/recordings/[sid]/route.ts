@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { hasRole } from '@/lib/authz';
 
 // GET /api/recordings/[sid]
 // Proxies a Twilio recording with authentication so the browser can play it.
@@ -13,6 +14,11 @@ export async function GET(
   const session = await auth();
   if (!session?.user?.id) {
     return new NextResponse('Unauthorized', { status: 401 });
+  }
+  // Call recordings contain client conversations. Only the callers (VA, sales)
+  // and admins should access them — never operatives or operations staff.
+  if (!hasRole(session, 'admin', 'sales', 'va')) {
+    return new NextResponse('Forbidden', { status: 403 });
   }
 
   const { sid } = await params;

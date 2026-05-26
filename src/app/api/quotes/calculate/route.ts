@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { getDefaultLabourRate } from '@/lib/org-settings';
 
 const WEEKS_PER_MONTH = 4.33;
 const BILLING_RATE_TARGET = 27;
 const BILLING_RATE_FLOOR = 25;
-const LABOUR_RATE = 17;
+// LABOUR_RATE now from OrgSettings (editable, defaults to £17).
 const PILOT_DISCOUNT = 25;
 const MIN_MARGIN = 25;
 
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
     const numWeeklyHours = parseFloat(String(weeklyHours || '0'));
     const pilotDiscount = isPilot ? PILOT_DISCOUNT : 0;
 
+    const LABOUR_RATE = await getDefaultLabourRate();
     const effectiveRate = isPilot ? numSellRate * (1 - pilotDiscount / 100) : numSellRate;
     const weeklyRevenue = numWeeklyHours * effectiveRate;
     const weeklyCost = numWeeklyHours * LABOUR_RATE;

@@ -1,5 +1,21 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
+
+// Role-to-path mapping for defence-in-depth. The server page components also
+// call requireRole() so this is a second layer, not the only one.
+//
+// A path prefix listed here will be blocked for any role NOT in the set.
+// Absence from this map = open to all authenticated users.
+const ROLE_RESTRICTED_PATHS: Array<{ prefix: string; allowed: string[] }> = [
+  { prefix: '/dashboard/financials', allowed: ['admin'] },
+  { prefix: '/dashboard/settings',   allowed: ['admin'] },
+  { prefix: '/dashboard/operatives', allowed: ['admin', 'operations'] },
+  { prefix: '/dashboard/pipeline',   allowed: ['admin', 'sales', 'operations'] },
+  { prefix: '/dashboard/deals',      allowed: ['admin', 'sales'] },
+  { prefix: '/dashboard/leads',      allowed: ['admin', 'sales', 'va'] },
+  { prefix: '/dashboard/accounts',   allowed: ['admin', 'sales', 'operations'] },
+];
 
 // Constant-time string comparison to prevent timing attacks
 function safeEqual(a: string, b: string): boolean {
@@ -94,7 +110,7 @@ function checkCsrf(req: NextRequest): NextResponse | null {
   return null;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow auth routes, static files, public quote tracking, and external webhooks
@@ -104,7 +120,7 @@ export function middleware(request: NextRequest) {
     pathname === '/login' ||
     pathname === '/favicon.ico' ||
     pathname.startsWith('/api/quotes/track/') ||
-    pathname.startsWith('/q/') ||
+    pathname.startsWith('/q/track/') ||
     // Twilio webhooks come from Twilio's servers (no Origin/session cookie)
     pathname.startsWith('/api/webhooks/twilio/')
   ) {
@@ -156,6 +172,18 @@ export function middleware(request: NextRequest) {
 
     if (!sessionToken) {
       return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    // Role-based path protection (defence-in-depth: server pages also call requireRole).
+    // We decode the JWT to read the role claim without a DB round-trip.
+    const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+    if (token?.role) {
+      const userRole = token.role as string;
+      for (const { prefix, allowed } of ROLE_RESTRICTED_PATHS) {
+        if (pathname.startsWith(prefix) && !allowed.includes(userRole)) {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+      }
     }
   }
 

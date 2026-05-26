@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { prisma } from '@/lib/db';
 import { notifyQuoteViewed } from '@/lib/notifications';
 import { sendPushToUser } from '@/lib/push';
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit';
 
 // 1x1 transparent GIF (43 bytes)
 const PIXEL = Buffer.from([
@@ -36,11 +37,21 @@ const NO_CACHE_HEADERS = {
  *  - DB error -> still return pixel (we don't break recipient email rendering)
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params;
+
+    // Per-IP rate limit. If exceeded, still serve the pixel (we never break
+    // recipient email rendering) but skip the DB update — this defeats anyone
+    // hammering pixel URLs to scrape valid tokens or inflate openCount.
+    const ip = getClientIp(req.headers);
+    const rl = checkRateLimit(`quote-pixel:${ip}`, RATE_LIMITS.publicQuoteTrack);
+    if (rl.limited) {
+      return new Response(PIXEL, { status: 200, headers: NO_CACHE_HEADERS });
+    }
+
     if (token) {
       // Token is quote.trackingId (random UUID), NOT the internal cuid.
       const q = await prisma.quote.findFirst({

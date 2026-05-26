@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import twilio from 'twilio';
 
 const AccessToken = twilio.jwt.AccessToken;
@@ -20,6 +21,16 @@ export async function GET() {
     const role = session.user.role;
     if (role !== 'va' && role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Token mints cost real money downstream (each one enables Voice calls).
+    // Hard-cap per user to defeat runaway clients or compromised sessions.
+    const rl = checkRateLimit(`twilio-token:${session.user.id}`, RATE_LIMITS.twilioToken);
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: 'Too many token requests. Try again shortly.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.retryAfterMs ?? 60_000) / 1000)) } },
+      );
     }
 
     const accountSid = process.env.TWILIO_ACCOUNT_SID;

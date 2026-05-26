@@ -1,11 +1,31 @@
 import webpush from 'web-push';
 import { prisma } from './db';
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+// Lazy init: previously this ran at module load and crashed the whole server
+// cold-start if any VAPID env var was missing. Now we init on first send and
+// the call becomes a no-op (with a warning) if env is misconfigured.
+let vapidReady: boolean | null = null;
+
+function ensureVapid(): boolean {
+  if (vapidReady !== null) return vapidReady;
+  const subject = process.env.VAPID_SUBJECT;
+  const pubKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privKey = process.env.VAPID_PRIVATE_KEY;
+  if (!subject || !pubKey || !privKey) {
+    console.warn('[push] VAPID env missing — push notifications disabled');
+    vapidReady = false;
+    return false;
+  }
+  try {
+    webpush.setVapidDetails(subject, pubKey, privKey);
+    vapidReady = true;
+    return true;
+  } catch (err) {
+    console.error('[push] VAPID setup failed:', err);
+    vapidReady = false;
+    return false;
+  }
+}
 
 export interface PushPayload {
   title: string;
@@ -20,6 +40,8 @@ export interface PushPayload {
  * Invalid subscriptions (410 Gone) are automatically cleaned up.
  */
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {
+  if (!ensureVapid()) return;
+
   const subs = await prisma.$queryRaw<Array<{
     id: string;
     endpoint: string;

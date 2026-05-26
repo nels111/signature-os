@@ -7,7 +7,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ContactForm } from './ContactForm';
-import type { ContactFormData } from './ContactForm';
+import type { ContactFormData } from '@/lib/schemas/contact';
 
 interface Contact {
   id: string;
@@ -163,6 +163,7 @@ export function ContactsPage() {
       key: 'email',
       label: 'Email',
       sortable: false,
+      mobileHidden: true,
       render: (item: Contact) =>
         item.email || <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
@@ -311,6 +312,47 @@ export function ContactsPage() {
         emptyMessage="No contacts found. Create your first contact to get started."
         isLoading={loading}
         meta={metaText}
+        mobileCard={(item) => {
+          const initials = `${item.firstName.charAt(0)}${item.lastName.charAt(0)}`.toUpperCase();
+          return (
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <div
+                className="flex-shrink-0 flex items-center justify-center rounded-full text-white text-sm font-bold"
+                style={{ width: 40, height: 40, backgroundColor: 'var(--brand-blue)' }}
+              >
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+                  {item.firstName} {item.lastName}
+                </div>
+                {item.company && (
+                  <div className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                    {item.company}
+                  </div>
+                )}
+                {item.email && (
+                  <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                    {item.email}
+                  </div>
+                )}
+                {item.phone && (
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {item.phone}
+                  </div>
+                )}
+                {item.source && (
+                  <div className="mt-1">
+                    <Badge
+                      label={SOURCE_LABELS[item.source] || item.source}
+                      variant={SOURCE_VARIANTS[item.source] || 'default'}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }}
       />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />

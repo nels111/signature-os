@@ -3,9 +3,10 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Bell, BellRing, BellOff, LogOut, ChevronDown, Menu, Clock, Timer } from 'lucide-react';
-import { useLayout } from './LayoutContext';
+import { Search, Bell, BellRing, BellOff, LogOut, ChevronDown, Clock, Timer, Menu } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useLayout } from './LayoutContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface Notification {
   id: string;
@@ -83,28 +84,25 @@ export function TopBar() {
   const { state: pushState, enable: enablePush, disable: disablePush } = usePushNotifications();
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [searchFocused, setSearchFocused] = useState(false);
   const isVa = session?.user?.role === 'va';
   const clock = useClockStatus(isVa);
+  const queryClient = useQueryClient();
 
-  const fetchNotifications = useCallback(async () => {
-    try {
+  // Notifications — TanStack Query replaces manual setInterval + useState
+  const { data: notifData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
       const res = await fetch('/api/notifications?limit=10');
-      const data = await res.json();
-      setNotifications(data.notifications || []);
-      setUnreadCount(data.unreadCount || 0);
-    } catch {
-      // ignore fetch errors
-    }
-  }, []);
+      if (!res.ok) throw new Error('Failed to fetch notifications');
+      return res.json() as Promise<{ notifications: Notification[]; unreadCount: number }>;
+    },
+    refetchInterval: 30_000,   // poll every 30 s — matches previous setInterval
+    refetchOnWindowFocus: true,
+  });
 
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  const notifications = notifData?.notifications ?? [];
+  const unreadCount  = notifData?.unreadCount  ?? 0;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -124,8 +122,8 @@ export function TopBar() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ markAll: true }),
     });
-    setUnreadCount(0);
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    // Invalidate so TanStack Query re-fetches fresh data
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
   };
 
   const handleNotifClick = (notif: Notification) => {
@@ -133,7 +131,7 @@ export function TopBar() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: [notif.id] }),
-    });
+    }).then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }));
 
     if (notif.entityType && notif.entityId) {
       const routes: Record<string, string> = {
@@ -150,28 +148,38 @@ export function TopBar() {
     }
 
     setShowNotifs(false);
-    fetchNotifications();
   };
 
   return (
     <header
-      className="h-14 flex items-center justify-between px-4 sm:px-6"
+      className="flex flex-col justify-end shrink-0 px-4 sm:px-6"
       style={{
-        background: 'rgba(255,255,255,0.72)',
+        background: 'color-mix(in srgb, var(--surface) 72%, transparent)',
         backdropFilter: 'saturate(180%) blur(20px)',
         WebkitBackdropFilter: 'saturate(180%) blur(20px)',
         borderBottom: '1px solid var(--border)',
         position: 'sticky',
         top: 0,
         zIndex: 30,
+        paddingTop: 'env(safe-area-inset-top)',
       }}
     >
+    <div className="h-14 flex items-center justify-between w-full">
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Hamburger - mobile only */}
+        {/* Hamburger — mobile only */}
         <button
+          type="button"
+          aria-label="Open navigation"
           onClick={toggleSidebar}
-          className="p-2 rounded-lg lg:hidden transition-colors"
-          style={{ color: 'var(--text-secondary)' }}
+          className="p-2 rounded-lg lg:hidden"
+          style={{
+            color: 'var(--text-secondary)',
+            minWidth: 44,
+            minHeight: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <Menu size={20} />
         </button>
@@ -182,7 +190,7 @@ export function TopBar() {
           style={{
             background: searchFocused ? 'var(--surface)' : 'var(--background)',
             border: searchFocused ? '1px solid var(--brand-blue)' : '1px solid var(--border)',
-            boxShadow: searchFocused ? '0 0 0 3px rgba(32, 86, 164, 0.1)' : 'none',
+            boxShadow: searchFocused ? '0 0 0 3px color-mix(in srgb, var(--brand-blue) 10%, transparent)' : 'none',
             width: searchFocused ? '320px' : '240px',
           }}
         >
@@ -213,13 +221,6 @@ export function TopBar() {
           )}
         </div>
 
-        {/* Mobile search icon */}
-        <button
-          className="p-2 rounded-lg sm:hidden"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          <Search size={18} />
-        </button>
       </div>
 
       <div className="flex items-center gap-1">
@@ -228,11 +229,11 @@ export function TopBar() {
           <button
             onClick={clock.toggle}
             disabled={clock.loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold mr-2 transition-all duration-150"
+            className="flex min-h-11 sm:min-h-0 items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold mr-2 transition-all duration-150"
             style={clock.isClockedIn ? {
-              background: '#22c55e18',
-              color: '#16a34a',
-              border: '1px solid #22c55e40',
+              background: 'var(--status-success-bg)',
+              color: 'var(--status-success)',
+              border: '1px solid color-mix(in srgb, var(--status-success) 25%, transparent)',
             } : {
               background: 'var(--brand-blue-subtle)',
               color: 'var(--brand-blue)',
@@ -256,15 +257,24 @@ export function TopBar() {
         {/* Notification bell */}
         <div className="relative notif-dropdown">
           <button
+            type="button"
+            aria-label="Notifications"
             onClick={(e) => { e.stopPropagation(); setShowNotifs(!showNotifs); setShowMenu(false); }}
             className="relative p-2 rounded-lg transition-all duration-150"
-            style={{ color: 'var(--text-secondary)' }}
+            style={{
+              color: 'var(--text-secondary)',
+              minWidth: 44,
+              minHeight: 44,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
             <Bell size={18} />
             {unreadCount > 0 && (
               <span
-                className="absolute top-1 right-1 min-w-[16px] h-4 text-[10px] text-white rounded-full flex items-center justify-center px-1 font-semibold"
-                style={{ backgroundColor: 'var(--status-danger)' }}
+                className="absolute top-1 right-1 min-w-[16px] h-4 text-[10px] rounded-full flex items-center justify-center px-1 font-semibold"
+                style={{ backgroundColor: 'var(--status-danger)', color: 'var(--surface)' }}
               >
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
@@ -273,12 +283,12 @@ export function TopBar() {
 
           {showNotifs && (
             <div
-              className="fixed sm:absolute right-2 sm:right-0 top-14 sm:top-full sm:mt-2 w-[calc(100vw-1rem)] sm:w-[360px] rounded-xl z-50 overflow-hidden"
+              className="fixed sm:absolute right-2 sm:right-0 top-[calc(56px+env(safe-area-inset-top))] sm:top-full sm:mt-2 w-[calc(100vw-1rem)] sm:w-[360px] rounded-xl z-50 overflow-hidden"
               style={{
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 boxShadow: 'var(--shadow-modal)',
-                maxHeight: '70vh',
+                maxHeight: 'calc(70svh - env(safe-area-inset-top))',
               }}
             >
               <div
@@ -345,14 +355,17 @@ export function TopBar() {
         {/* User menu */}
         <div className="relative user-dropdown">
           <button
+            type="button"
+            aria-label="User menu"
             onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); setShowNotifs(false); }}
             className="flex items-center gap-1.5 sm:gap-2 text-sm rounded-lg px-1.5 sm:px-2 py-1.5 transition-all duration-150"
+            style={{ minWidth: 44, minHeight: 44, justifyContent: 'center' }}
           >
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-              style={{ backgroundColor: 'var(--brand-blue)' }}
+              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold"
+              style={{ backgroundColor: 'var(--brand-blue)', color: 'var(--surface)' }}
             >
-              {session?.user?.name?.charAt(0) || '?'}
+              {(session?.user?.name?.charAt(0) ?? 'U').toUpperCase()}
             </div>
             <span
               className="text-sm font-medium hidden sm:inline"
@@ -425,6 +438,7 @@ export function TopBar() {
           )}
         </div>
       </div>
+    </div>
     </header>
   );
 }

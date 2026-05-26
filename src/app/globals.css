@@ -90,6 +90,9 @@
   --event-calendly: #059669;
   --event-personal: #64748B;
 
+  /* Motion */
+  --ease-expo: cubic-bezier(0.23, 1, 0.32, 1);
+
   /* Sidebar — X/Twitter dark style (unchanged) */
   --sidebar-bg: #0f1419;
   --sidebar-hover: rgba(231, 233, 234, 0.08);
@@ -106,18 +109,42 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* iOS PWA viewport fix:
+   html/body are left at natural size — no height chain that can calculate wrong.
+   The app-shell uses position:fixed; inset:0 which anchors directly to the viewport,
+   guaranteed to cover the full screen including the safe area bottom on iPhone.
+   This is the only approach immune to iOS svh/dvh calculation bugs. */
+html, body {
+  height: 100dvh;
+  overflow: hidden;
+  overflow-x: hidden;
+}
+
+html {
+  background: var(--background);
+  overscroll-behavior: none;
+}
+
 body {
+  overscroll-behavior: none;
   background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  /* PWA safe areas for notch/Dynamic Island */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+}
+
+/* App shell: fixed to viewport edges + explicit 100dvh.
+   dvh = dynamic viewport height — always the full visible height on iOS,
+   even in standalone PWA mode. Explicit height lets child h-full resolve
+   correctly without relying on top/bottom anchor propagation. */
+.app-shell {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* Focus ring utility */
@@ -137,9 +164,12 @@ body {
 .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
 .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-/* Transitions */
-* {
-  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+/* Transitions — Emil strong ease-out on interactive elements only.
+   Deliberately NOT applied to * — that breaks native scroll momentum on iOS. */
+button, a, input, select, textarea,
+[class*="sig-"], [class*="hub-"],
+.focus-brand {
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* Selection */
@@ -189,4 +219,46 @@ body {
     flex: 1;
     transform: none;
   }
+}
+
+/* ── SigOS 4D card system ───────────────────────────────────── */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+.sig-stat {
+  animation: cardIn 380ms cubic-bezier(0.23,1,0.32,1) both;
+  transition: transform 160ms cubic-bezier(0.23,1,0.32,1), box-shadow 160ms cubic-bezier(0.23,1,0.32,1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sig-stat-link:hover {
+    transform: translateY(-2px) !important;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.9) inset,
+      0 0 0 1px rgba(0,0,0,0.12),
+      0 4px 14px rgba(0,0,0,0.09),
+      0 16px 40px rgba(0,0,0,0.06) !important;
+  }
+  .sig-contract-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.8) inset,
+      0 0 0 1px rgba(0,0,0,0.12),
+      0 4px 14px rgba(0,0,0,0.09),
+      0 16px 40px rgba(0,0,0,0.05) !important;
+  }
+}
+
+.sig-stat-link:active,
+.sig-contract-card:active {
+  transform: scale(0.98) !important;
+  transition-duration: 80ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sig-stat { animation: none !important; }
+  .sig-stat-link,
+  .sig-contract-card { transition: none !important; }
 }

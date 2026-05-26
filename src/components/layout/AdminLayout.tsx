@@ -11,14 +11,21 @@ function MobileOverlay() {
   return (
     <div
       className="fixed inset-0 z-40 lg:hidden"
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'color-mix(in srgb, var(--text-primary) 45%, transparent)' }}
       onClick={closeSidebar}
     />
   );
 }
 
 // Routes that need full-bleed layout (no padding, overflow hidden, fills height)
-const FULL_BLEED_PATHS = ['/dashboard/emails'];
+// Add any page that manages its own internal scroll container here —
+// mixing main's overflow-y-auto with an inner overflow-y-auto causes nested
+// scroll hell on iOS
+const FULL_BLEED_PATHS = [
+  '/dashboard/emails',
+  '/dashboard/hub',
+  '/dashboard/cold-calling',
+];
 
 function LayoutInner({ children, currentPath }: { children: React.ReactNode; currentPath?: string }) {
   const isFullBleed = FULL_BLEED_PATHS.some((p) => currentPath?.startsWith(p));
@@ -37,17 +44,19 @@ function LayoutInner({ children, currentPath }: { children: React.ReactNode; cur
   };
 
   return (
-    <div className="flex h-screen" style={{ background: 'var(--background)' }}>
-      {/* Desktop sidebar - always visible */}
+    <div className="app-shell flex" style={{ background: 'var(--background)' }}>
+
+      {/* Desktop sidebar — always visible on lg+ */}
       <div className="hidden lg:block">
         <Sidebar />
       </div>
 
-      {/* Mobile sidebar - slide-out drawer with swipe-to-close */}
+      {/* Mobile "More" drawer — slides in from left, triggered by BottomNav */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 lg:hidden transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 left-0 z-50 lg:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
+        style={{ transition: 'transform 280ms cubic-bezier(0.23,1,0.32,1)', willChange: 'transform', height: '100dvh' }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -56,20 +65,33 @@ function LayoutInner({ children, currentPath }: { children: React.ReactNode; cur
 
       <MobileOverlay />
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden min-w-0">
         <TopBar />
         {isFullBleed ? (
-          <main className="flex-1 overflow-hidden" style={{ background: 'var(--background)' }}>
-            {children}
+          <main
+            className="flex-1 min-h-0 overflow-hidden flex flex-col"
+            style={{ background: 'var(--background)' }}
+          >
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {children}
+            </div>
           </main>
         ) : (
-          <main className="flex-1 overflow-y-auto" style={{ background: 'var(--background)' }}>
+          <main
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+            style={{
+              background: 'var(--background)',
+              overscrollBehavior: 'none',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            }}
+          >
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
               {children}
             </div>
           </main>
         )}
       </div>
+
     </div>
   );
 }
