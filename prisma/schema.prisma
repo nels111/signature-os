@@ -127,6 +127,40 @@ enum BillingType {
   monthly_fixed
 }
 
+enum PortalStatus {
+  not_invited  // site exists, no portal account yet
+  invited      // magic link sent, not yet activated
+  active       // client has logged in at least once
+  suspended    // access revoked
+}
+
+enum TicketSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+enum ServiceRequestStatus {
+  pending    // submitted, awaiting admin review
+  reviewing  // Nelson/Nick acknowledged
+  approved   // scheduled
+  completed
+  declined
+}
+
+enum AuditStatus {
+  draft      // form being filled
+  published  // visible to client via portal
+}
+
 enum NotificationType {
   task_due
   task_overdue
@@ -185,6 +219,8 @@ model User {
   activities         Activity[]
   pushSubscriptions  PushSubscription[]
   timeSessions       TimeSession[]
+  assignedTickets    ClientTicket[]
+  audits             Audit[]
 
   @@map("users")
 }
@@ -621,14 +657,20 @@ model Site {
   active                   Boolean     @default(true)
   notes                    String?
   regularHoursSheetRowId   String?     // Optional FK to canonical sheet row
+  clientAccountId          String?     // FK to ClientAccount (one portal account per site)
   createdAt                DateTime    @default(now())
   updatedAt                DateTime    @updatedAt
 
   // Relations
   regularHoursSheetRow RegularHoursSheetRow? @relation(fields: [regularHoursSheetRowId], references: [id])
+  clientAccount        ClientAccount?        @relation(fields: [clientAccountId], references: [id])
+  tickets              ClientTicket[]
+  serviceRequests      ServiceRequest[]
+  audits               Audit[]
 
   @@index([active])
   @@index([regularHoursSheetRowId])
+  @@index([clientAccountId])
   @@map("sites")
 }
 
@@ -783,4 +825,126 @@ model TimeSession {
   @@index([userId])
   @@index([clockedInAt])
   @@map("time_sessions")
+}
+
+// ============ CLIENT PORTAL ============
+// ClientAccount  — one per site/contract. The portal login identity for a client.
+// ClientTicket   — issues raised by client or admin (complaints, access problems, etc.)
+// ServiceRequest — client-initiated upsell / add-on / service change request.
+// Audit          — SigOS-native audit replacing the Connecteam form → Dropbox pipeline.
+
+model ClientAccount {
+  id                  String       @id @default(cuid())
+  contactName         String       // Primary contact at the client
+  contactEmail        String       @unique // Portal login email
+  dropboxFolderPath   String?      // e.g. "/Signature Cleans (1)/.../Contract Cleaning Clients/Bott Ltd"
+  portalStatus        PortalStatus @default(not_invited)
+  invitedAt           DateTime?
+  lastLoginAt         DateTime?
+  magicLinkToken      String?      @unique // bcrypt hash stored, never plain
+  magicLinkExpiresAt  DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  // Relations — site has FK to this (Site.clientAccountId). Reverse to get the site:
+  sites           Site[]
+  tickets         ClientTicket[]
+  serviceRequests ServiceRequest[]
+
+  @@index([portalStatus])
+  @@index([contactEmail])
+  @@map("client_accounts")
+}
+
+model ClientTicket {
+  id               String         @id @default(cuid())
+  clientAccountId  String
+  siteId           String?        // which site the issue relates to (optional — may span sites)
+  title            String
+  description      String
+  severity         TicketSeverity @default(medium)
+  photos           Json?          @default("[]") // array of Dropbox paths or base64 thumbnails
+  status           TicketStatus   @default(open)
+  assignedToId     String?        // User (Nelson/Nick) the ticket is assigned to
+  resolvedAt       DateTime?
+  resolutionNotes  String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relations
+  clientAccount ClientAccount @relation(fields: [clientAccountId], references: [id], onDelete: Cascade)
+  site          Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  assignedTo    User?         @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([clientAccountId])
+  @@index([siteId])
+  @@index([status, severity])
+  @@index([assignedToId])
+  @@map("client_tickets")
+}
+
+model ServiceRequest {
+  id               String               @id @default(cuid())
+  clientAccountId  String
+  siteId           String?
+  serviceType      String               // e.g. "Deep Clean", "Window Clean", "Ad Hoc Cover"
+  description      String
+  preferredDates   Json?               @default("[]") // array of ISO date strings client suggested
+  status           ServiceRequestStatus @default(pending)
+  adminNotes       String?              // internal notes from Nelson/Nick
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  // Relations
+  clientAccount ClientAccount @relation(fields: [clientAccountId], references: [id], onDelete: Cascade)
+  site          Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@index([clientAccountId])
+  @@index([siteId])
+  @@index([status])
+  @@map("service_requests")
+}
+
+model Audit {
+  id String @id @default(cuid())
+  siteId     String
+  auditedById String   // User who conducted the audit
+  auditedAt  DateTime  @default(now())
+
+  // 5 scoring categories — each 0-10
+  // overall = average of five × 10 → preserves 0-100 scale and 80/70 threshold bands
+  scorePresentation   Int // Presentation & appearance
+  scoreCleanliness    Int // Cleanliness standards
+  scoreCompliance     Int // Health & safety / COSHH compliance
+  scoreEquipment      Int // Equipment & materials condition
+  scoreTeamConduct    Int // Operative conduct & professionalism
+  overallScore        Int // Stored: avg(5 categories) * 10 — always recalculated on save
+
+  // Notes per category (optional)
+  notePresentation  String?
+  noteCleanliness   String?
+  noteCompliance    String?
+  noteEquipment     String?
+  noteTeamConduct   String?
+
+  headlineNotes     String?  // Executive summary for the client portal
+  actionItems       Json?    @default("[]") // [{title, dueDate, assignedToId, completedAt}]
+  photos            Json?    @default("[]") // Dropbox paths or upload refs
+
+  status            AuditStatus @default(draft)
+  publishedAt       DateTime?   // When status flipped to published — visible in client portal
+  dropboxPdfPath    String?     // Path after PDF is uploaded to Dropbox client folder
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  site       Site @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  auditedBy  User @relation(fields: [auditedById], references: [id], onDelete: Restrict)
+
+  @@index([siteId, auditedAt])
+  @@index([auditedById])
+  @@index([status])
+  @@index([overallScore])
+  @@map("audits")
 }
