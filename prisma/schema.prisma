@@ -161,6 +161,23 @@ enum AuditStatus {
   published  // visible to client via portal
 }
 
+enum ComplianceStatus {
+  valid           // doc present and not expiring within 30 days
+  expiring_soon   // expires within 30 days
+  expired         // past expiry date
+  missing         // no doc on record
+}
+
+enum RtwType {
+  uk_passport
+  uk_birth_certificate
+  share_code
+  brp
+  settled_status
+  pre_settled_status
+  other
+}
+
 enum NotificationType {
   task_due
   task_overdue
@@ -947,4 +964,66 @@ model Audit {
   @@index([status])
   @@index([overallScore])
   @@map("audits")
+}
+
+// ============ COMPLIANCE TRACKER ============
+
+model Operative {
+  id             String    @id @default(cuid())
+  connecteamId   BigInt    @unique
+  fullName       String
+  entity         String    // Femi's Team | Kenkay Services | Signature Cleans | Cleans4U | JAR
+  role           String?
+  phone          String?
+  startDate      DateTime?
+  archived       Boolean   @default(false)
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  compliance     Compliance?
+
+  @@index([entity])
+  @@index([archived])
+  @@map("operatives")
+}
+
+model Compliance {
+  id          String    @id @default(cuid())
+  operativeId String    @unique
+  operative   Operative @relation(fields: [operativeId], references: [id], onDelete: Cascade)
+
+  // DBS
+  dbsIssued            DateTime?
+  dbsExpiry            DateTime?
+  dbsCertificateNumber String?
+  dbsUpdateService     Boolean   @default(false) // if true, no fixed expiry — check annually
+  dbsStatus            ComplianceStatus @default(missing)
+
+  // Insurance (Public Liability / Employer Liability)
+  insuranceProvider     String?
+  insuranceExpiry       DateTime?
+  insurancePolicyNumber String?
+  insuranceStatus       ComplianceStatus @default(missing)
+
+  // Right to Work
+  rtwType       RtwType?
+  rtwExpiry     DateTime?  // null = permanent (UK passport / ILR / birth cert)
+  rtwShareCode  String?
+  rtwStatus     ComplianceStatus @default(missing)
+
+  // Overall — worst of the three, recomputed by cron daily
+  overallStatus ComplianceStatus @default(missing)
+
+  lastReviewedAt  DateTime?
+  lastReviewedBy  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dbsExpiry])
+  @@index([insuranceExpiry])
+  @@index([rtwExpiry])
+  @@index([overallStatus])
+  @@map("compliance_records")
 }
