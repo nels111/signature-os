@@ -115,13 +115,13 @@
    guaranteed to cover the full screen including the safe area bottom on iPhone.
    This is the only approach immune to iOS svh/dvh calculation bugs. */
 html, body {
-  height: 100dvh;
+  height: calc(var(--vvh, 100dvh) * 1px);
   overflow: hidden;
   overflow-x: hidden;
 }
 
 html {
-  background: var(--background);
+  background: var(--sidebar-bg);
   overscroll-behavior: none;
 }
 
@@ -142,7 +142,7 @@ body {
 .app-shell {
   position: fixed;
   inset: 0;
-  height: 100dvh;
+  height: calc(var(--vvh, 100dvh) * 1px);
   overflow: hidden;
   overflow-x: hidden;
 }

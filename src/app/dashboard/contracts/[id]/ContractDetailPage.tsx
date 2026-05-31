@@ -388,7 +388,7 @@ export function ContractDetailPage() {
     : 'this week';
 
   return (
-    <div style={{ padding: '24px 24px 48px', maxWidth: 1100 }}>
+    <div style={{ padding: '24px 24px 48px', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))', maxWidth: 1100 }}>
       {/* Back nav */}
       <button
         onClick={() => router.push('/dashboard/financials')}

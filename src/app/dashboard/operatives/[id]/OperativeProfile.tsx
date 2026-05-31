@@ -218,7 +218,7 @@ export function OperativeProfile() {
   const pad = isMobile ? '16px' : '24px 28px'
 
   return (
-    <div style={{ padding: pad, maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: pad, paddingBottom: 'calc(80px + env(safe-area-inset-bottom))', maxWidth: 1100, margin: '0 auto' }}>
       <button
         onClick={() => router.push('/dashboard/operatives')}
         style={{

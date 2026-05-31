@@ -5,7 +5,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const SCHEDULER_IDS = ['6814169', '15165164', '16197755']
-const TIME_CLOCK_ID = '6814166'
+const TIME_CLOCK_IDS = ['6814166', '16824311']  // both Connecteam time clocks
 const WEEKS_BACK = 4
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -147,17 +147,24 @@ async function fetchOperativeDetail(userId: string): Promise<OperativeDetail | n
     }
   }
 
-  // Fetch time activities — non-fatal
+  // Fetch time activities — non-fatal, both time clocks in parallel
   const userActs: Array<{ startTs: number; endTs: number | null }> = []
   try {
-    const taData = await ctFetch(
-      `https://api.connecteam.com/time-clock/v1/time-clocks/${TIME_CLOCK_ID}/time-activities?startDate=${weeks[WEEKS_BACK - 1].startStr}&endDate=${currentWeek.endStr}&limit=500`,
-      apiKey
+    const clockResults = await Promise.allSettled(
+      TIME_CLOCK_IDS.map(clockId =>
+        ctFetch(
+          `https://api.connecteam.com/time-clock/v1/time-clocks/${clockId}/time-activities?startDate=${weeks[WEEKS_BACK - 1].startStr}&endDate=${currentWeek.endStr}&limit=500`,
+          apiKey
+        )
+      )
     )
-    for (const ub of taData?.data?.timeActivitiesByUsers || []) {
-      if (String(ub.userId) !== userId) continue
-      for (const s of ub.shifts || []) {
-        if (s.start?.timestamp) userActs.push({ startTs: s.start.timestamp, endTs: s.end?.timestamp ?? null })
+    for (const result of clockResults) {
+      if (result.status !== 'fulfilled') continue
+      for (const ub of result.value?.data?.timeActivitiesByUsers || []) {
+        if (String(ub.userId) !== userId) continue
+        for (const s of ub.shifts || []) {
+          if (s.start?.timestamp) userActs.push({ startTs: s.start.timestamp, endTs: s.end?.timestamp ?? null })
+        }
       }
     }
   } catch { /* non-fatal — shifts show as no_show */ }

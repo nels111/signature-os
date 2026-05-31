@@ -23,21 +23,35 @@ export function BottomNav() {
   const { toggleSidebar } = useLayout();
 
   return (
-    <nav
-      className="lg:hidden"
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 40,
-        background: 'var(--sidebar-bg)',
-        borderTop: '1px solid var(--sidebar-border)',
-        /* paddingBottom extends the dark background behind the iOS home indicator.
-           Tabs themselves live in the inner 58px row — they do NOT stretch into the safe area. */
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
-    >
+    <>
+      {/* Safe area fill — covers the home indicator zone in standalone PWA mode.
+          A separate fixed div is more reliable than paddingBottom on the nav,
+          which can flicker on first paint in iOS standalone. */}
+      <div
+        className="lg:hidden"
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 'env(safe-area-inset-bottom)',
+          background: 'var(--sidebar-bg)',
+          zIndex: 41,
+        }}
+      />
+
+      <nav
+        className="lg:hidden"
+        style={{
+          position: 'fixed',
+          bottom: 'env(safe-area-inset-bottom)',
+          left: 0,
+          right: 0,
+          zIndex: 40,
+          background: 'var(--sidebar-bg)',
+          borderTop: '1px solid var(--sidebar-border)',
+        }}
+      >
       {/* 58px tab row — explicit height keeps tabs out of the safe area zone */}
       <div style={{ display: 'flex', height: 58, width: '100%' }}>
         {TABS.map((tab) => {
@@ -91,5 +105,6 @@ export function BottomNav() {
         </button>
       </div>
     </nav>
+    </>
   );
 }

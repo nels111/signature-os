@@ -308,7 +308,7 @@ export function TopBar() {
                   </button>
                 )}
               </div>
-              <div className="max-h-[400px] overflow-y-auto">
+              <div className="max-h-64 md:max-h-96 overflow-y-auto">
                 {notifications.length === 0 ? (
                   <div className="px-4 py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                     No notifications

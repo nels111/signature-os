@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const SCHEDULER_IDS = ['6814169', '15165164', '16197755']
-const TIME_CLOCK_ID = '6814166'
+const TIME_CLOCK_IDS = ['6814166', '16824311']  // both Connecteam time clocks
 const WEEKS_PER_MONTH = 4.33
 
 interface ConnecteamShift {
@@ -175,16 +175,22 @@ async function fetchTimeActivities(week: WeekRange, apiKey: string): Promise<Tim
   const all: TimeActivity[] = []
 
   try {
-    const res = await fetch(
-      `https://api.connecteam.com/time-clock/v1/time-clocks/${TIME_CLOCK_ID}/time-activities?startDate=${startDate}&endDate=${endDate}&limit=500`,
-      { headers: { 'X-API-KEY': apiKey, 'User-Agent': 'sigos/1.0' }, signal: AbortSignal.timeout(8000) }
+    const results = await Promise.allSettled(
+      TIME_CLOCK_IDS.map(clockId =>
+        fetch(
+          `https://api.connecteam.com/time-clock/v1/time-clocks/${clockId}/time-activities?startDate=${startDate}&endDate=${endDate}&limit=500`,
+          { headers: { 'X-API-KEY': apiKey, 'User-Agent': 'sigos/1.0' }, signal: AbortSignal.timeout(8000) }
+        )
+      )
     )
-    if (!res.ok) return all
-    const data = await res.json()
-    const usersData = (data?.data?.timeActivitiesByUsers || []) as TimeActivitiesByUser[]
-    for (const u of usersData) {
-      for (const sh of u.shifts || []) {
-        all.push(sh)
+    for (const result of results) {
+      if (result.status !== 'fulfilled' || !result.value.ok) continue
+      const data = await result.value.json()
+      const usersData = (data?.data?.timeActivitiesByUsers || []) as TimeActivitiesByUser[]
+      for (const u of usersData) {
+        for (const sh of u.shifts || []) {
+          all.push(sh)
+        }
       }
     }
   } catch { /* swallow — caller handles empty array */ }

@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const SCHEDULER_IDS = ['6814169', '15165164', '16197755']
-const TIME_CLOCK_ID = '6814166'
+const TIME_CLOCK_IDS = ['6814166', '16824311']  // both Connecteam time clocks
 const WEEKS_PER_MONTH = 4.33
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5-minute cache
 
@@ -217,17 +217,23 @@ async function fetchAllTimeActivities(week: { start: Date; end: Date }, apiKey: 
   const all: TimeActivity[] = []
 
   try {
-    const res = await fetch(
-      `https://api.connecteam.com/time-clock/v1/time-clocks/${TIME_CLOCK_ID}/time-activities?startDate=${startDate}&endDate=${endDate}&limit=500`,
-      { headers: { 'X-API-KEY': apiKey, 'User-Agent': 'sigos/1.0' }, signal: AbortSignal.timeout(10000) }
+    const results = await Promise.allSettled(
+      TIME_CLOCK_IDS.map(clockId =>
+        fetch(
+          `https://api.connecteam.com/time-clock/v1/time-clocks/${clockId}/time-activities?startDate=${startDate}&endDate=${endDate}&limit=500`,
+          { headers: { 'X-API-KEY': apiKey, 'User-Agent': 'sigos/1.0' }, signal: AbortSignal.timeout(10000) }
+        )
+      )
     )
-    if (!res.ok) return { activities: [], error: `Time clock returned ${res.status}` }
-    const data = await res.json()
-    const usersData = (data?.data?.timeActivitiesByUsers || []) as TimeActivitiesByUser[]
-    for (const u of usersData) {
-      for (const sh of u.shifts || []) all.push(sh)
+    for (const result of results) {
+      if (result.status !== 'fulfilled' || !result.value.ok) continue
+      const data = await result.value.json()
+      const usersData = (data?.data?.timeActivitiesByUsers || []) as TimeActivitiesByUser[]
+      for (const u of usersData) {
+        for (const sh of u.shifts || []) all.push(sh)
+      }
     }
-    return { activities: all, error: null }
+    return { activities: all, error: all.length === 0 ? 'No time activities returned' : null }
   } catch (err) {
     return { activities: [], error: err instanceof Error ? err.message : 'Time clock unavailable' }
   }

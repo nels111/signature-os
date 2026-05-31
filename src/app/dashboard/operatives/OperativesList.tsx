@@ -214,14 +214,6 @@ export function OperativesList() {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState('all')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
 
   const load = useCallback(async () => {
     try {
@@ -249,7 +241,7 @@ export function OperativesList() {
   ) ?? []
 
   return (
-    <div style={{ padding: isMobile ? '16px' : '24px 28px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12 }}>
@@ -263,7 +255,7 @@ export function OperativesList() {
             <Users size={20} color="#818cf8" />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 700, color: 'var(--text-primary)' }}>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>
               Operatives
             </h1>
             {data && (
@@ -283,7 +275,7 @@ export function OperativesList() {
           }}
         >
           <RefreshCw size={13} />
-          {!isMobile && 'Refresh'}
+          <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
 
@@ -307,9 +299,8 @@ export function OperativesList() {
         <>
           <SummaryStrip operatives={data.operatives} activeFilter={filter} onFilter={setFilter} />
 
-          {isMobile ? (
-            /* Mobile: card list */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Mobile: card list */}
+          <div className="sm:hidden" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {filtered.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
                   No operatives found
@@ -324,9 +315,9 @@ export function OperativesList() {
                 ))
               )}
             </div>
-          ) : (
-            /* Desktop: table */
-            <div style={{
+
+          {/* Desktop: table */}
+            <div className="hidden sm:block" style={{
               background: '#ffffff',
               borderRadius: 12, overflow: 'hidden',
               boxShadow: '0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 14px 40px rgba(0,0,0,0.05)',
@@ -364,7 +355,6 @@ export function OperativesList() {
                 </tbody>
               </table>
             </div>
-          )}
 
           {lastUpdated && (
             <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-muted)', textAlign: 'right' }}>

@@ -8,6 +8,17 @@ import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { DealForm } from '../DealForm';
 import type { DealFormData } from '@/lib/schemas/deal';
 
+const SECTOR_LABELS: Record<string, string> = {
+  hospitality: 'Hospitality',
+  automotive: 'Automotive',
+  education: 'Education',
+  construction_property: 'Construction / Property',
+  healthcare: 'Healthcare',
+  office_professional: 'Office / Professional',
+  retail: 'Retail',
+  other: 'Other',
+};
+
 interface Deal {
   id: string;
   name: string;
@@ -16,6 +27,9 @@ interface Deal {
   ownerId: string;
   notes: string | null;
   lossReason: string | null;
+  sector: string | null;
+  closingDate: string | null;
+  probability: number | null;
   contactId: string | null;
   accountId: string | null;
   wonAt: string | null;
@@ -255,6 +269,15 @@ export function DealDetailClient({ id }: { id: string }) {
               value={deal.account?.name}
               link={deal.account ? `/dashboard/accounts/${deal.account.id}` : undefined}
             />
+            {deal.sector && (
+              <DetailField label="Sector" value={SECTOR_LABELS[deal.sector] || deal.sector} />
+            )}
+            {deal.closingDate && (
+              <DetailField label="Expected Close" value={formatDate(deal.closingDate)} />
+            )}
+            {deal.probability !== null && deal.probability !== undefined && (
+              <DetailField label="Probability" value={`${deal.probability}%`} />
+            )}
             <DetailField label="Created" value={formatDate(deal.createdAt)} />
             <DetailField label="Stage Changed" value={formatDate(deal.stageChangedAt)} />
             {deal.wonAt && (

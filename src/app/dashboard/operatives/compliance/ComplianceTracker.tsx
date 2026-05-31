@@ -273,14 +273,6 @@ export function ComplianceTracker() {
   const [filter,  setFilter]  = useState('all')
   const [entity,  setEntity]  = useState('all')
   const [error,   setError]   = useState<string | null>(null)
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -313,13 +305,13 @@ export function ComplianceTracker() {
     : ['all']
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '16px 12px' : '24px 20px' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{
-            fontSize: isMobile ? 22 : 28, fontWeight: 800, color: 'var(--text-primary)',
+            fontSize: 22, fontWeight: 800, color: 'var(--text-primary)',
             letterSpacing: '-0.03em', margin: 0, lineHeight: 1.1,
           }}>
             Compliance Tracker
@@ -362,9 +354,7 @@ export function ComplianceTracker() {
       {data && (
         <>
           {/* Summary cards */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{
             gap: 12, marginBottom: 20,
           }}>
             {[
@@ -431,14 +421,16 @@ export function ComplianceTracker() {
             </div>
           )}
 
-          {data.rows.length > 0 && isMobile && (
-            <div>
+          {/* Mobile: card list */}
+          {data.rows.length > 0 && (
+            <div className="sm:hidden">
               {data.rows.map(row => <OperativeCard key={row.id} row={row} />)}
             </div>
           )}
 
-          {data.rows.length > 0 && !isMobile && (
-            <div style={{
+          {/* Desktop: table */}
+          {data.rows.length > 0 && (
+            <div className="hidden sm:block" style={{
               background: '#ffffff', borderRadius: 12,
               boxShadow: '0 0 0 1px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.04)',
               overflow: 'hidden',

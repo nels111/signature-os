@@ -357,7 +357,7 @@ export function LeadsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Leads
@@ -366,7 +366,7 @@ export function LeadsPage() {
             {total} lead{total !== 1 ? 's' : ''} total
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowImportModal(true)}
             className="px-4 py-2 text-sm rounded-lg hover:opacity-90 border"

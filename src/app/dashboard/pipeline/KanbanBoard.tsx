@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 
 export interface KanbanColumn<T> {
   id: string;
@@ -25,7 +25,6 @@ export function KanbanBoard<T>({
   const [dragItemId, setDragItemId] = useState<string | null>(null);
   const [dragFromCol, setDragFromCol] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
   const dragRef = useRef<{ itemId: string; fromCol: string } | null>(null);
   const touchRef = useRef<{
     itemId: string;
@@ -35,13 +34,6 @@ export function KanbanBoard<T>({
     dragging: boolean;
   } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
 
   // ── HTML5 Drag (desktop) ──────────────────────────────────────────────────
 
@@ -168,16 +160,15 @@ export function KanbanBoard<T>({
     [getColumnIdFromPoint, onDragEnd]
   );
 
-  // Column width: narrower on mobile so more columns are visible
-  const colWidth = isMobile ? 200 : 288;
+  // Column width: responsive via CSS clamp — no JS isMobile needed
+  const colWidth = 'clamp(200px, 45vw, 288px)';
 
   return (
     <div style={{ position: 'relative' }}>
       {/* Scroll hint on mobile when there are many columns */}
-      {isMobile && columns.length > 2 && (
-        <div style={{
-          fontSize: 11, color: 'var(--text-muted)', marginBottom: 8,
-          display: 'flex', alignItems: 'center', gap: 4,
+      {columns.length > 2 && (
+        <div className="flex items-center gap-1 mb-2 lg:hidden" style={{
+          fontSize: 11, color: 'var(--text-muted)',
         }}>
           <span>Swipe to see all {columns.length} stages</span>
           <span style={{ opacity: 0.6 }}>→</span>
@@ -188,7 +179,7 @@ export function KanbanBoard<T>({
         ref={scrollRef}
         style={{
           display: 'flex',
-          gap: isMobile ? 10 : 16,
+          gap: 12,
           overflowX: 'auto',
           paddingBottom: 16,
           minHeight: 360,
@@ -214,7 +205,7 @@ export function KanbanBoard<T>({
           >
             {/* Column header */}
             <div style={{
-              padding: isMobile ? '10px 12px' : '10px 14px',
+              padding: '10px 12px',
               borderBottom: '1px solid rgba(0,0,0,0.05)',
               borderRadius: '14px 14px 0 0',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -226,10 +217,10 @@ export function KanbanBoard<T>({
                   backgroundColor: column.color, flexShrink: 0,
                 }} />
                 <span style={{
-                  fontSize: isMobile ? 11 : 13, fontWeight: 600,
+                  fontSize: 12, fontWeight: 600,
                   color: 'var(--text-primary)',
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  maxWidth: isMobile ? 130 : 200,
+                  maxWidth: 160,
                 }}>
                   {column.label}
                 </span>

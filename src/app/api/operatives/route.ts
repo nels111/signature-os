@@ -5,7 +5,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const SCHEDULER_IDS = ['6814169', '15165164', '16197755']
-const TIME_CLOCK_ID = '6814166'
+const TIME_CLOCK_IDS = ['6814166', '16824311']  // both Connecteam time clocks
 const CACHE_TTL_MS = 5 * 60 * 1000
 const EXCLUDED_NAMES = new Set(['carina', 'charlie', 'nick', 'nelson'])
 const WEEKS_BACK = 4
@@ -134,21 +134,29 @@ async function fetchOperativesData(): Promise<OperativesResponse> {
     }
   }
 
-  // Fetch time activities for last 4 weeks
+  // Fetch time activities for last 4 weeks — query both time clocks in parallel
   // URL: hyphenated `time-clock` + plural `time-clocks` — Connecteam is strict on this
   const actByUser = new Map<string, Array<{ startTs: number; endTs: number | null }>>()
   try {
-    const taData = await ctFetch(
-      `https://api.connecteam.com/time-clock/v1/time-clocks/${TIME_CLOCK_ID}/time-activities?startDate=${getWeekRange(WEEKS_BACK - 1).startStr}&endDate=${currentWeek.endStr}&limit=500`,
-      apiKey
+    const clockResults = await Promise.allSettled(
+      TIME_CLOCK_IDS.map(clockId =>
+        ctFetch(
+          `https://api.connecteam.com/time-clock/v1/time-clocks/${clockId}/time-activities?startDate=${getWeekRange(WEEKS_BACK - 1).startStr}&endDate=${currentWeek.endStr}&limit=500`,
+          apiKey
+        )
+      )
     )
-    for (const ub of taData?.data?.timeActivitiesByUsers || []) {
-      const uid = String(ub.userId)
-      const acts: Array<{ startTs: number; endTs: number | null }> = []
-      for (const s of ub.shifts || []) {
-        if (s.start?.timestamp) acts.push({ startTs: s.start.timestamp, endTs: s.end?.timestamp ?? null })
+    for (const result of clockResults) {
+      if (result.status !== 'fulfilled') continue
+      for (const ub of result.value?.data?.timeActivitiesByUsers || []) {
+        const uid = String(ub.userId)
+        const existing = actByUser.get(uid) || []
+        const acts: Array<{ startTs: number; endTs: number | null }> = []
+        for (const s of ub.shifts || []) {
+          if (s.start?.timestamp) acts.push({ startTs: s.start.timestamp, endTs: s.end?.timestamp ?? null })
+        }
+        actByUser.set(uid, [...existing, ...acts])
       }
-      actByUser.set(uid, acts)
     }
   } catch { /* non-fatal */ }
 

@@ -194,7 +194,7 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
 
         <div style={{ position: 'relative', zIndex: 1 }}>
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 18, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 18, borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>
                 {greeting}{firstName ? `, ${firstName}` : ','}

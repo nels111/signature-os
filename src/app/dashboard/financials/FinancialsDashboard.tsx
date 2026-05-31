@@ -147,7 +147,8 @@ function EditRateModal({ site, onClose, onSaved }: {
     }} onClick={onClose}>
       <div style={{
         background: 'var(--surface)', borderRadius: 'var(--radius-lg)',
-        padding: 28, width: 400, boxShadow: 'var(--shadow-modal)',
+        padding: 28, width: '100%', maxWidth: 400, boxShadow: 'var(--shadow-modal)',
+        margin: '0 16px',
       }} onClick={e => e.stopPropagation()}>
         <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
           Set billing rate
@@ -312,14 +313,14 @@ export default function FinancialsDashboard() {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px 24px', color: 'var(--text-secondary)', fontSize: 14 }}>
+      <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
         Loading contracts…
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '24px 24px 48px', maxWidth: 1100 }}>
+    <div style={{ maxWidth: 1100 }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>
@@ -374,6 +375,7 @@ export default function FinancialsDashboard() {
         borderRadius: 'var(--radius-md)',
         overflow: 'hidden',
       }}>
+        <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--background)' }}>
@@ -491,6 +493,7 @@ export default function FinancialsDashboard() {
             No active contracts. Add a site to get started.
           </div>
         )}
+        </div>
       </div>
 
       <p style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>

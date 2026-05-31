@@ -38,6 +38,9 @@ enum LeadStage {
   meeting_attended
   quote_delivered
   foad
+  dormant
+  bad_data
+  archived
 }
 
 enum MeetingOutcome {
@@ -76,6 +79,10 @@ enum TaskType {
   onboarding
   audit_action
   issue_followup
+  callback
+  follow_up_call
+  contract_renewal_follow_up
+  site_visit_confirmation
 }
 
 enum EventType {
@@ -193,12 +200,14 @@ enum NotificationType {
   quote_viewed
   task_assigned
   lead_cold_alert
+  site_visit_booked
 }
 
 enum ActivityType {
   note
   call
   email
+  email_sent
   meeting
   status_change
   task_completed
@@ -206,6 +215,59 @@ enum ActivityType {
   deal_created
   quote_sent
   cadence_started
+}
+
+// ============ COLD CALLING ENUMS ============
+
+enum ColdCallOutcome {
+  no_answer
+  voicemail_left
+  gatekeeper
+  callback_booked
+  decision_maker_spoke
+  site_visit_booked
+  contract_renewal_date
+  not_interested
+  bad_data
+}
+
+enum QueueType {
+  callback
+  fresh
+  follow_up
+  recycle
+  dormant
+}
+
+enum DecisionMakerSubOutcome {
+  send_info
+  follow_up_1_week
+  follow_up_1_month
+}
+
+enum NotInterestedReason {
+  happy_with_supplier
+  in_house_team
+  no_budget
+  not_responsible
+  never_outsource
+  other
+}
+
+enum CallDirection {
+  outbound
+  inbound
+}
+
+enum CallStatus {
+  queued
+  ringing
+  in_progress
+  completed
+  failed
+  busy
+  no_answer
+  cancelled
 }
 
 // ============ MODELS ============
@@ -238,6 +300,7 @@ model User {
   timeSessions       TimeSession[]
   assignedTickets    ClientTicket[]
   audits             Audit[]
+  coldCallAttempts   ColdCallAttempt[]
 
   @@map("users")
 }
@@ -319,6 +382,37 @@ model Lead {
   stageChangedAt DateTime        @default(now())
   deletedAt      DateTime?
 
+  // ── Cold calling queue control ──────────────────────────
+  queueType          QueueType?
+  nextCallAt         DateTime?
+  lastCalledAt       DateTime?
+  firstCalledAt      DateTime?
+  coldCallAttempts   Int        @default(0)
+  noAnswerAttempts   Int        @default(0)
+  voicemailAttempts  Int        @default(0)
+  gatekeeperAttempts Int        @default(0)
+  isCallable         Boolean    @default(true)
+  removedFromQueueAt DateTime?
+  dormantUntil       DateTime?
+
+  // ── Contact intelligence ────────────────────────────────
+  decisionMakerName  String?
+  decisionMakerTitle String?
+  directNumber       String?
+  bestTimeToCall     String?
+  gatekeeperName     String?
+
+  // ── Opportunity intelligence ────────────────────────────
+  currentSupplier     String?
+  contractRenewalDate DateTime?
+  estimatedSiteSize   String?
+  coldCallNotes       String?
+
+  // ── Site visit ──────────────────────────────────────────
+  siteVisitAt      DateTime?
+  siteVisitAddress String?
+  siteVisitContact String?
+
   // Relations
   owner    User     @relation(fields: [ownerId], references: [id])
   contact  Contact? @relation(fields: [contactId], references: [id])
@@ -328,6 +422,7 @@ model Lead {
   emails   Email[]  @relation("LeadEmails")
   cadences Cadence[]
   firefliesTranscripts FirefliesTranscript[] @relation("LeadTranscripts")
+  callAttempts         ColdCallAttempt[]
 
   @@index([ownerId])
   @@index([contactId])
@@ -335,6 +430,10 @@ model Lead {
   @@index([stage])
   @@index([email])
   @@index([deletedAt])
+  @@index([queueType, nextCallAt])
+  @@index([isCallable, stage, nextCallAt])
+  @@index([dormantUntil])
+  @@index([lastCalledAt])
   @@map("leads")
 }
 
@@ -656,6 +755,56 @@ model Activity {
   @@index([entityType, entityId])
   @@index([userId, createdAt])
   @@map("activities")
+}
+
+model ColdCallAttempt {
+  id     String @id @default(cuid())
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  direction CallDirection    @default(outbound)
+  status    CallStatus       @default(queued)
+  outcome   ColdCallOutcome?
+
+  twilioCallSid      String? @unique
+  twilioRecordingSid String?
+  recordingUrl       String?
+
+  startedAt       DateTime?
+  answeredAt      DateTime?
+  endedAt         DateTime?
+  durationSeconds Int?
+
+  notes String?
+
+  // Snapshot fields captured from outcome form
+  gatekeeperName          String?
+  decisionMakerName       String?
+  decisionMakerTitle      String?
+  directNumber            String?
+  email                   String?
+  bestTimeToCall          String?
+  contractRenewalDate     DateTime?
+  currentSupplier         String?
+  estimatedSiteSize       String?
+
+  decisionMakerSubOutcome DecisionMakerSubOutcome?
+  notInterestedReason     NotInterestedReason?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId, createdAt])
+  @@index([userId, createdAt])
+  @@index([outcome, createdAt])
+  @@index([twilioCallSid])
+  @@map("cold_call_attempts")
 }
 
 model Site {

@@ -185,7 +185,7 @@ export function OpsContent() {
       {/* Header */}
       <div className="mb-6">
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#5a8f1c', margin: '0 0 3px' }}>Operations</p>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em', margin: 0 }}>Overview</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em', margin: 0 }}>Operations Overview</h1>
       </div>
 
       {loading ? (

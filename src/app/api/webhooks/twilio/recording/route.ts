@@ -103,6 +103,20 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Also attach to ColdCallAttempt if matched by callSid
+    if (callSid) {
+      await prisma.coldCallAttempt.updateMany({
+        where: { twilioCallSid: callSid },
+        data: {
+          recordingUrl: playbackUrl,
+          twilioRecordingSid: recordingSid ?? undefined,
+          durationSeconds: recordingDuration ? parseInt(recordingDuration) : undefined,
+          status: 'completed',
+          endedAt: new Date(),
+        },
+      });
+    }
+
     // Kick off transcription asynchronously if ElevenLabs key is available
     const elKey = process.env.ELEVENLABS_API_KEY;
     if (elKey) {

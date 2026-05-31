@@ -128,7 +128,7 @@ export function SalesContent() {
       {/* Header */}
       <div className="mb-6">
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#2056a4', margin: '0 0 3px' }}>Sales</p>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em', margin: 0 }}>Pipeline</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em', margin: 0 }}>Sales Pipeline</h1>
       </div>
 
       {loading ? (

@@ -20,7 +20,6 @@ import {
   ChevronRight,
   X,
   Settings as SettingsIcon,
-  Briefcase,
 } from 'lucide-react';
 import { useLayout } from './LayoutContext';
 
@@ -38,8 +37,6 @@ const ALL_NAV_ITEMS = [
   { href: '/dashboard/leads', label: 'Leads', icon: UserPlus, section: 'crm', roles: null },
   // Business Hub
   { href: '/dashboard/hub', label: 'Business Hub', icon: LayoutGrid, section: 'hub', roles: null },
-  // Operations
-  { href: '/dashboard/clients', label: 'Clients', icon: Briefcase, section: 'ops', roles: ['admin', 'sales', 'operations'] },
   // System
   { href: '/dashboard/settings', label: 'Settings', icon: SettingsIcon, section: 'system', roles: ['admin'] },
 ];
@@ -51,7 +48,6 @@ const sections = [
   { key: 'overview', label: 'Overview' },
   { key: 'crm', label: 'CRM' },
   { key: 'hub', label: 'Business Hub' },
-  { key: 'ops', label: 'Operations' },
   { key: 'system', label: null },
 ];
 

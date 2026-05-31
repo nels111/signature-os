@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+
 import { LayoutProvider, useLayout } from './LayoutContext';
 
 function MobileOverlay() {
@@ -51,7 +52,7 @@ function LayoutInner({ children, currentPath }: { children: React.ReactNode; cur
         <Sidebar />
       </div>
 
-      {/* Mobile "More" drawer — slides in from left, triggered by BottomNav */}
+      {/* Mobile drawer — slides in from left */}
       <div
         className={`fixed inset-y-0 left-0 z-50 lg:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -70,7 +71,11 @@ function LayoutInner({ children, currentPath }: { children: React.ReactNode; cur
         {isFullBleed ? (
           <main
             className="flex-1 min-h-0 overflow-hidden flex flex-col"
-            style={{ background: 'var(--background)' }}
+            style={{
+              background: 'var(--background)',
+              paddingLeft: 'env(safe-area-inset-left)',
+              paddingRight: 'env(safe-area-inset-right)',
+            }}
           >
             <div className="flex-1 min-h-0 overflow-hidden">
               {children}
@@ -82,15 +87,18 @@ function LayoutInner({ children, currentPath }: { children: React.ReactNode; cur
             style={{
               background: 'var(--background)',
               overscrollBehavior: 'none',
-              paddingBottom: 'env(safe-area-inset-bottom)',
+              paddingLeft: 'env(safe-area-inset-left)',
+              paddingRight: 'env(safe-area-inset-right)',
             }}
           >
-            <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+            <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:pb-6">
               {children}
             </div>
           </main>
         )}
       </div>
+
+
 
     </div>
   );

@@ -58,14 +58,6 @@ export function PipelinePage() {
   const [activeTab, setActiveTab] = useState<'leads' | 'deals'>('leads');
   const [leads, setLeads] = useState<LeadItem[]>([]);
   const [deals, setDeals] = useState<DealItem[]>([]);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -342,26 +334,24 @@ export function PipelinePage() {
 
   return (
     <div>
-      <div style={{ marginBottom: isMobile ? 14 : 20 }}>
-        <h1 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 700, color: 'var(--text-primary)' }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>
           Pipeline
         </h1>
-        {!isMobile && (
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Drag cards between columns to update stages
-          </p>
-        )}
+        <p className="text-sm mt-1 hidden md:block" style={{ color: 'var(--text-secondary)' }}>
+          Drag cards between columns to update stages
+        </p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: isMobile ? 14 : 20 }}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 18 }}>
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             style={{
-              padding: isMobile ? '7px 14px' : '8px 16px',
-              fontSize: isMobile ? 13 : 14,
+              padding: '8px 14px',
+              fontSize: 14,
               fontWeight: 500,
               border: 'none',
               borderBottom: `2px solid ${activeTab === tab.key ? 'var(--brand-green-accent)' : 'transparent'}`,
@@ -398,21 +388,15 @@ export function PipelinePage() {
           />
 
           {/* Summary cards */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
-            gap: isMobile ? 10 : 16,
-            marginTop: 20,
-          }}>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mt-5">
             <div style={{
               borderRadius: 12, border: '1px solid var(--border)',
-              backgroundColor: 'var(--surface)', padding: isMobile ? '12px' : '16px',
-              gridColumn: isMobile ? 'span 2' : 'span 1',
-            }}>
+              backgroundColor: 'var(--surface)', padding: '14px',
+            }} className="col-span-2 md:col-span-1">
               <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0 }}>
                 Total Pipeline Value
               </p>
-              <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0 0' }}>
+              <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0 0' }}>
                 {formatCurrency(pipelineValue)}
               </p>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0' }}>
@@ -421,12 +405,12 @@ export function PipelinePage() {
             </div>
             <div style={{
               borderRadius: 12, border: '1px solid var(--status-success)',
-              backgroundColor: 'var(--status-success-bg)', padding: isMobile ? '12px' : '16px',
+              backgroundColor: 'var(--status-success-bg)', padding: '14px',
             }}>
               <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--status-success)', margin: 0 }}>
                 Won
               </p>
-              <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: 'var(--status-success)', margin: '4px 0 0' }}>
+              <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--status-success)', margin: '4px 0 0' }}>
                 {formatCurrency(wonValue)}
               </p>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0' }}>
@@ -435,12 +419,12 @@ export function PipelinePage() {
             </div>
             <div style={{
               borderRadius: 12, border: '1px solid var(--status-danger)',
-              backgroundColor: 'var(--status-danger-bg)', padding: isMobile ? '12px' : '16px',
+              backgroundColor: 'var(--status-danger-bg)', padding: '14px',
             }}>
               <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--status-danger)', margin: 0 }}>
                 Lost
               </p>
-              <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: 'var(--status-danger)', margin: '4px 0 0' }}>
+              <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--status-danger)', margin: '4px 0 0' }}>
                 {lostCount}
               </p>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0' }}>
@@ -454,7 +438,7 @@ export function PipelinePage() {
       {/* Toast notification */}
       {toast && (
         <div
-          className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm text-white"
+          className="fixed bottom-20 right-6 md:bottom-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm text-white"
           style={{ backgroundColor: 'var(--brand-blue)' }}
         >
           {toast}

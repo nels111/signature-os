@@ -5,11 +5,14 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const SCHEDULER_IDS = ['6814169', '15165164', '16197755']
-const TIME_CLOCK_ID = '6814166'
+const TIME_CLOCK_IDS = ['6814166', '16824311']  // both Connecteam time clocks
 const GRACE_MINUTES = 5
 
 // In-memory cache: 90 seconds (fast enough for live feel, light on API calls)
 let cache: { data: TodayShiftsResponse; expires: number } | null = null
+
+// 429 backoff: if Connecteam rate-limits us, don't retry for 60s
+let rateLimitedUntil = 0
 
 function loadConnecteamKey(): string {
   const key = process.env.CONNECTEAM_API_KEY
@@ -20,9 +23,12 @@ function loadConnecteamKey(): string {
 async function ctFetch(url: string, apiKey: string) {
   const res = await fetch(url, {
     headers: { 'X-API-KEY': apiKey, 'User-Agent': 'sigos/1.0' },
-    // Short timeout via AbortController
     signal: AbortSignal.timeout(8000),
   })
+  if (res.status === 429) {
+    rateLimitedUntil = Date.now() + 60_000  // back off 60s
+    throw new Error(`Connecteam 429: ${url}`)
+  }
   if (!res.ok) throw new Error(`Connecteam ${res.status}: ${url}`)
   return res.json()
 }
@@ -84,26 +90,32 @@ async function fetchTodayShifts(): Promise<TodayShiftsResponse> {
     }
   }
 
-  // Fetch today's time activities
-  const taData = await ctFetch(
-    `https://api.connecteam.com/time-clock/v1/time-clocks/${TIME_CLOCK_ID}/time-activities?startDate=${todayStr}&endDate=${todayStr}&limit=500`,
-    apiKey
-  )
-
-  // Build: userID -> list of clock activities for today
+  // Fetch today's time activities — both time clocks in parallel
   type ClockActivity = { startTs: number; endTs: number | null; jobId: string | null }
   const actByUser = new Map<string, ClockActivity[]>()
-  for (const ub of taData?.data?.timeActivitiesByUsers || []) {
-    const uid = String(ub.userId)
-    const acts: ClockActivity[] = []
-    for (const s of ub.shifts || []) {
-      acts.push({
-        startTs: s.start?.timestamp ?? null,
-        endTs: s.end?.timestamp ?? null,
-        jobId: s.jobId ? String(s.jobId) : null,
-      })
+  const clockResults = await Promise.allSettled(
+    TIME_CLOCK_IDS.map(clockId =>
+      ctFetch(
+        `https://api.connecteam.com/time-clock/v1/time-clocks/${clockId}/time-activities?startDate=${todayStr}&endDate=${todayStr}&limit=500`,
+        apiKey
+      )
+    )
+  )
+  for (const result of clockResults) {
+    if (result.status !== 'fulfilled') continue
+    for (const ub of result.value?.data?.timeActivitiesByUsers || []) {
+      const uid = String(ub.userId)
+      const existing = actByUser.get(uid) || []
+      const acts: ClockActivity[] = []
+      for (const s of ub.shifts || []) {
+        acts.push({
+          startTs: s.start?.timestamp ?? null,
+          endTs: s.end?.timestamp ?? null,
+          jobId: s.jobId ? String(s.jobId) : null,
+        })
+      }
+      actByUser.set(uid, [...existing, ...acts])
     }
-    actByUser.set(uid, acts)
   }
 
   // Map shifts to entries
@@ -196,6 +208,19 @@ export async function GET() {
   // Return cached if fresh
   if (cache && Date.now() < cache.expires) {
     return NextResponse.json(cache.data)
+  }
+
+  // If rate-limited, return stale cache or empty — don't hammer Connecteam
+  if (Date.now() < rateLimitedUntil) {
+    if (cache?.data) {
+      return NextResponse.json({ ...cache.data, error: 'Live data temporarily unavailable (rate limited)' })
+    }
+    return NextResponse.json({
+      shifts: [],
+      counts: { clocked_in: 0, overdue: 0, upcoming: 0, completed: 0 },
+      fetchedAt: new Date().toISOString(),
+      error: 'Live data temporarily unavailable (rate limited)',
+    })
   }
 
   try {
