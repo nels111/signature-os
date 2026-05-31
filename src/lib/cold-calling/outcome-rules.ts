@@ -112,7 +112,17 @@ export async function applyColdCallOutcome({
   });
 
   const firstName = lead.contactName?.trim().split(' ')[0] ?? 'there';
-  const createdTasks: { id: string; subject: string; taskType: string; dueDate: string }[] = [];
+
+  // ── Task inputs collected during switch (created atomically in transaction) ─
+  type TaskInput = Parameters<typeof prisma.task.create>[0]['data'];
+  const taskInputs: TaskInput[] = [];
+
+  // ── Extra activity for email_sent (DM spoke + send_info) ──────────────────
+  let emailActivityInput: Parameters<typeof prisma.activity.create>[0]['data'] | null = null;
+
+  // ── Side effects (emails, notifications) fired AFTER transaction commits ───
+  // Collected as closures so they only run if transaction succeeds.
+  const sideEffects: Array<() => void> = [];
 
   // ── Shared attempt snapshot update ────────────────────────────────────────
   const attemptUpdateData: Record<string, unknown> = {
@@ -214,26 +224,19 @@ export async function applyColdCallOutcome({
         nextCallAt: callbackDate,
         isCallable: true,
       };
-      // Create callback task
-      const task = await prisma.task.create({
-        data: {
-          subject: `Callback: ${lead.companyName}`,
-          ownerId: userId,
-          dueDate: callbackDate,
-          taskType: 'callback',
-          status: 'not_started',
-          linkedLeadId: leadId,
-          description: payload.notes ?? undefined,
-        },
+      taskInputs.push({
+        subject: `Callback: ${lead.companyName}`,
+        ownerId: userId,
+        dueDate: callbackDate,
+        taskType: 'callback',
+        status: 'not_started',
+        linkedLeadId: leadId,
+        description: payload.notes ?? undefined,
       });
-      createdTasks.push({ id: task.id, subject: task.subject, taskType: task.taskType, dueDate: task.dueDate.toISOString() });
-      // Send callback confirmation email
       if (lead.email) {
-        sendCallbackEmail({
-          to: lead.email,
-          firstName,
-          callbackAt: payload.callbackAt,
-        }).catch(console.error);
+        const _email = lead.email;
+        const _callbackAt = payload.callbackAt;
+        sideEffects.push(() => sendCallbackEmail({ to: _email, firstName, callbackAt: _callbackAt }).catch(console.error));
       }
       break;
     }
@@ -256,43 +259,32 @@ export async function applyColdCallOutcome({
         isCallable: true,
       };
 
-      // Create follow-up call task
-      const task = await prisma.task.create({
-        data: {
-          subject: `Follow up: ${lead.companyName}`,
-          ownerId: userId,
-          dueDate: followUpDate,
-          taskType: 'follow_up_call',
-          status: 'not_started',
-          linkedLeadId: leadId,
-          description: payload.notes ?? undefined,
-        },
+      taskInputs.push({
+        subject: `Follow up: ${lead.companyName}`,
+        ownerId: userId,
+        dueDate: followUpDate,
+        taskType: 'follow_up_call',
+        status: 'not_started',
+        linkedLeadId: leadId,
+        description: payload.notes ?? undefined,
       });
-      createdTasks.push({ id: task.id, subject: task.subject, taskType: task.taskType, dueDate: task.dueDate.toISOString() });
 
-      // If send_info: fire intro email immediately
+      // If send_info: fire intro email and log email activity atomically
       if (subOutcome === 'send_info' && lead.email) {
-        sendInfoEmail({
-          to: lead.email,
-          firstName,
-          company: lead.companyName,
-        }).catch(console.error);
-
-        // Log email activity
-        await prisma.activity.create({
-          data: {
-            activityType: 'email_sent',
-            description: `Intro email sent after decision maker conversation`,
-            userId,
-            entityType: 'lead',
-            entityId: leadId,
-            metadata: {
-              template: 'cold_call_intro',
-              trigger: 'decision_maker_spoke_send_info',
-              sentTo: lead.email,
-            },
+        const _email = lead.email;
+        sideEffects.push(() => sendInfoEmail({ to: _email, firstName, company: lead.companyName }).catch(console.error));
+        emailActivityInput = {
+          activityType: 'email_sent',
+          description: `Intro email sent after decision maker conversation`,
+          userId,
+          entityType: 'lead',
+          entityId: leadId,
+          metadata: {
+            template: 'cold_call_intro',
+            trigger: 'decision_maker_spoke_send_info',
+            sentTo: lead.email,
           },
-        });
+        };
       }
       break;
     }
@@ -311,54 +303,52 @@ export async function applyColdCallOutcome({
         siteVisitContact: payload.siteVisitContact ?? undefined,
       };
 
-      // Create site visit confirmation task (assigned to Nick if he exists, else userId)
+      // Resolve Nick's userId for task assignment (outside tx — read-only lookup)
       const nick = await prisma.user.findFirst({ where: { email: NICK_EMAIL }, select: { id: true } });
-      const task = await prisma.task.create({
-        data: {
-          subject: `Site visit: ${lead.companyName}`,
-          ownerId: nick?.id ?? userId,
-          dueDate: visitDate,
-          taskType: 'site_visit_confirmation',
-          status: 'not_started',
-          linkedLeadId: leadId,
-          description: [
-            payload.siteVisitAddress ? `Address: ${payload.siteVisitAddress}` : null,
-            payload.siteVisitContact ? `Contact: ${payload.siteVisitContact}` : null,
-            payload.notes ?? null,
-          ].filter(Boolean).join('\n') || undefined,
-        },
+
+      taskInputs.push({
+        subject: `Site visit: ${lead.companyName}`,
+        ownerId: nick?.id ?? userId,
+        dueDate: visitDate,
+        taskType: 'site_visit_confirmation',
+        status: 'not_started',
+        linkedLeadId: leadId,
+        description: [
+          payload.siteVisitAddress ? `Address: ${payload.siteVisitAddress}` : null,
+          payload.siteVisitContact ? `Contact: ${payload.siteVisitContact}` : null,
+          payload.notes ?? null,
+        ].filter(Boolean).join('\n') || undefined,
       });
-      createdTasks.push({ id: task.id, subject: task.subject, taskType: task.taskType, dueDate: task.dueDate.toISOString() });
 
-      // Send site visit confirmation email to lead
-      if (lead.email) {
-        sendSiteVisitEmail({
-          to: lead.email,
-          firstName,
-          company: lead.companyName,
-          siteVisitAt: payload.siteVisitAt,
-          siteVisitAddress: payload.siteVisitAddress,
-        }).catch(console.error);
-      }
-
-      // Notify Nick: push + in-app + email
+      // Side effects: email lead, notify Nick, email Nick
       const visitFormatted = visitDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+      if (lead.email) {
+        const _email = lead.email;
+        const _siteVisitAt = payload.siteVisitAt;
+        sideEffects.push(() => sendSiteVisitEmail({
+          to: _email, firstName, company: lead.companyName,
+          siteVisitAt: _siteVisitAt, siteVisitAddress: payload.siteVisitAddress,
+        }).catch(console.error));
+      }
       const notifyMsg = `Site visit booked at ${lead.companyName}${payload.siteVisitAddress ? ` (${payload.siteVisitAddress})` : ''} on ${visitFormatted}`;
-      await notifyNick('Site visit booked', notifyMsg, leadId);
-
-      // Email Nick
-      const { sendEmail, getSmtpConfig } = await import('@/lib/smtp');
-      const pass = process.env.HELLO_MAILBOX_PASSWORD;
-      if (pass && nick) {
-        const config = getSmtpConfig('hello@signature-cleans.co.uk', pass);
-        sendEmail(config, {
-          from: 'Jasmine (Signature Cleans) <hello@signature-cleans.co.uk>',
-          replyTo: NELSON_EMAIL,
-          to: NICK_EMAIL,
-          subject: `Site visit booked — ${lead.companyName}`,
-          text: `Hi Nick,\n\nA site visit has been booked.\n\nCompany: ${lead.companyName}\nDate: ${visitFormatted}${payload.siteVisitAddress ? `\nAddress: ${payload.siteVisitAddress}` : ''}${payload.siteVisitContact ? `\nContact: ${payload.siteVisitContact}` : ''}\n\nA task has been created for you in SigOS.\n\nMany Thanks,\nJasmine`,
-          html: `<p>Hi Nick,</p><p>A site visit has been booked.</p><ul><li><strong>Company:</strong> ${lead.companyName}</li><li><strong>Date:</strong> ${visitFormatted}</li>${payload.siteVisitAddress ? `<li><strong>Address:</strong> ${payload.siteVisitAddress}</li>` : ''}${payload.siteVisitContact ? `<li><strong>Contact:</strong> ${payload.siteVisitContact}</li>` : ''}</ul><p>A task has been created for you in SigOS.</p><p>Many Thanks,<br>Jasmine</p>`,
-        }).catch(console.error);
+      sideEffects.push(() => notifyNick('Site visit booked', notifyMsg, leadId).catch(console.error));
+      if (nick) {
+        sideEffects.push(async () => {
+          try {
+            const { sendEmail, getSmtpConfig } = await import('@/lib/smtp');
+            const pass = process.env.HELLO_MAILBOX_PASSWORD;
+            if (!pass) return;
+            const config = getSmtpConfig('hello@signature-cleans.co.uk', pass);
+            sendEmail(config, {
+              from: 'Jasmine (Signature Cleans) <hello@signature-cleans.co.uk>',
+              replyTo: NELSON_EMAIL,
+              to: NICK_EMAIL,
+              subject: `Site visit booked — ${lead.companyName}`,
+              text: `Hi Nick,\n\nA site visit has been booked.\n\nCompany: ${lead.companyName}\nDate: ${visitFormatted}${payload.siteVisitAddress ? `\nAddress: ${payload.siteVisitAddress}` : ''}${payload.siteVisitContact ? `\nContact: ${payload.siteVisitContact}` : ''}\n\nA task has been created for you in SigOS.\n\nMany Thanks,\nJasmine`,
+              html: `<p>Hi Nick,</p><p>A site visit has been booked.</p><ul><li><strong>Company:</strong> ${lead.companyName}</li><li><strong>Date:</strong> ${visitFormatted}</li>${payload.siteVisitAddress ? `<li><strong>Address:</strong> ${payload.siteVisitAddress}</li>` : ''}${payload.siteVisitContact ? `<li><strong>Contact:</strong> ${payload.siteVisitContact}</li>` : ''}</ul><p>A task has been created for you in SigOS.</p><p>Many Thanks,<br>Jasmine</p>`,
+            }).catch(console.error);
+          } catch { /* silent */ }
+        });
       }
       break;
     }
@@ -379,22 +369,19 @@ export async function applyColdCallOutcome({
         isCallable: true,
       };
 
-      const task = await prisma.task.create({
-        data: {
-          subject: `Contract renewal follow-up: ${lead.companyName}`,
-          ownerId: userId,
-          dueDate: effectiveFollowUp,
-          taskType: 'contract_renewal_follow_up',
-          status: 'not_started',
-          linkedLeadId: leadId,
-          description: [
-            payload.currentSupplier ? `Current supplier: ${payload.currentSupplier}` : null,
-            `Renewal date: ${renewalDate.toLocaleDateString('en-GB')}`,
-            payload.notes ?? null,
-          ].filter(Boolean).join('\n'),
-        },
+      taskInputs.push({
+        subject: `Contract renewal follow-up: ${lead.companyName}`,
+        ownerId: userId,
+        dueDate: effectiveFollowUp,
+        taskType: 'contract_renewal_follow_up',
+        status: 'not_started',
+        linkedLeadId: leadId,
+        description: [
+          payload.currentSupplier ? `Current supplier: ${payload.currentSupplier}` : null,
+          `Renewal date: ${renewalDate.toLocaleDateString('en-GB')}`,
+          payload.notes ?? null,
+        ].filter(Boolean).join('\n'),
       });
-      createdTasks.push({ id: task.id, subject: task.subject, taskType: task.taskType, dueDate: task.dueDate.toISOString() });
       break;
     }
 
@@ -405,7 +392,7 @@ export async function applyColdCallOutcome({
         stage: happy ? 'not_interested_for_now' : 'archived',
         queueType: happy ? 'follow_up' : null,
         nextCallAt: happy ? addMonths(now, 6) : null,
-        isCallable: false,
+        isCallable: happy ? true : false,   // must stay callable to return to queue in 6 months
         removedFromQueueAt: happy ? undefined : now,
       };
       break;
@@ -423,18 +410,20 @@ export async function applyColdCallOutcome({
     }
   }
 
-  // ── Run transaction ───────────────────────────────────────────────────────
-  const [updatedLead] = await prisma.$transaction([
-    prisma.lead.update({
+  // ── Run atomic transaction ────────────────────────────────────────────────
+  const { updatedLead, createdTasks } = await prisma.$transaction(async (tx) => {
+    const updatedLead = await tx.lead.update({
       where: { id: leadId },
       data: leadUpdate,
       select: { id: true, stage: true, queueType: true, nextCallAt: true },
-    }),
-    prisma.coldCallAttempt.update({
+    });
+
+    await tx.coldCallAttempt.update({
       where: { id: attemptId },
       data: attemptUpdateData,
-    }),
-    prisma.activity.create({
+    });
+
+    await tx.activity.create({
       data: {
         activityType: 'call',
         description: buildActivityDescription(payload),
@@ -447,8 +436,27 @@ export async function applyColdCallOutcome({
           attemptId,
         },
       },
-    }),
-  ]);
+    });
+
+    // Create all tasks atomically
+    const createdTasks: { id: string; subject: string; taskType: string; dueDate: string }[] = [];
+    for (const input of taskInputs) {
+      const task = await tx.task.create({ data: input, select: { id: true, subject: true, taskType: true, dueDate: true } });
+      createdTasks.push({ id: task.id, subject: task.subject, taskType: task.taskType, dueDate: task.dueDate.toISOString() });
+    }
+
+    // Log email activity atomically if applicable
+    if (emailActivityInput) {
+      await tx.activity.create({ data: emailActivityInput });
+    }
+
+    return { updatedLead, createdTasks };
+  });
+
+  // Fire side effects AFTER transaction commits (emails, push notifications)
+  for (const effect of sideEffects) {
+    void Promise.resolve(effect()).catch(console.error);
+  }
 
   // Get next lead (outside transaction — read-only)
   const { lead: nextLead } = await getNextLead();

@@ -220,15 +220,69 @@ async function getDormantCount(): Promise<number> {
   });
 }
 
+// ── True counts (independent of paginated lists) ──────────────────────────────
+
+async function getTrueCounts(): Promise<{ callbacks: number; fresh: number; followUps: number; recycle: number }> {
+  const now = new Date();
+  const [callbacks, fresh, followUps, recycle] = await Promise.all([
+    // Callback tasks due now
+    prisma.task.count({
+      where: {
+        taskType: 'callback',
+        status: { in: ['not_started', 'in_progress', 'waiting'] },
+        dueDate: { lte: now },
+        deletedAt: null,
+        linkedLead: { isCallable: true, deletedAt: null },
+      },
+    }),
+    // Fresh leads never called with a phone number
+    prisma.lead.count({
+      where: {
+        isCallable: true,
+        stage: { in: ['new_lead', 'cold_call'] as never[] },
+        firstCalledAt: null,
+        phone: { not: null },
+        deletedAt: null,
+      },
+    }),
+    // Follow-up / renewal tasks due now
+    prisma.task.count({
+      where: {
+        taskType: { in: ['follow_up_call', 'contract_renewal_follow_up'] as never[] },
+        status: { in: ['not_started', 'in_progress', 'waiting'] },
+        dueDate: { lte: now },
+        deletedAt: null,
+        linkedLead: {
+          isCallable: true,
+          stage: { in: ['follow_up_sequence', 'contact_when_contract_up'] as never[] },
+          deletedAt: null,
+        },
+      },
+    }),
+    // Recycle leads with nextCallAt due
+    prisma.lead.count({
+      where: {
+        isCallable: true,
+        stage: 'cold_call',
+        firstCalledAt: { not: null },
+        nextCallAt: { lte: now },
+        deletedAt: null,
+      },
+    }),
+  ]);
+  return { callbacks, fresh, followUps, recycle };
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export async function getQueue(limit = 25): Promise<QueueResponse> {
-  const [callbacks, fresh, followUps, recycle, dormantCount] = await Promise.all([
+  const [callbacks, fresh, followUps, recycle, dormantCount, trueCounts] = await Promise.all([
     getCallbackLeads(limit),
     getFreshLeads(limit),
     getFollowUpLeads(limit),
     getRecycleLeads(limit),
     getDormantCount(),
+    getTrueCounts(),
   ]);
 
   const activeLead =
@@ -238,10 +292,10 @@ export async function getQueue(limit = 25): Promise<QueueResponse> {
     activeLead,
     queues: { callbacks, fresh, followUps, recycle },
     counts: {
-      callbacks: callbacks.length,
-      fresh: fresh.length,
-      followUps: followUps.length,
-      recycle: recycle.length,
+      callbacks: trueCounts.callbacks,
+      fresh: trueCounts.fresh,
+      followUps: trueCounts.followUps,
+      recycle: trueCounts.recycle,
       dormant: dormantCount,
     },
   };
