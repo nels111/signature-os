@@ -57,7 +57,7 @@ export default function LoginPage() {
           <div className="text-center mb-8">
             <div className="flex justify-center mb-5">
               <Image
-                src="/logo-badge.svg"
+                src="/logo-badge.jpg"
                 alt="Signature Cleans"
                 width={56}
                 height={56}
