@@ -110,8 +110,9 @@ export function WeekView({
             </div>
           )}
 
-          {/* Time grid */}
-          <div className="overflow-y-auto" style={{ maxHeight: '60vh', minWidth: 560 }}>
+          {/* Time grid — single page-level scroll (no nested overflow-y) to avoid
+              the iOS nested-scroll trap. */}
+          <div style={{ minWidth: 560 }}>
             {HOURS.map((hour) => (
               <div
                 key={hour}

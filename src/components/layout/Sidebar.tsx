@@ -16,6 +16,9 @@ import {
   Calendar,
   Mail,
   LayoutGrid,
+  Phone,
+  Briefcase,
+  ClipboardCheck,
   ChevronLeft,
   ChevronRight,
   X,
@@ -35,14 +38,17 @@ const ALL_NAV_ITEMS = [
   { href: '/dashboard/accounts', label: 'Accounts', icon: Building2, section: 'crm', roles: null },
   { href: '/dashboard/contacts', label: 'Contacts', icon: Users, section: 'crm', roles: null },
   { href: '/dashboard/leads', label: 'Leads', icon: UserPlus, section: 'crm', roles: null },
+  { href: '/dashboard/cold-calling', label: 'Cold Calling', icon: Phone, section: 'crm', roles: null },
   // Business Hub
   { href: '/dashboard/hub', label: 'Business Hub', icon: LayoutGrid, section: 'hub', roles: null },
+  { href: '/dashboard/clients', label: 'Clients', icon: Briefcase, section: 'hub', roles: ['admin', 'sales', 'operations'] },
+  { href: '/dashboard/audits', label: 'Audits', icon: ClipboardCheck, section: 'hub', roles: ['admin', 'operations'] },
   // System
   { href: '/dashboard/settings', label: 'Settings', icon: SettingsIcon, section: 'system', roles: ['admin'] },
 ];
 
 // VA role: dashboard + leads + tasks + hub (cold calling accessible from hub)
-const VA_ALLOWED = ['/dashboard', '/dashboard/leads', '/dashboard/tasks', '/dashboard/hub'];
+const VA_ALLOWED = ['/dashboard', '/dashboard/leads', '/dashboard/tasks', '/dashboard/hub', '/dashboard/cold-calling'];
 
 const sections = [
   { key: 'overview', label: 'Overview' },

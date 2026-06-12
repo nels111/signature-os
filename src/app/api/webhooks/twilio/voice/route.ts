@@ -15,13 +15,23 @@ function escapeXml(s: string): string {
     .replace(/'/g, '&apos;');
 }
 
-// Accept E.164 (+44...) or UK leading-zero forms only. Reject everything else
-// so that XML escaping is a belt-and-braces second layer.
+// Accept E.164 (+44...) or UK leading-zero forms. Real-world numbers are stored
+// formatted (e.g. "01837 880096", "+44 1392 877494", "(01392) 123-456"), so we
+// strip spaces/punctuation FIRST, then validate strictly. The output is always a
+// clean +E.164 string, so XML escaping downstream stays a belt-and-braces layer.
 function normaliseUkNumber(raw: string | null): string | null {
   if (!raw) return null;
-  const trimmed = raw.trim();
-  if (/^\+[1-9]\d{6,14}$/.test(trimmed)) return trimmed;
-  if (/^0\d{9,10}$/.test(trimmed)) return '+44' + trimmed.slice(1);
+  // Strip spaces, hyphens, parentheses and dots before validating.
+  let s = raw.replace(/[\s().-]/g, '');
+  if (!s) return null;
+  // 00 international prefix -> +
+  if (s.startsWith('00')) s = '+' + s.slice(2);
+  // Already valid E.164
+  if (/^\+[1-9]\d{6,14}$/.test(s)) return s;
+  // UK leading-zero form -> +44
+  if (/^0\d{9,10}$/.test(s)) return '+44' + s.slice(1);
+  // Bare UK form without + (e.g. 441392877494) -> +44...
+  if (/^44\d{9,10}$/.test(s)) return '+' + s;
   return null;
 }
 

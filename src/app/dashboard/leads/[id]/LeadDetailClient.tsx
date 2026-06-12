@@ -33,9 +33,11 @@ interface Lead {
 const SOURCE_LABELS: Record<string, string> = {
   cold_call: 'Cold Call',
   cold_email: 'Cold Email',
+  linkedin: 'LinkedIn',
   referral: 'Referral',
   website: 'Website',
-  mark_walker: 'Mark Walker',
+  partner: 'Partner',
+  mark_walker: 'Partner',   // legacy
   direct_mail: 'Direct Mail',
   other: 'Other',
 };
@@ -43,37 +45,55 @@ const SOURCE_LABELS: Record<string, string> = {
 const SOURCE_VARIANTS: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
   cold_call: 'info',
   cold_email: 'info',
+  linkedin: 'info',
   referral: 'success',
   website: 'warning',
-  mark_walker: 'success',
+  partner: 'success',
+  mark_walker: 'success',   // legacy
   direct_mail: 'default',
   other: 'default',
 };
 
 const STAGE_LABELS: Record<string, string> = {
-  cold_call: 'Cold Call',
-  cold_email: 'Cold Email',
-  linkedin: 'LinkedIn',
-  follow_up_sequence: 'Follow-up Sequence',
-  not_interested_for_now: 'Not Interested for Now',
-  contact_when_contract_up: 'Contact When Contract Up',
-  meeting_scheduled: 'Meeting Scheduled',
-  meeting_attended: 'Meeting Attended',
-  quote_delivered: 'Quote Delivered',
-  foad: 'FOAD',
+  new_lead: 'New Lead',
+  contacted: 'Contacted',
+  meeting_scheduled: 'Meeting Booked',
+  meeting_attended: 'Meeting Done',
+  quote_delivered: 'Quote Sent',
+  negotiating: 'Negotiating',
+  won: 'Won',
+  contact_when_contract_up: 'On Hold',
+  not_interested_for_now: 'Not Interested',
+  foad: 'Dead',
+  // Legacy (display as closest active equivalent)
+  cold_call: 'Contacted',
+  cold_email: 'Contacted',
+  linkedin: 'Contacted',
+  follow_up_sequence: 'Contacted',
+  dormant: 'Dormant',
+  bad_data: 'Bad Data',
+  archived: 'Archived',
 };
 
 const STAGE_COLOURS: Record<string, string> = {
-  cold_call: '#6b7280',
-  cold_email: '#2563eb',
-  linkedin: '#8b5cf6',
-  follow_up_sequence: '#f59e0b',
-  not_interested_for_now: '#f59e0b',
-  contact_when_contract_up: '#0d9488',
-  meeting_scheduled: '#7c3aed',
-  meeting_attended: '#10b981',
-  quote_delivered: '#059669',
-  foad: '#dc2626',
+  new_lead: '#6b7280',
+  contacted: '#3b82f6',
+  meeting_scheduled: '#8b5cf6',
+  meeting_attended: '#a78bfa',
+  quote_delivered: '#f59e0b',
+  negotiating: '#f97316',
+  won: '#10b981',
+  contact_when_contract_up: '#6366f1',
+  not_interested_for_now: '#9ca3af',
+  foad: '#ef4444',
+  // Legacy
+  cold_call: '#3b82f6',
+  cold_email: '#3b82f6',
+  linkedin: '#3b82f6',
+  follow_up_sequence: '#3b82f6',
+  dormant: '#9ca3af',
+  bad_data: '#ef4444',
+  archived: '#6b7280',
 };
 
 const DEAL_STAGE_LABELS: Record<string, string> = {

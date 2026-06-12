@@ -3,23 +3,13 @@ export const runtime = 'nodejs';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/role-gate';
-
-function calcOverallScore(scores: {
-  scorePresentation: number;
-  scoreCleanliness: number;
-  scoreCompliance: number;
-  scoreEquipment: number;
-  scoreTeamConduct: number;
-}): number {
-  const avg =
-    (scores.scorePresentation +
-      scores.scoreCleanliness +
-      scores.scoreCompliance +
-      scores.scoreEquipment +
-      scores.scoreTeamConduct) /
-    5;
-  return Math.round(avg * 10);
-}
+import { computeAuditScore, type ScoredCategory } from '@/lib/audit-forms';
+import {
+  generateAuditPdf,
+  uploadAuditPdfToDropbox,
+  buildAuditPdfFilename,
+  type AuditScoredCategory,
+} from '@/lib/audit-pdf';
 
 export async function GET(
   _request: Request,
@@ -65,47 +55,40 @@ export async function PATCH(
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  // Collect score updates
-  const scoreFields = [
-    'scorePresentation',
-    'scoreCleanliness',
-    'scoreCompliance',
-    'scoreEquipment',
-    'scoreTeamConduct',
-  ] as const;
+  const data: Record<string, unknown> = {};
 
-  const scores: Record<string, number> = {};
-  let hasScoreChange = false;
-  for (const field of scoreFields) {
-    if (field in body) {
-      const val = Number(body[field]);
-      if (isNaN(val) || val < 0 || val > 10) {
-        return Response.json({ error: `${field} must be 0-10` }, { status: 400 });
+  // Re-score if categories are edited
+  if (Array.isArray(body.categories)) {
+    const categories: ScoredCategory[] = [];
+    for (const c of body.categories as Array<Record<string, unknown>>) {
+      const score = Number(c.score);
+      if (!c.key || typeof c.key !== 'string') {
+        return Response.json({ error: 'Each category needs a key' }, { status: 400 });
       }
-      scores[field] = val;
-      hasScoreChange = true;
-    } else {
-      scores[field] = (existing as unknown as Record<string, number>)[field];
+      if (isNaN(score) || score < 0 || score > 10) {
+        return Response.json({ error: `Category ${c.key} score must be 0-10` }, { status: 400 });
+      }
+      categories.push({
+        key: c.key,
+        label: typeof c.label === 'string' ? c.label : c.key,
+        score,
+        note: typeof c.note === 'string' && c.note ? c.note : undefined,
+      });
     }
+    const { rawScore, maxScore, overallScore } = computeAuditScore(categories);
+    Object.assign(data, { categories, rawScore, maxScore, overallScore });
   }
-
-  const overallScore = hasScoreChange
-    ? calcOverallScore(scores as Parameters<typeof calcOverallScore>[0])
-    : existing.overallScore;
 
   // Handle publish action
   const isPublishing = body.status === 'published' && existing.status !== 'published';
 
   const updatable = [
-    'notePresentation', 'noteCleanliness', 'noteCompliance', 'noteEquipment', 'noteTeamConduct',
     'headlineNotes', 'actionItems', 'photos', 'dropboxPdfPath',
+    'binsEmptied', 'issuesSpotted', 'needsReview', 'signatureData',
+    'formType', 'siteVariant',
   ];
-  const data: Record<string, unknown> = {};
   for (const field of updatable) {
     if (field in body) data[field] = body[field];
-  }
-  if (hasScoreChange) {
-    Object.assign(data, scores, { overallScore });
   }
   if (isPublishing) {
     data.status = 'published';
@@ -122,6 +105,88 @@ export async function PATCH(
       site: { select: { id: true, name: true } },
     },
   });
+
+  // On publish: render an A4 PDF and upload it to the client's Dropbox audit folder.
+  // Never let PDF/upload failure block the publish — wrap everything in try/catch.
+  if (isPublishing) {
+    try {
+      const full = await prisma.audit.findUnique({
+        where: { id },
+        include: {
+          auditedBy: { select: { name: true } },
+          site: {
+            select: {
+              name: true,
+              dropboxFolderPath: true,
+              clientAccount: { select: { contactName: true, dropboxFolderPath: true } },
+            },
+          },
+        },
+      });
+
+      const dropboxFolderPath = full?.site.dropboxFolderPath ?? full?.site.clientAccount?.dropboxFolderPath ?? null;
+
+      if (full && dropboxFolderPath) {
+        const rawCats = Array.isArray(full.categories) ? full.categories : [];
+        const categories: AuditScoredCategory[] = (rawCats as Array<Record<string, unknown>>).map((c) => ({
+          key: String(c.key ?? ''),
+          label: typeof c.label === 'string' ? c.label : String(c.key ?? ''),
+          score: Number(c.score) || 0,
+          note: typeof c.note === 'string' && c.note ? c.note : undefined,
+        }));
+        const photoArr: string[] = Array.isArray(full.photos)
+          ? (full.photos as unknown[]).filter((p): p is string => typeof p === 'string')
+          : [];
+
+        const pdf = await generateAuditPdf({
+          siteName: full.site.name,
+          clientName: full.site.clientAccount?.contactName ?? null,
+          auditorName: full.auditedBy?.name ?? null,
+          auditedAt: full.auditedAt,
+          formType: full.formType,
+          siteVariant: full.siteVariant,
+          categories,
+          rawScore: full.rawScore,
+          maxScore: full.maxScore,
+          overallScore: full.overallScore,
+          binsEmptied: full.binsEmptied,
+          issuesSpotted: full.issuesSpotted,
+          needsReview: full.needsReview,
+          headlineNotes: full.headlineNotes,
+          photos: photoArr,
+          signatureData: full.signatureData,
+        });
+
+        const filename = buildAuditPdfFilename({
+          formType: full.formType,
+          auditorName: full.auditedBy?.name ?? null,
+          auditedAt: full.auditedAt,
+        });
+
+        const uploadedPath = await uploadAuditPdfToDropbox({
+          dropboxFolderPath,
+          siteName: full.site.name,
+          filename,
+          pdf,
+        });
+
+        const updated = await prisma.audit.update({
+          where: { id },
+          data: { dropboxPdfPath: uploadedPath },
+          include: {
+            auditedBy: { select: { id: true, name: true } },
+            site: { select: { id: true, name: true } },
+          },
+        });
+        return Response.json(updated);
+      } else if (full && !dropboxFolderPath) {
+        console.warn(`[audit-publish] No Dropbox folder for site "${full.site.name}" — skipping PDF upload (audit ${id}).`);
+      }
+    } catch (err) {
+      console.error(`[audit-publish] PDF/Dropbox upload failed for audit ${id}:`, err);
+      // Publish still succeeds — fall through and return the published audit.
+    }
+  }
 
   return Response.json(audit);
 }

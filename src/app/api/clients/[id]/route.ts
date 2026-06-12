@@ -73,7 +73,7 @@ export async function PATCH(
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const allowedFields = ['contactName', 'contactEmail', 'dropboxFolderPath', 'portalStatus'];
+  const allowedFields = ['contactName', 'contactEmail', 'dropboxFolderPath', 'portalStatus', 'hiddenFolders'];
   const data: Record<string, unknown> = {};
   for (const field of allowedFields) {
     if (field in body) data[field] = body[field];

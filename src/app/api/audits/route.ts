@@ -3,23 +3,12 @@ export const runtime = 'nodejs';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/role-gate';
-
-function calcOverallScore(scores: {
-  scorePresentation: number;
-  scoreCleanliness: number;
-  scoreCompliance: number;
-  scoreEquipment: number;
-  scoreTeamConduct: number;
-}): number {
-  const avg =
-    (scores.scorePresentation +
-      scores.scoreCleanliness +
-      scores.scoreCompliance +
-      scores.scoreEquipment +
-      scores.scoreTeamConduct) /
-    5;
-  return Math.round(avg * 10);
-}
+import {
+  computeAuditScore,
+  isValidFormType,
+  isValidVariant,
+  type ScoredCategory,
+} from '@/lib/audit-forms';
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -74,45 +63,52 @@ export async function POST(request: Request) {
     return Response.json({ error: 'siteId is required' }, { status: 400 });
   }
 
-  // Validate category scores (0-10)
-  const scoreFields = [
-    'scorePresentation',
-    'scoreCleanliness',
-    'scoreCompliance',
-    'scoreEquipment',
-    'scoreTeamConduct',
-  ] as const;
+  const formType = isValidFormType(body.formType) ? body.formType : 'large';
+  const siteVariant = isValidVariant(body.siteVariant) ? body.siteVariant : null;
 
-  const scores: Record<string, number> = {};
-  for (const field of scoreFields) {
-    const val = Number(body[field] ?? 0);
-    if (isNaN(val) || val < 0 || val > 10) {
-      return Response.json({ error: `${field} must be 0-10` }, { status: 400 });
+  // Validate + normalise flexible category scores (each 0-10)
+  const rawCats = Array.isArray(body.categories) ? body.categories : [];
+  if (rawCats.length === 0) {
+    return Response.json({ error: 'At least one scored category is required' }, { status: 400 });
+  }
+  const categories: ScoredCategory[] = [];
+  for (const c of rawCats as Array<Record<string, unknown>>) {
+    const score = Number(c.score);
+    if (!c.key || typeof c.key !== 'string') {
+      return Response.json({ error: 'Each category needs a key' }, { status: 400 });
     }
-    scores[field] = val;
+    if (isNaN(score) || score < 0 || score > 10) {
+      return Response.json({ error: `Category ${c.key} score must be 0-10` }, { status: 400 });
+    }
+    categories.push({
+      key: c.key,
+      label: typeof c.label === 'string' ? c.label : c.key,
+      score,
+      note: typeof c.note === 'string' && c.note ? c.note : undefined,
+    });
   }
 
-  const overallScore = calcOverallScore(scores as Parameters<typeof calcOverallScore>[0]);
+  const { rawScore, maxScore, overallScore } = computeAuditScore(categories);
+
+  const photos = Array.isArray(body.photos) ? body.photos : [];
 
   const audit = await prisma.audit.create({
     data: {
       siteId: body.siteId as string,
       auditedById: session.user.id,
       auditedAt: body.auditedAt ? new Date(body.auditedAt as string) : new Date(),
-      scorePresentation: scores.scorePresentation,
-      scoreCleanliness: scores.scoreCleanliness,
-      scoreCompliance: scores.scoreCompliance,
-      scoreEquipment: scores.scoreEquipment,
-      scoreTeamConduct: scores.scoreTeamConduct,
+      formType,
+      siteVariant,
+      categories: categories as never,
+      rawScore,
+      maxScore,
       overallScore,
-      notePresentation: (body.notePresentation as string) || null,
-      noteCleanliness: (body.noteCleanliness as string) || null,
-      noteCompliance: (body.noteCompliance as string) || null,
-      noteEquipment: (body.noteEquipment as string) || null,
-      noteTeamConduct: (body.noteTeamConduct as string) || null,
+      binsEmptied: typeof body.binsEmptied === 'boolean' ? body.binsEmptied : null,
+      issuesSpotted: (body.issuesSpotted as string) || null,
+      needsReview: (body.needsReview as string) || null,
+      signatureData: (body.signatureData as string) || null,
       headlineNotes: (body.headlineNotes as string) || null,
-      actionItems: (body.actionItems as never) || [],
-      photos: (body.photos as never) || [],
+      photos: photos as never,
       status: 'draft',
     },
     include: {

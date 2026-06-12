@@ -134,10 +134,11 @@ async function runTaskOverdue() {
 }
 
 async function runEventReminder() {
-  // Fire reminders for events (including recurring occurrences) starting within the next 15 minutes.
+  // Fire reminders ~30 minutes before an event starts (centred on 30 min, with a
+  // 10-min window so the every-5-min cron reliably catches each occurrence).
   const now = new Date();
-  const windowStart = new Date(now.getTime() + 10 * 60 * 1000); // 10 min from now
-  const windowEnd = new Date(now.getTime() + 20 * 60 * 1000);   // 20 min from now
+  const windowStart = new Date(now.getTime() + 25 * 60 * 1000); // 25 min from now
+  const windowEnd = new Date(now.getTime() + 35 * 60 * 1000);   // 35 min from now
 
   const SCHEDULER_BATCH_LIMIT = 500;
 

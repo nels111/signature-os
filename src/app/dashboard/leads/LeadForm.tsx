@@ -19,24 +19,26 @@ interface LeadFormProps {
 const SOURCE_OPTIONS = [
   { label: 'Cold Call',    value: 'cold_call'    },
   { label: 'Cold Email',   value: 'cold_email'   },
-  { label: 'Referral',     value: 'referral'     },
+  { label: 'LinkedIn',     value: 'linkedin'     },
   { label: 'Website',      value: 'website'      },
-  { label: 'Mark Walker',  value: 'mark_walker'  },
+  { label: 'Referral',     value: 'referral'     },
+  { label: 'Partner',      value: 'partner'      },
   { label: 'Direct Mail',  value: 'direct_mail'  },
   { label: 'Other',        value: 'other'        },
 ];
 
+// Active pipeline stages (ordered funnel). Legacy values kept in DB but hidden from picker.
 const STAGE_OPTIONS = [
-  { label: 'Cold Call',                value: 'cold_call'                },
-  { label: 'Cold Email',               value: 'cold_email'               },
-  { label: 'LinkedIn',                 value: 'linkedin'                 },
-  { label: 'Follow-up Sequence',       value: 'follow_up_sequence'       },
-  { label: 'Not Interested for Now',   value: 'not_interested_for_now'   },
-  { label: 'Contact When Contract Up', value: 'contact_when_contract_up' },
-  { label: 'Meeting Scheduled',        value: 'meeting_scheduled'        },
-  { label: 'Meeting Attended',         value: 'meeting_attended'         },
-  { label: 'Quote Delivered',          value: 'quote_delivered'          },
-  { label: 'FOAD',                     value: 'foad'                     },
+  { label: 'New Lead',        value: 'new_lead'                 },
+  { label: 'Contacted',       value: 'contacted'                },
+  { label: 'Meeting Booked',  value: 'meeting_scheduled'        },
+  { label: 'Meeting Done',    value: 'meeting_attended'         },
+  { label: 'Quote Sent',      value: 'quote_delivered'          },
+  { label: 'Negotiating',     value: 'negotiating'              },
+  { label: 'Won',             value: 'won'                      },
+  { label: 'On Hold',         value: 'contact_when_contract_up' },
+  { label: 'Not Interested',  value: 'not_interested_for_now'   },
+  { label: 'Dead',            value: 'foad'                     },
 ];
 
 const MEETING_OUTCOME_OPTIONS = [
@@ -67,7 +69,7 @@ export function LeadForm({ initialData, onSubmit, onCancel, loading, isEdit }: L
       email:          initialData?.email          ?? '',
       phone:          initialData?.phone          ?? '',
       source:         initialData?.source         ?? '',
-      stage:          initialData?.stage          ?? 'cold_call',
+      stage:          initialData?.stage          ?? 'new_lead',
       meetingOutcome: initialData?.meetingOutcome ?? '',
       ownerId:        initialData?.ownerId        ?? '',
       contactId:      initialData?.contactId      ?? '',

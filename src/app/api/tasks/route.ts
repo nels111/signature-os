@@ -21,23 +21,16 @@ export async function GET(request: Request) {
   const status = url.searchParams.get('status') || '';
   const priority = url.searchParams.get('priority') || '';
   const taskType = url.searchParams.get('taskType') || '';
-  const ownerId = url.searchParams.get('ownerId') || '';
 
   const allowedSortFields = ['subject', 'dueDate', 'priority', 'status', 'taskType', 'createdAt'];
   const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'dueDate';
 
-  const isAdmin = session.user.role === 'admin';
 
   const where: Record<string, unknown> = { deletedAt: null };
 
-  // Default: everyone sees only tasks assigned to them.
-  // Admin can override by passing ?ownerId=xxx to view a specific person's tasks.
-  // This means Nelson's tasks don't bleed into Nick's view and vice versa.
-  if (isAdmin && ownerId) {
-    where.ownerId = ownerId; // Admin viewing someone else's tasks explicitly
-  } else {
-    where.ownerId = session.user.id; // Default: own tasks only
-  }
+  // Strict per-user visibility: you only ever see tasks assigned to you.
+  // No admin cross-view — a user's tasks never appear in anyone else's list.
+  where.ownerId = session.user.id;
 
   if (status) where.status = status;
   if (priority) where.priority = priority;

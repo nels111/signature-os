@@ -31,18 +31,20 @@ export async function GET(request: Request) {
   // For recurring events we drop the endDate lower-bound (handled in memory).
   where.startDate = { lte: endDateBound };
 
+  // Participant-only visibility: a user only sees an event if they OWN it or
+  // are invited to it (a participant) — this applies even to 'shared' events.
+  const visibility = [
+    { ownerId: session.user.id },
+    { invites: { some: { inviteeId: session.user.id } } },
+  ];
   if (calendarType === 'personal') {
     where.calendarType = 'personal';
     where.ownerId = session.user.id;
   } else if (calendarType === 'shared') {
     where.calendarType = 'shared';
+    where.OR = visibility;
   } else {
-    where.OR = [
-      { calendarType: 'shared' },
-      { calendarType: 'personal', ownerId: session.user.id },
-    ];
-    delete where.deletedAt;
-    where.AND = [{ deletedAt: null }];
+    where.OR = visibility;
   }
 
   const events = await prisma.calendarEvent.findMany({

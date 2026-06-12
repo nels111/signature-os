@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import type { ColdCallingLead, ColdCallingStats, DiallerState, OutcomePayload, QueueResponse } from '@/lib/cold-calling/types';
 import { ColdCallingShell } from './ColdCallingShell';
+import { LeadForm } from '../../leads/LeadForm';
+import { Modal } from '@/components/ui/Modal';
+import type { LeadFormData } from '@/lib/schemas/lead';
 
 interface CallSession {
   state: DiallerState;
@@ -37,19 +40,30 @@ export function ColdCallingWorkspace() {
     durationSeconds: 0,
   });
 
+  const [newLeadOpen, setNewLeadOpen] = useState(false);
+  const [newLeadLoading, setNewLeadLoading] = useState(false);
+
   const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Fetch queue ────────────────────────────────────────────────────────────
   const fetchQueue = useCallback(async () => {
     try {
-      const res = await fetch('/api/cold-calling/queue');
+      const res = await fetch('/api/cold-calling/queue?limit=100');
       if (!res.ok) throw new Error('Queue fetch failed');
       const data: QueueResponse = await res.json();
       setQueue(data);
+      // Auto-select first available lead in priority order if none is active
+      const autoLead =
+        data.activeLead ??
+        data.queues.callbacks[0] ??
+        data.queues.fresh[0] ??
+        data.queues.followUps[0] ??
+        data.queues.recycle[0] ??
+        null;
       setCallSession(prev => ({
         ...prev,
         state: prev.state === 'loading' ? 'ready' : prev.state,
-        activeLead: prev.activeLead ?? data.activeLead,
+        activeLead: prev.activeLead ?? autoLead,
       }));
     } catch (err) {
       setCallSession(prev => ({ ...prev, state: 'error', error: 'Failed to load queue' }));
@@ -212,7 +226,29 @@ export function ColdCallingWorkspace() {
     }
   }, [fetchQueue, fetchStats, statsRange]);
 
+  const handleCreateLead = async (data: LeadFormData) => {
+    setNewLeadLoading(true);
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, stage: 'cold_call', source: data.source || 'cold_call' }),
+      });
+      if (!res.ok) throw new Error('Failed to create lead');
+      const lead = await res.json();
+      setNewLeadOpen(false);
+      // Clear active lead so fetchQueue auto-selects the new one
+      setCallSession(prev => ({ ...prev, activeLead: null }));
+      await fetchQueue();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setNewLeadLoading(false);
+    }
+  };
+
   return (
+    <>
     <ColdCallingShell
       session={callSession}
       queue={queue}
@@ -226,7 +262,19 @@ export function ColdCallingWorkspace() {
       onCallStateChange={handleCallStateChange}
       onOutcomeSubmit={handleOutcomeSubmit}
       onStatsRangeChange={setStatsRange}
+      onNewLeadClick={() => setNewLeadOpen(true)}
       onRefresh={() => { fetchQueue(); fetchStats(statsRange); }}
     />
+    {newLeadOpen && (
+      <Modal open={newLeadOpen} title="Add Lead to Queue" onClose={() => setNewLeadOpen(false)}>
+        <LeadForm
+          initialData={{ stage: 'cold_call', source: 'cold_call' }}
+          onSubmit={handleCreateLead}
+          onCancel={() => setNewLeadOpen(false)}
+          loading={newLeadLoading}
+        />
+      </Modal>
+    )}
+    </>
   );
 }

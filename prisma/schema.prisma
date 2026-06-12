@@ -21,23 +21,29 @@ enum LeadSource {
   cold_email
   referral
   website
-  mark_walker
+  mark_walker  // legacy — use partner for new leads
+  partner
+  linkedin
   direct_mail
   other
 }
 
 enum LeadStage {
   new_lead
+  contacted        // replaces cold_call/cold_email/linkedin as a stage
+  meeting_scheduled
+  meeting_attended
+  quote_delivered
+  negotiating
+  won              // converted to client
+  not_interested_for_now
+  contact_when_contract_up
+  foad
+  // legacy / system stages kept for backward compat
   cold_call
   cold_email
   linkedin
   follow_up_sequence
-  not_interested_for_now
-  contact_when_contract_up
-  meeting_scheduled
-  meeting_attended
-  quote_delivered
-  foad
   dormant
   bad_data
   archived
@@ -201,6 +207,8 @@ enum NotificationType {
   task_assigned
   lead_cold_alert
   site_visit_booked
+  client_ticket
+  service_request
 }
 
 enum ActivityType {
@@ -824,6 +832,7 @@ model Site {
   notes                    String?
   regularHoursSheetRowId   String?     // Optional FK to canonical sheet row
   clientAccountId          String?     // FK to ClientAccount (one portal account per site)
+  dropboxFolderPath        String?     // Maps the site to its Dropbox client folder (audit PDFs + portal docs)
   createdAt                DateTime    @default(now())
   updatedAt                DateTime    @updatedAt
 
@@ -1004,6 +1013,7 @@ model ClientAccount {
   contactName         String       // Primary contact at the client
   contactEmail        String       @unique // Portal login email
   dropboxFolderPath   String?      // e.g. "/Signature Cleans (1)/.../Contract Cleaning Clients/Bott Ltd"
+  hiddenFolders       Json         @default("[]") // Top-level Dropbox folder names hidden from this client's portal
   portalStatus        PortalStatus @default(not_invited)
   invitedAt           DateTime?
   lastLoginAt         DateTime?
@@ -1077,25 +1087,38 @@ model Audit {
   auditedById String   // User who conducted the audit
   auditedAt  DateTime  @default(now())
 
-  // 5 scoring categories — each 0-10
-  // overall = average of five × 10 → preserves 0-100 scale and 80/70 threshold bands
-  scorePresentation   Int // Presentation & appearance
-  scoreCleanliness    Int // Cleanliness standards
-  scoreCompliance     Int // Health & safety / COSHH compliance
-  scoreEquipment      Int // Equipment & materials condition
-  scoreTeamConduct    Int // Operative conduct & professionalism
-  overallScore        Int // Stored: avg(5 categories) * 10 — always recalculated on save
+  // Audit form type — mirrors the Connecteam Small/Large site audits
+  formType    String  @default("large") // 'small' | 'large'
+  siteVariant String?                    // large only: 'porsche_showroom' | 'crave'
 
-  // Notes per category (optional)
+  // Flexible per-site scoring (0-10 sliders). Categories vary by formType/variant.
+  // [{ key, label, score (0-10), note? }]
+  categories  Json  @default("[]")
+  rawScore    Int   @default(0) // sum of category scores
+  maxScore    Int   @default(0) // categories.length * 10
+  overallScore Int  @default(0) // round(rawScore / maxScore * 100) — preserves 0-100 / 80-70 bands
+
+  // Legacy 5-category columns (nullable; superseded by `categories`)
+  scorePresentation   Int?
+  scoreCleanliness    Int?
+  scoreCompliance     Int?
+  scoreEquipment      Int?
+  scoreTeamConduct    Int?
+
   notePresentation  String?
   noteCleanliness   String?
   noteCompliance    String?
   noteEquipment     String?
   noteTeamConduct   String?
 
+  binsEmptied    Boolean? // "Bins Emptied" yes/no
+  issuesSpotted  String?  // "Issues Spotted"
+  needsReview    String?  // "Needs review / actions by next audit"
+  signatureData  String?  // Auditor signature (base64 PNG)
+
   headlineNotes     String?  // Executive summary for the client portal
   actionItems       Json?    @default("[]") // [{title, dueDate, assignedToId, completedAt}]
-  photos            Json?    @default("[]") // Dropbox paths or upload refs
+  photos            Json?    @default("[]") // base64 data URLs (interim) / Dropbox paths
 
   status            AuditStatus @default(draft)
   publishedAt       DateTime?   // When status flipped to published — visible in client portal

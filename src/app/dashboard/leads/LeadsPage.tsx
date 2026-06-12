@@ -28,47 +28,67 @@ interface Lead {
 const SOURCE_LABELS: Record<string, string> = {
   cold_call: 'Cold Call',
   cold_email: 'Cold Email',
+  linkedin: 'LinkedIn',
   referral: 'Referral',
   website: 'Website',
-  mark_walker: 'Mark Walker',
+  partner: 'Partner',
+  mark_walker: 'Partner',   // legacy — display same as partner
   direct_mail: 'Direct Mail',
   other: 'Other',
 };
 
 const STAGE_LABELS: Record<string, string> = {
+  // Active pipeline stages
   new_lead: 'New Lead',
-  cold_call: 'Cold Call',
-  cold_email: 'Cold Email',
-  linkedin: 'LinkedIn',
-  follow_up_sequence: 'Follow-up Sequence',
-  not_interested_for_now: 'Not Interested for Now',
-  contact_when_contract_up: 'Contact When Contract Up',
-  meeting_scheduled: 'Meeting Scheduled',
-  meeting_attended: 'Meeting Attended',
-  quote_delivered: 'Quote Delivered',
-  foad: 'FOAD',
+  contacted: 'Contacted',
+  meeting_scheduled: 'Meeting Booked',
+  meeting_attended: 'Meeting Done',
+  quote_delivered: 'Quote Sent',
+  negotiating: 'Negotiating',
+  won: 'Won',
+  contact_when_contract_up: 'On Hold',
+  not_interested_for_now: 'Not Interested',
+  foad: 'Dead',
+  // Legacy stages (kept for backward compat)
+  cold_call: 'Contacted',
+  cold_email: 'Contacted',
+  linkedin: 'Contacted',
+  follow_up_sequence: 'Contacted',
+  dormant: 'Dormant',
+  bad_data: 'Bad Data',
+  archived: 'Archived',
 };
 
 const STAGE_COLOURS: Record<string, string> = {
-  new_lead: '#6b7280',
-  cold_call: 'var(--stage-cold-call)',
-  cold_email: 'var(--stage-cold-email)',
-  linkedin: 'var(--stage-linkedin)',
-  follow_up_sequence: 'var(--stage-follow-up)',
-  not_interested_for_now: 'var(--stage-not-interested)',
-  contact_when_contract_up: 'var(--stage-cwccu)',
-  meeting_scheduled: 'var(--stage-meeting)',
-  meeting_attended: 'var(--stage-attended)',
-  quote_delivered: 'var(--status-success)',
-  foad: 'var(--stage-foad)',
+  // Active pipeline stages (funnel order)
+  new_lead:                 '#6b7280',   // grey — just entered
+  contacted:                '#3b82f6',   // blue — reached out
+  meeting_scheduled:        '#8b5cf6',   // purple — booked
+  meeting_attended:         '#a78bfa',   // light purple — attended
+  quote_delivered:          '#f59e0b',   // amber — quote out
+  negotiating:              '#f97316',   // orange — in play
+  won:                      '#10b981',   // green — closed
+  contact_when_contract_up: '#6366f1',   // indigo — future
+  not_interested_for_now:   '#9ca3af',   // muted grey
+  foad:                     '#ef4444',   // red — dead
+  // Legacy stage colours (fallback)
+  cold_call:                '#3b82f6',
+  cold_email:               '#3b82f6',
+  linkedin:                 '#3b82f6',
+  follow_up_sequence:       '#3b82f6',
+  dormant:                  '#9ca3af',
+  bad_data:                 '#ef4444',
+  archived:                 '#6b7280',
 };
 
 const SOURCE_VARIANTS: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
   cold_call: 'info',
   cold_email: 'info',
+  linkedin: 'info',
   referral: 'success',
   website: 'warning',
-  mark_walker: 'success',
+  partner: 'success',
+  mark_walker: 'success',  // legacy
   direct_mail: 'default',
   other: 'default',
 };
@@ -425,17 +445,16 @@ export function LeadsPage() {
         >
           <option value="">Active Leads</option>
           <option value="new_lead">New Lead</option>
-          <option value="cold_call">Cold Call</option>
-          <option value="cold_email">Cold Email</option>
-          <option value="linkedin">LinkedIn</option>
-          <option value="follow_up_sequence">Follow-up Sequence</option>
-          <option value="not_interested_for_now">Not Interested for Now</option>
-          <option value="contact_when_contract_up">Contact When Contract Up</option>
-          <option value="meeting_scheduled">Meeting Scheduled</option>
-          <option value="meeting_attended">Meeting Attended</option>
-          <option value="quote_delivered">Quote Delivered</option>
-          <option value="foad">FOAD</option>
-          <option value="all">All (inc. FOAD)</option>
+          <option value="contacted">Contacted</option>
+          <option value="meeting_scheduled">Meeting Booked</option>
+          <option value="meeting_attended">Meeting Done</option>
+          <option value="quote_delivered">Quote Sent</option>
+          <option value="negotiating">Negotiating</option>
+          <option value="won">Won</option>
+          <option value="contact_when_contract_up">On Hold</option>
+          <option value="not_interested_for_now">Not Interested</option>
+          <option value="foad">Dead</option>
+          <option value="all">All</option>
         </select>
         <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>Sort:</span>

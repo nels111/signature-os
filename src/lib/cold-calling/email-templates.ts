@@ -84,7 +84,7 @@ export function buildGatekeeperEmail(v: GatekeeperEmailVars) {
 
   const text = `Hi ${v.firstName},
 
-I tried to get through earlier — I was hoping to speak with whoever looks after facilities or cleaning at ${v.company}.
+I tried to get through earlier. I was hoping to speak with whoever looks after facilities or cleaning at ${v.company}.
 
 We're Signature Cleans, a commercial cleaning company covering Devon, Cornwall and Somerset. We work with businesses of all sizes and would love to have a quick chat to see if we could help.
 
@@ -96,7 +96,7 @@ Nick
 nick@signature-cleans.co.uk`;
 
   const html = wrapHtml(`<p>Hi ${firstName},</p>
-<p>I tried to get through earlier — I was hoping to speak with whoever looks after facilities or cleaning at ${company}.</p>
+<p>I tried to get through earlier. I was hoping to speak with whoever looks after facilities or cleaning at ${company}.</p>
 <p>We're Signature Cleans, a commercial cleaning company covering Devon, Cornwall and Somerset. We work with businesses of all sizes and would love to have a quick chat to see if we could help.</p>
 <p>Would you be able to point me in the right direction or pass this along to the right person?</p>
 <p>Many Thanks,<br>Nick</p>
@@ -123,7 +123,7 @@ export function buildCallbackEmail(v: CallbackEmailVars) {
 
   const text = `Hi ${v.firstName},
 
-Really appreciate you taking the time to chat. As agreed, I'll give you a call on ${v.callbackDate} at ${v.callbackTime} — if that changes at all just drop me a message.
+Really appreciate you taking the time to chat. As agreed, I'll give you a call on ${v.callbackDate} at ${v.callbackTime}. If anything changes just drop me a message.
 
 Looking forward to speaking properly.
 
@@ -133,13 +133,13 @@ Nick
 nick@signature-cleans.co.uk`;
 
   const html = wrapHtml(`<p>Hi ${firstName},</p>
-<p>Really appreciate you taking the time to chat. As agreed, I'll give you a call on <strong>${escapeHtml(v.callbackDate)}</strong> at <strong>${escapeHtml(v.callbackTime)}</strong> — if that changes at all just drop me a message.</p>
+<p>Really appreciate you taking the time to chat. As agreed, I'll give you a call on <strong>${escapeHtml(v.callbackDate)}</strong> at <strong>${escapeHtml(v.callbackTime)}</strong>. If anything changes just drop me a message.</p>
 <p>Looking forward to speaking properly.</p>
 <p>Many Thanks,<br>Nick</p>
 <img src="cid:nick-signature" alt="Nick Stentiford - Signature Cleans" class="sig-image" />`);
 
   return {
-    subject: `Speak soon — Signature Cleans`,
+    subject: `Speak soon, Signature Cleans`,
     text,
     html,
     attachments: [getNickSignatureAttachment()],
@@ -161,9 +161,9 @@ export function buildSendInfoEmail(v: SendInfoEmailVars) {
 
 Great speaking with you earlier. As promised, wanted to send across a bit more about what we do.
 
-We provide commercial cleaning across Devon, Cornwall and Somerset — everything from daily office cleans to specialist contracts. We're fully managed, reliability is our thing, and we work around your schedule.
+We provide commercial cleaning across Devon, Cornwall and Somerset, covering everything from daily office cleans to specialist contracts. We're fully managed, reliability is our thing, and we work around your schedule.
 
-I've attached a quick overview so you can see what we're about. I'd love to pop over for a site visit so I can give you an accurate picture of what we'd do for ${v.company} — no obligation, just a chance to meet properly and put a number together.
+I've attached a quick overview so you can see what we're about. I'd love to pop over for a site visit so I can give you an accurate picture of what we'd do for ${v.company}. No obligation, just a chance to meet properly and put a number together.
 
 What does your diary look like over the next week or two?
 
@@ -174,8 +174,8 @@ nick@signature-cleans.co.uk`;
 
   const html = wrapHtml(`<p>Hi ${firstName},</p>
 <p>Great speaking with you earlier. As promised, wanted to send across a bit more about what we do.</p>
-<p>We provide commercial cleaning across Devon, Cornwall and Somerset — everything from daily office cleans to specialist contracts. We're fully managed, reliability is our thing, and we work around your schedule.</p>
-<p>I've attached a quick overview so you can see what we're about. I'd love to pop over for a site visit so I can give you an accurate picture of what we'd do for ${company} — no obligation, just a chance to meet properly and put a number together.</p>
+<p>We provide commercial cleaning across Devon, Cornwall and Somerset, covering everything from daily office cleans to specialist contracts. We're fully managed, reliability is our thing, and we work around your schedule.</p>
+<p>I've attached a quick overview so you can see what we're about. I'd love to pop over for a site visit so I can give you an accurate picture of what we'd do for ${company}. No obligation, just a chance to meet properly and put a number together.</p>
 <p>What does your diary look like over the next week or two?</p>
 <p>Many Thanks,<br>Nick</p>
 <img src="cid:nick-signature" alt="Nick Stentiford - Signature Cleans" class="sig-image" />`);
@@ -227,7 +227,7 @@ nick@signature-cleans.co.uk`;
 <img src="cid:nick-signature" alt="Nick Stentiford - Signature Cleans" class="sig-image" />`);
 
   return {
-    subject: `Site visit confirmed — ${v.company}`,
+    subject: `Site visit confirmed: ${v.company}`,
     text,
     html,
     attachments: [getNickSignatureAttachment(), getOnePagerAttachment()],

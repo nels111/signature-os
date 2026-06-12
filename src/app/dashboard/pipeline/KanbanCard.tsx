@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 const SOURCE_LABELS: Record<string, string> = {
   cold_call: 'Cold Call',
   cold_email: 'Cold Email',
+  linkedin: 'LinkedIn',
   referral: 'Referral',
   website: 'Website',
-  mark_walker: 'Mark Walker',
+  partner: 'Partner',
+  mark_walker: 'Partner',   // legacy
   direct_mail: 'Direct Mail',
   other: 'Other',
 };

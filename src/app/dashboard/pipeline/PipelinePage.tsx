@@ -28,16 +28,16 @@ interface DealItem {
 }
 
 const LEAD_STAGES = [
-  { id: 'cold_call', label: 'Cold Call', color: 'var(--stage-cold-call)' },
-  { id: 'cold_email', label: 'Cold Email', color: 'var(--stage-cold-email)' },
-  { id: 'linkedin', label: 'LinkedIn', color: 'var(--stage-linkedin)' },
-  { id: 'follow_up_sequence', label: 'Follow-up Sequence', color: 'var(--stage-follow-up)' },
-  { id: 'not_interested_for_now', label: 'Not Interested for Now', color: 'var(--stage-not-interested)' },
-  { id: 'contact_when_contract_up', label: 'Contact When Contract Up', color: 'var(--stage-cwccu)' },
-  { id: 'meeting_scheduled', label: 'Meeting Scheduled', color: 'var(--stage-meeting)' },
-  { id: 'meeting_attended', label: 'Meeting Attended', color: 'var(--stage-attended)' },
-  { id: 'quote_delivered', label: 'Quote Delivered', color: 'var(--brand-blue)' },
-  { id: 'foad', label: 'FOAD', color: 'var(--stage-foad)' },
+  { id: 'new_lead',                 label: 'New Lead',       color: '#6b7280' },
+  { id: 'contacted',                label: 'Contacted',      color: '#3b82f6' },
+  { id: 'meeting_scheduled',        label: 'Meeting Booked', color: '#8b5cf6' },
+  { id: 'meeting_attended',         label: 'Meeting Done',   color: '#a78bfa' },
+  { id: 'quote_delivered',          label: 'Quote Sent',     color: '#f59e0b' },
+  { id: 'negotiating',              label: 'Negotiating',    color: '#f97316' },
+  { id: 'won',                      label: 'Won',            color: '#10b981' },
+  { id: 'contact_when_contract_up', label: 'On Hold',        color: '#6366f1' },
+  { id: 'not_interested_for_now',   label: 'Not Interested', color: '#9ca3af' },
+  { id: 'foad',                     label: 'Dead',           color: '#ef4444' },
 ];
 
 const DEAL_STAGES = [

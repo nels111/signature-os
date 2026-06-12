@@ -340,12 +340,12 @@ export async function applyColdCallOutcome({
             if (!pass) return;
             const config = getSmtpConfig('hello@signature-cleans.co.uk', pass);
             sendEmail(config, {
-              from: 'Jasmine (Signature Cleans) <hello@signature-cleans.co.uk>',
+              from: 'Sam (Signature Cleans) <hello@signature-cleans.co.uk>',
               replyTo: NELSON_EMAIL,
               to: NICK_EMAIL,
               subject: `Site visit booked — ${lead.companyName}`,
-              text: `Hi Nick,\n\nA site visit has been booked.\n\nCompany: ${lead.companyName}\nDate: ${visitFormatted}${payload.siteVisitAddress ? `\nAddress: ${payload.siteVisitAddress}` : ''}${payload.siteVisitContact ? `\nContact: ${payload.siteVisitContact}` : ''}\n\nA task has been created for you in SigOS.\n\nMany Thanks,\nJasmine`,
-              html: `<p>Hi Nick,</p><p>A site visit has been booked.</p><ul><li><strong>Company:</strong> ${lead.companyName}</li><li><strong>Date:</strong> ${visitFormatted}</li>${payload.siteVisitAddress ? `<li><strong>Address:</strong> ${payload.siteVisitAddress}</li>` : ''}${payload.siteVisitContact ? `<li><strong>Contact:</strong> ${payload.siteVisitContact}</li>` : ''}</ul><p>A task has been created for you in SigOS.</p><p>Many Thanks,<br>Jasmine</p>`,
+              text: `Hi Nick,\n\nA site visit has been booked.\n\nCompany: ${lead.companyName}\nDate: ${visitFormatted}${payload.siteVisitAddress ? `\nAddress: ${payload.siteVisitAddress}` : ''}${payload.siteVisitContact ? `\nContact: ${payload.siteVisitContact}` : ''}\n\nA task has been created for you in SigOS.\n\nMany Thanks,\nSam`,
+              html: `<p>Hi Nick,</p><p>A site visit has been booked.</p><ul><li><strong>Company:</strong> ${lead.companyName}</li><li><strong>Date:</strong> ${visitFormatted}</li>${payload.siteVisitAddress ? `<li><strong>Address:</strong> ${payload.siteVisitAddress}</li>` : ''}${payload.siteVisitContact ? `<li><strong>Contact:</strong> ${payload.siteVisitContact}</li>` : ''}</ul><p>A task has been created for you in SigOS.</p><p>Many Thanks,<br>Sam</p>`,
             }).catch(console.error);
           } catch { /* silent */ }
         });

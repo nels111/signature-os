@@ -72,7 +72,7 @@ export function BrowserDiallerPanel({
     <div className="rounded-xl p-4 space-y-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>Script opener</p>
       <p className="text-sm leading-relaxed italic" style={{ color: 'var(--text-primary)' }}>
-        &ldquo;Oh hi, it&apos;s Jasmine from Signature Cleans. How are you?&rdquo;
+        &ldquo;Oh hi, it&apos;s Sam from Signature Cleans. How are you?&rdquo;
       </p>
       <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>— wait for reply —</p>
       <p className="text-sm leading-relaxed italic" style={{ color: 'var(--text-primary)' }}>

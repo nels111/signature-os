@@ -6,14 +6,15 @@ import {
   ArrowLeft, Mail, Send, FileText, AlertCircle, Wrench,
   ClipboardList, Building2, ExternalLink, Plus, Folder, File,
   ChevronRight, ChevronLeft, RefreshCw, CheckCircle2, Clock,
-  AlertTriangle, Ban, Eye
+  AlertTriangle, Ban, Eye, EyeOff, Lock
 } from 'lucide-react';
 
-type Tab = 'overview' | 'documents' | 'tickets' | 'requests' | 'audits';
+type Tab = 'overview' | 'documents' | 'tickets' | 'requests' | 'audits' | 'portal-folders';
 
 const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: 'overview', label: 'Overview', icon: Building2 },
   { key: 'documents', label: 'Documents', icon: FileText },
+  { key: 'portal-folders', label: 'Portal visibility', icon: Lock },
   { key: 'tickets', label: 'Tickets', icon: AlertCircle },
   { key: 'requests', label: 'Service requests', icon: Wrench },
   { key: 'audits', label: 'Audits', icon: ClipboardList },
@@ -77,6 +78,7 @@ interface ClientData {
   contactName: string;
   contactEmail: string;
   dropboxFolderPath: string | null;
+  hiddenFolders: string[];
   portalStatus: 'not_invited' | 'invited' | 'active' | 'suspended';
   invitedAt: string | null;
   lastLoginAt: string | null;
@@ -98,8 +100,13 @@ interface ClientData {
   audits: Array<{
     id: string; overallScore: number; auditedAt: string; status: string;
     auditedBy: { name: string }; site: { name: string };
-    scorePresentation: number; scoreCleanliness: number; scoreCompliance: number;
-    scoreEquipment: number; scoreTeamConduct: number; headlineNotes: string | null;
+    formType?: string; siteVariant?: string | null;
+    categories?: Array<{ key: string; label: string; score: number; note?: string }>;
+    rawScore?: number; maxScore?: number;
+    binsEmptied?: boolean | null; issuesSpotted?: string | null; needsReview?: string | null;
+    photos?: string[]; signatureData?: string | null;
+    scorePresentation: number | null; scoreCleanliness: number | null; scoreCompliance: number | null;
+    scoreEquipment: number | null; scoreTeamConduct: number | null; headlineNotes: string | null;
   }>;
 }
 
@@ -367,6 +374,12 @@ export function ClientDetailPage({ id }: { id: string }) {
             onRefresh={() => loadDropbox(dropboxPath)}
           />
         )}
+        {activeTab === 'portal-folders' && (
+          <PortalFoldersTab
+            client={client}
+            onSaved={(hiddenFolders) => setClient((c) => (c ? { ...c, hiddenFolders } : c))}
+          />
+        )}
         {activeTab === 'tickets' && <TicketsTab client={client} onRefresh={() => fetch(`/api/clients/${id}`).then(r => r.json()).then(setClient)} />}
         {activeTab === 'requests' && <RequestsTab client={client} />}
         {activeTab === 'audits' && <AuditsTab client={client} />}
@@ -380,13 +393,15 @@ function OverviewTab({ client }: { client: ClientData }) {
   const site = client.sites[0];
   const latestAudit = client.audits[0];
   const scoreCategories = latestAudit
-    ? [
-        { label: 'Presentation', score: latestAudit.scorePresentation },
-        { label: 'Cleanliness', score: latestAudit.scoreCleanliness },
-        { label: 'Compliance', score: latestAudit.scoreCompliance },
-        { label: 'Equipment', score: latestAudit.scoreEquipment },
-        { label: 'Conduct', score: latestAudit.scoreTeamConduct },
-      ]
+    ? (latestAudit.categories && latestAudit.categories.length > 0
+        ? latestAudit.categories.map((c) => ({ label: c.label, score: c.score }))
+        : [
+            { label: 'Presentation', score: latestAudit.scorePresentation },
+            { label: 'Cleanliness', score: latestAudit.scoreCleanliness },
+            { label: 'Compliance', score: latestAudit.scoreCompliance },
+            { label: 'Equipment', score: latestAudit.scoreEquipment },
+            { label: 'Conduct', score: latestAudit.scoreTeamConduct },
+          ].filter((c): c is { label: string; score: number } => c.score != null))
     : [];
 
   return (
@@ -611,6 +626,248 @@ function DocumentsTab({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---- Portal Visibility Tab ----
+// Navigable Dropbox browser. Every file/folder gets a Visible/Hidden toggle.
+// "Hidden" = the entry's relativePath is in the working set (saved to hiddenFolders).
+function PortalFoldersTab({
+  client, onSaved,
+}: {
+  client: ClientData;
+  onSaved: (hiddenFolders: string[]) => void;
+}) {
+  const [entries, setEntries] = useState<DropboxEntry[]>([]);
+  const [currentPath, setCurrentPath] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  // Working set of hidden relative paths (files OR folders, at any depth).
+  const [hidden, setHidden] = useState<Set<string>>(new Set(client.hiddenFolders ?? []));
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState('');
+
+  const loadFolder = useCallback(async (path: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = path ? `?path=${encodeURIComponent(path)}` : '';
+      const res = await fetch(`/api/clients/${client.id}/dropbox${params}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setEntries(data.entries ?? []);
+      setCurrentPath(path);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load folder');
+    } finally {
+      setLoading(false);
+    }
+  }, [client.id]);
+
+  useEffect(() => {
+    if (!client.dropboxFolderPath) { setLoading(false); return; }
+    loadFolder('');
+  }, [client.dropboxFolderPath, loadFolder]);
+
+  const toggle = (relativePath: string) => {
+    setSavedMsg('');
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(relativePath)) next.delete(relativePath); else next.add(relativePath);
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSavedMsg('');
+    setError('');
+    try {
+      const hiddenFolders = Array.from(hidden);
+      const res = await fetch(`/api/clients/${client.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hiddenFolders }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? 'Save failed');
+      }
+      onSaved(hiddenFolders);
+      setSavedMsg('Visibility saved');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!client.dropboxFolderPath) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center py-20 rounded-xl"
+        style={{ border: '1px dashed var(--border)' }}
+      >
+        <Folder size={32} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>No Dropbox folder mapped</p>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          Map a Dropbox folder first to control what this client sees.
+        </p>
+      </div>
+    );
+  }
+
+  const initial = new Set(client.hiddenFolders ?? []);
+  const dirty = initial.size !== hidden.size || Array.from(hidden).some((f) => !initial.has(f));
+  const pathParts = currentPath ? currentPath.split('/').filter(Boolean) : [];
+  const goTo = (path: string) => { if (!loading) loadFolder(path); };
+  const goUp = () => {
+    if (pathParts.length === 0) return;
+    goTo(pathParts.slice(0, -1).join('/'));
+  };
+
+  return (
+    <div style={{ maxWidth: '720px' }}>
+      <div className="rounded-xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '6px' }}>
+          Portal visibility
+        </h3>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+          Browse this client&apos;s Dropbox and toggle what they can see in their portal.
+        </p>
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+          Hiding a folder hides everything inside it. Hiding a file hides just that file.
+        </p>
+
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ background: 'var(--status-danger-bg)', color: 'var(--status-danger)' }}>
+            {error}
+          </div>
+        )}
+
+        {/* Breadcrumbs + up affordance */}
+        <div className="flex items-center gap-2 mb-3" style={{ flexWrap: 'wrap' }}>
+          {pathParts.length > 0 && (
+            <button
+              type="button"
+              onClick={goUp}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)', cursor: loading ? 'default' : 'pointer', fontSize: '13px' }}
+            >
+              <ChevronLeft size={14} />
+              Up
+            </button>
+          )}
+          <div className="flex items-center gap-1 text-sm" style={{ color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+            <span
+              onClick={() => goTo('')}
+              style={{ color: currentPath ? 'var(--brand-blue)' : 'var(--text-primary)', fontWeight: currentPath ? 400 : 600, cursor: currentPath ? 'pointer' : 'default' }}
+            >
+              Home
+            </span>
+            {pathParts.map((part, i) => {
+              const isLast = i === pathParts.length - 1;
+              const target = pathParts.slice(0, i + 1).join('/');
+              return (
+                <span key={i} className="flex items-center gap-1">
+                  <ChevronRight size={12} />
+                  <span
+                    onClick={() => !isLast && goTo(target)}
+                    style={{ color: isLast ? 'var(--text-primary)' : 'var(--brand-blue)', fontWeight: isLast ? 600 : 400, cursor: isLast ? 'default' : 'pointer' }}
+                  >
+                    {part}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-12 rounded-lg animate-pulse" style={{ background: 'var(--surface-hover)' }} />
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="py-12 text-center" style={{ border: '1px dashed var(--border)', borderRadius: '12px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>This folder is empty</p>
+          </div>
+        ) : (
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+            {entries.map((entry, idx) => {
+              const isHidden = hidden.has(entry.relativePath);
+              const isFolder = entry.type === 'folder';
+              return (
+                <div
+                  key={entry.id}
+                  className="flex items-center gap-3 px-4 py-3"
+                  style={{ borderBottom: idx < entries.length - 1 ? '1px solid var(--border)' : 'none' }}
+                >
+                  {isFolder ? (
+                    <Folder size={16} style={{ color: isHidden ? 'var(--text-muted)' : 'var(--brand-gold)', flexShrink: 0 }} />
+                  ) : (
+                    <File size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                  )}
+                  <span
+                    onClick={() => isFolder && goTo(entry.relativePath)}
+                    style={{
+                      fontSize: '14px',
+                      color: isHidden ? 'var(--text-muted)' : 'var(--text-primary)',
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      cursor: isFolder ? 'pointer' : 'default',
+                    }}
+                  >
+                    {entry.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggle(entry.relativePath)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0"
+                    style={{
+                      background: isHidden ? 'var(--surface-hover)' : 'var(--status-success-bg)',
+                      color: isHidden ? 'var(--text-muted)' : 'var(--status-success)',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {isHidden ? <EyeOff size={12} /> : <Eye size={12} />}
+                    {isHidden ? 'Hidden' : 'Visible'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 mt-4">
+          <button
+            onClick={handleSave}
+            disabled={saving || !dirty}
+            className="px-4 py-2 rounded-lg text-sm font-medium"
+            style={{
+              background: 'var(--brand-blue)',
+              color: '#fff',
+              border: 'none',
+              cursor: saving || !dirty ? 'default' : 'pointer',
+              opacity: saving || !dirty ? 0.6 : 1,
+            }}
+          >
+            {saving ? 'Saving...' : 'Save changes'}
+          </button>
+          {savedMsg && (
+            <span className="flex items-center gap-1.5" style={{ fontSize: '13px', color: 'var(--status-success)' }}>
+              <CheckCircle2 size={14} />
+              {savedMsg}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -889,28 +1146,67 @@ function AuditsTab({ client }: { client: ClientData }) {
             </p>
           )}
           <div className="space-y-3">
-            {(['scorePresentation', 'scoreCleanliness', 'scoreCompliance', 'scoreEquipment', 'scoreTeamConduct'] as const).map((field) => {
-              const score = selectedAudit[field];
-              return (
-                <div key={field}>
-                  <div className="flex justify-between mb-1">
-                    <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)' }}>{CATEGORY_LABELS[field]}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: auditScoreColor(score * 10) }}>{score}/10</span>
-                  </div>
-                  <div className="rounded-full overflow-hidden" style={{ height: '6px', background: 'var(--surface-hover)' }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${score * 10}%`,
-                        background: auditScoreColor(score * 10),
-                        transition: 'width 400ms cubic-bezier(0.23,1,0.32,1)',
-                      }}
-                    />
-                  </div>
+            {(
+              selectedAudit.categories && selectedAudit.categories.length > 0
+                ? selectedAudit.categories.map((c) => ({ label: c.label, score: c.score, note: c.note }))
+                : (['scorePresentation', 'scoreCleanliness', 'scoreCompliance', 'scoreEquipment', 'scoreTeamConduct'] as const)
+                    .map((field) => ({ label: CATEGORY_LABELS[field], score: selectedAudit[field], note: undefined as string | undefined }))
+                    .filter((c): c is { label: string; score: number; note: string | undefined } => c.score != null)
+            ).map((c, i) => (
+              <div key={i}>
+                <div className="flex justify-between mb-1">
+                  <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)' }}>{c.label}</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: auditScoreColor(c.score * 10) }}>{c.score}/10</span>
                 </div>
-              );
-            })}
+                <div className="rounded-full overflow-hidden" style={{ height: '6px', background: 'var(--surface-hover)' }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${c.score * 10}%`, background: auditScoreColor(c.score * 10), transition: 'width 400ms cubic-bezier(0.23,1,0.32,1)' }}
+                  />
+                </div>
+                {c.note && <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>{c.note}</p>}
+              </div>
+            ))}
           </div>
+
+          {/* Issues / actions / bins */}
+          {(selectedAudit.issuesSpotted || selectedAudit.needsReview || selectedAudit.binsEmptied != null) && (
+            <div className="mt-4 pt-4 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
+              {selectedAudit.binsEmptied != null && (
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  <strong>Bins emptied:</strong> {selectedAudit.binsEmptied ? 'Yes' : 'No'}
+                </p>
+              )}
+              {selectedAudit.issuesSpotted && (
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}><strong>Issues:</strong> {selectedAudit.issuesSpotted}</p>
+              )}
+              {selectedAudit.needsReview && (
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}><strong>Needs review:</strong> {selectedAudit.needsReview}</p>
+              )}
+            </div>
+          )}
+
+          {/* Photos */}
+          {selectedAudit.photos && selectedAudit.photos.length > 0 && (
+            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Photos</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {selectedAudit.photos.map((src, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={src} alt={`audit photo ${i + 1}`} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Signature */}
+          {selectedAudit.signatureData && (
+            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Auditor signature</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={selectedAudit.signatureData} alt="signature" style={{ maxWidth: 220, height: 'auto', background: '#fff', borderRadius: 6, border: '1px solid var(--border)' }} />
+            </div>
+          )}
           {selectedAudit.status === 'draft' && (
             <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
               <button

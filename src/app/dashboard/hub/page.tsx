@@ -14,6 +14,8 @@ import {
   Package,
   ArrowUpRight,
   Layers,
+  Briefcase,
+  ClipboardCheck,
 } from 'lucide-react';
 
 interface App {
@@ -70,6 +72,28 @@ const APPS: App[] = [
     icon: UserCheck,
     accentColor: '#7DB227',
     accentBg: 'rgba(125,178,39,0.08)',
+    status: 'live',
+    roles: ['admin', 'operations'],
+  },
+  {
+    id: 'clients',
+    name: 'Clients',
+    description: 'Client accounts, site audits, tickets, and portal access.',
+    href: '/dashboard/clients',
+    icon: Briefcase,
+    accentColor: '#0ea5e9',
+    accentBg: 'rgba(14,165,233,0.08)',
+    status: 'live',
+    roles: ['admin', 'sales', 'operations'],
+  },
+  {
+    id: 'audits',
+    name: 'Audits',
+    description: 'Run site audits, score cleans, and publish to clients.',
+    href: '/dashboard/audits',
+    icon: ClipboardCheck,
+    accentColor: '#2056A4',
+    accentBg: 'rgba(32,86,164,0.08)',
     status: 'live',
     roles: ['admin', 'operations'],
   },

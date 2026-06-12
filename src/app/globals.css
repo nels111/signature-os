@@ -262,3 +262,150 @@ button, a, input, select, textarea,
   .sig-stat-link,
   .sig-contract-card { transition: none !important; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DASHBOARD — ported from design prototype (SigOS Dashboard.html)
+   Adds the sig-* component classes the dashboard needs. Tokens are NOT
+   redefined here; the block below only maps the prototype's short-hand
+   convenience aliases onto the canonical tokens already declared in :root.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Convenience aliases used by the ported dashboard CSS (map to canonical tokens) */
+  --sans: var(--font-geist-sans, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif);
+  --mono: var(--font-geist-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  --bg: var(--background);
+  --surface-2: #FAFAF8;
+  --ink: var(--text-primary);
+  --ink-2: var(--text-secondary);
+  --ink-3: var(--text-muted);
+  --line: var(--border);
+  --line-2: var(--border-strong);
+  --accent-soft: var(--brand-blue-subtle, rgba(32,86,164,0.08));
+  --glow-green: #9FE870;            /* lit accent for the dark hero only */
+  --ok: var(--status-success);     --ok-bg: var(--status-success-bg);
+  --warn: var(--status-warning);   --warn-bg: var(--status-warning-bg);
+  --danger: var(--status-danger);  --danger-bg: var(--status-danger-bg);
+  --r-sm: var(--radius-sm); --r-md: var(--radius-md); --r-lg: var(--radius-lg);
+  --r-xl: var(--radius-xl); --r-full: var(--radius-full);
+  --sh-sm: var(--shadow-card); --sh: var(--shadow-card); --sh-lg: var(--shadow-hover);
+  --ease: var(--ease-expo, cubic-bezier(0.23,1,0.32,1));
+  --gap: 13px; --pad: 16px; --row: 10px;
+}
+
+/* ── cards / common ──────────────────── */
+.sig-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);box-shadow:var(--sh);padding:var(--pad)}
+.sig-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}
+.sig-card-title{font-size:17px;font-weight:650;letter-spacing:-.015em;color:var(--ink);margin-top:5px}
+.sig-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.sig-eyebrow svg{color:var(--ink-3)}
+.sig-eyebrow-on-dark{color:rgba(231,233,234,.66)}
+.sig-eyebrow-on-dark svg{color:var(--glow-green)}
+.sig-link{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:550;color:var(--brand-blue);padding:5px 10px;border-radius:var(--r-sm);transition:.14s}
+.sig-link:hover{background:var(--accent-soft)}
+
+/* ── greeting ───────────────────────── */
+.sig-greet{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.sig-greet-title{font-size:27px;font-weight:700;letter-spacing:-.03em;color:var(--ink)}
+.sig-greet-sub{font-size:14px;color:var(--ink-2);margin-top:4px;max-width:560px}
+.sig-seg{position:relative;display:flex;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-full);padding:4px;box-shadow:var(--sh-sm)}
+.sig-seg-glider{position:absolute;top:4px;left:4px;width:calc((100% - 8px)/3);height:calc(100% - 8px);background:var(--ink);border-radius:var(--r-full);transition:transform .32s var(--ease);box-shadow:0 2px 8px rgba(20,22,28,.22)}
+.sig-seg-btn{position:relative;z-index:1;padding:7px 18px;font-size:13px;font-weight:550;color:var(--ink-2);transition:color .2s;border-radius:var(--r-full)}
+.sig-seg-btn.is-on{color:#fff}
+
+/* ── hero (dark growth band) ────────── */
+.sig-hero{position:relative;display:grid;grid-template-columns:minmax(244px,.92fr) 1.5fr minmax(250px,1fr);gap:26px;align-items:center;
+  background:radial-gradient(120% 140% at 0% 0%,#12191F 0%,#0E141A 48%,#0B1015 100%);
+  border:1px solid rgba(255,255,255,.07);border-radius:var(--r-xl);padding:28px 30px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(20,22,28,.04),0 20px 50px -22px rgba(11,16,21,.55)}
+/* No history series in real data → hero runs as a two-column (figure + gauge) band. */
+.sig-hero--nochart{grid-template-columns:1fr minmax(250px,auto)}
+.sig-hero-grain{position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:radial-gradient(70% 120% at 85% 0%,rgba(159,232,112,.10),transparent 60%),radial-gradient(50% 80% at 0% 100%,rgba(32,86,164,.16),transparent 60%)}
+.sig-hero-left,.sig-hero-chart,.sig-hero-right{position:relative;z-index:1}
+.sig-hero-figure{display:flex;align-items:baseline;gap:9px;margin-top:14px;flex-wrap:nowrap;white-space:nowrap}
+.sig-hero-num{font-size:60px;font-weight:750;letter-spacing:-.045em;color:#fff;line-height:.9;font-feature-settings:'tnum'}
+.sig-hero-den{font-size:15px;color:rgba(231,233,234,.5);font-family:var(--mono);font-weight:500;white-space:nowrap}
+.sig-hero-pills{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+.sig-pill{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:var(--r-full);white-space:nowrap}
+.sig-pill-green{background:rgba(159,232,112,.14);color:var(--glow-green);font-family:var(--mono)}
+.sig-pill-ghost{background:rgba(255,255,255,.07);color:rgba(231,233,234,.78)}
+.sig-hero-foot{margin-top:20px;font-size:12px;color:rgba(231,233,234,.42);font-family:var(--mono);letter-spacing:.01em}
+.sig-hero-chart{align-self:stretch;display:flex;align-items:center;min-width:0}
+.sig-hero-right{display:flex;flex-direction:column;align-items:center;gap:18px}
+.sig-gauge-wrap{position:relative;width:130px;height:130px}
+.sig-gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.sig-gauge-pct{font-size:32px;font-weight:750;color:#fff;letter-spacing:-.03em;line-height:1}
+.sig-gauge-pct i{font-size:16px;font-style:normal;color:rgba(231,233,234,.5);font-weight:500}
+.sig-gauge-lbl{font-size:10.5px;color:rgba(231,233,234,.5);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-top:3px}
+.sig-runrate{width:100%;display:flex;flex-direction:column;gap:1px;background:rgba(255,255,255,.05);border-radius:var(--r-md);padding:4px;border:1px solid rgba(255,255,255,.06)}
+.sig-runfig{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;border-radius:9px}
+.sig-runfig.hi{background:rgba(159,232,112,.07)}
+.sig-runfig-lbl{font-size:11.5px;color:rgba(231,233,234,.55);white-space:nowrap}
+.sig-runfig-val{font-size:14px;font-weight:600;font-family:var(--mono);color:#fff;letter-spacing:-.01em}
+.sig-runfig.hi .sig-runfig-val{color:var(--glow-green)}
+
+/* ── stat row ───────────────────────── */
+.sig-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
+.sig-stat-card{padding:18px 20px;transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
+.sig-stat-card:hover{transform:translateY(-2px);box-shadow:var(--sh-lg)}
+.sig-stat-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sig-stat-label{font-size:12px;color:var(--ink-2);font-weight:500;white-space:nowrap}
+.sig-stat-value{font-size:31px;font-weight:720;letter-spacing:-.035em;color:var(--ink);margin:10px 0 8px;font-feature-settings:'tnum'}
+.sig-stat-bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.sig-stat-sub{font-size:11.5px;color:var(--ink-3)}
+
+/* ── pipeline funnel ────────────────── */
+.sig-funnel{display:flex;flex-direction:column;gap:11px}
+.sig-funnel-row{display:flex;align-items:center;gap:12px}
+.sig-funnel-label{width:84px;flex-shrink:0;font-size:12px;color:var(--ink-2);font-weight:500;text-align:right}
+.sig-funnel-track{flex:1;height:30px;background:var(--surface-2);border-radius:var(--r-sm);overflow:hidden}
+.sig-funnel-bar{height:100%;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:flex-end;padding:0 11px;min-width:36px;
+  animation:growBar .7s var(--ease) both;transform-origin:left}
+@keyframes growBar{from{transform:scaleX(.7)}to{transform:scaleX(1)}}
+.sig-funnel-count{font-size:13px;font-weight:700;color:#fff;font-family:var(--mono);text-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sig-lead-val{font-size:13px;font-weight:600;font-family:var(--mono);color:var(--ink)}
+
+/* ── shifts / ops tile ──────────────── */
+.sig-shift-tally{font-size:13px;color:var(--ink-2);font-family:var(--mono)}
+.sig-shift-tally b{font-size:18px;color:var(--ink);font-weight:700}
+.sig-shift-foot{display:flex;align-items:center;gap:7px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-2);font-family:var(--mono)}
+.sig-shift-foot svg{color:var(--ink-3)}
+
+/* ── today strip ────────────────────── */
+.sig-today{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);box-shadow:var(--sh);padding:var(--pad)}
+.sig-today-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sig-today-meta{font-size:11.5px;color:var(--ink-3);font-family:var(--mono)}
+.sig-today-list{display:flex;flex-direction:column;gap:2px}
+.sig-today-item{display:flex;align-items:center;gap:11px;padding:9px 6px;border-radius:8px;transition:.12s}
+.sig-today-item:hover{background:var(--surface-hover)}
+.sig-today-time{font-size:12px;font-weight:600;font-family:var(--mono);color:var(--ink-2);width:42px;flex-shrink:0}
+.sig-today-bar{width:3px;height:22px;border-radius:3px;flex-shrink:0}
+.sig-today-title{flex:1;font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sig-today-tag{font-size:10.5px;font-weight:600;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);padding:2px 8px;border-radius:var(--r-full);flex-shrink:0}
+
+/* ── dashboard responsive (ported from prototype media queries) ── */
+@media(max-width:1280px){
+  .sig-hero{grid-template-columns:minmax(220px,.9fr) 1.4fr;gap:22px}
+  .sig-hero--nochart{grid-template-columns:1fr minmax(220px,auto)}
+}
+@media(max-width:1023px){
+  .sig-hero,.sig-hero--nochart{grid-template-columns:1fr;padding:22px}
+  .sig-hero-right{order:2;flex-direction:row;justify-content:space-between;align-items:center;flex-wrap:wrap}
+  .sig-runrate{width:auto;flex:1;min-width:180px;flex-direction:row;flex-wrap:wrap}
+  .sig-runfig{flex:1;flex-direction:column;align-items:flex-start;gap:2px}
+  .sig-stat-row{grid-template-columns:repeat(2,1fr)}
+  .sig-section-tiles{grid-template-columns:1fr!important}
+  .sig-greet{flex-direction:column;align-items:stretch;gap:14px}
+  .sig-seg{align-self:flex-start}
+}
+@media(max-width:560px){
+  .sig-stat-row{grid-template-columns:1fr 1fr}
+  .sig-greet-title{font-size:23px}
+  .sig-hero-num{font-size:54px}
+}
+@media(max-width:420px){
+  .sig-stat-row{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+  .sig-funnel-bar,.sig-seg-glider{animation:none!important;transition:none!important}
+}

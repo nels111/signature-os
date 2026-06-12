@@ -112,15 +112,16 @@ export function Modal({ open, onClose, title, children, maxWidth = '500px' }: Mo
         aria-modal="true"
         aria-labelledby="modal-title"
         tabIndex={-1}
-        className="relative w-full mx-4 rounded-xl overflow-hidden outline-none"
+        className="relative w-full mx-4 rounded-xl overflow-hidden outline-none flex flex-col"
         style={{
           maxWidth,
+          maxHeight: '90dvh',
           background: 'var(--surface)',
           boxShadow: 'var(--shadow-modal)',
         }}
       >
         <div
-          className="flex items-center justify-between p-4"
+          className="flex items-center justify-between p-4 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border)' }}
         >
           <h2 id="modal-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -136,7 +137,7 @@ export function Modal({ open, onClose, title, children, maxWidth = '500px' }: Mo
             ✕
           </button>
         </div>
-        <div className="p-4">{children}</div>
+        <div className="p-4 overflow-y-auto" style={{ minHeight: 0 }}>{children}</div>
       </div>
     </div>
   );

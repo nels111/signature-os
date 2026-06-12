@@ -194,7 +194,7 @@ async function getRecycleLeads(limit: number): Promise<ColdCallingLead[]> {
   const raw = await prisma.lead.findMany({
     where: {
       isCallable: true,
-      stage: 'cold_call',
+      stage: { in: ['cold_call', 'not_interested_for_now'] as never[] },
       firstCalledAt: { not: null },
       nextCallAt: { lte: now },
       deletedAt: null,
