@@ -10,17 +10,18 @@ import { CalendarForm } from './CalendarForm';
 import { CalEvent, CalTask, ViewMode, MONTHS, MONTHS_SHORT } from './calendarTypes';
 import { dateKey, getWeekDays } from './calendarHelpers';
 import { EventLegend } from './EventChip';
-import { WeekView } from './WeekView';
+import { DayView } from './DayView';
 import { MonthView } from './MonthView';
 import { ListView } from './ListView';
 import { EventDetailPanel } from './EventDetailPanel';
 
 export function CalendarPage() {
   const now = new Date();
-  const [view, setView]           = useState<ViewMode>('week');
+  const [view, setView]           = useState<ViewMode>('day');
   const [year, setYear]           = useState(now.getFullYear());
   const [month, setMonth]         = useState(now.getMonth());
   const [weekBase, setWeekBase]   = useState(now);
+  const [selectedDayKey, setSelectedDayKey] = useState(dateKey(now));
   const [filter, setFilter]       = useState<'all' | 'shared' | 'personal'>('all');
   const [events, setEvents]       = useState<CalEvent[]>([]);
   const [tasks, setTasks]         = useState<CalTask[]>([]);
@@ -45,7 +46,7 @@ export function CalendarPage() {
       setLoading(true);
       let start: string;
       let end: string;
-      if (view === 'week') {
+      if (view === 'week' || view === 'day') {
         start = new Date(weekDays[0].getFullYear(), weekDays[0].getMonth(), weekDays[0].getDate()).toISOString();
         end   = new Date(weekDays[6].getFullYear(), weekDays[6].getMonth(), weekDays[6].getDate(), 23, 59, 59).toISOString();
       } else if (view === 'list') {
@@ -69,17 +70,31 @@ export function CalendarPage() {
   }, [year, month, view, weekBase, filter, refreshKey]);
 
   // ---- Navigation ----
-  const goToday = () => { setYear(now.getFullYear()); setMonth(now.getMonth()); setWeekBase(now); };
+  const goToday = () => {
+    setYear(now.getFullYear()); setMonth(now.getMonth()); setWeekBase(now); setSelectedDayKey(dateKey(now));
+  };
+
+  const shiftDaySelection = (deltaDays: number) => {
+    const s = new Date(selectedDayKey + 'T00:00:00');
+    s.setDate(s.getDate() + deltaDays);
+    setSelectedDayKey(dateKey(s));
+  };
 
   const prevPeriod = () => {
-    if (view === 'week') { const d = new Date(weekBase); d.setDate(d.getDate() - 7); setWeekBase(d); }
+    if (view === 'week' || view === 'day') { const d = new Date(weekBase); d.setDate(d.getDate() - 7); setWeekBase(d); if (view === 'day') shiftDaySelection(-7); }
     else if (month === 0) { setMonth(11); setYear((y) => y - 1); }
     else setMonth((m) => m - 1);
   };
   const nextPeriod = () => {
-    if (view === 'week') { const d = new Date(weekBase); d.setDate(d.getDate() + 7); setWeekBase(d); }
+    if (view === 'week' || view === 'day') { const d = new Date(weekBase); d.setDate(d.getDate() + 7); setWeekBase(d); if (view === 'day') shiftDaySelection(7); }
     else if (month === 11) { setMonth(0); setYear((y) => y + 1); }
     else setMonth((m) => m + 1);
+  };
+
+  // When the user taps a day in the strip, keep the strip's week in sync.
+  const handleSelectDay = (key: string) => {
+    setSelectedDayKey(key);
+    setWeekBase(new Date(key + 'T00:00:00'));
   };
 
   // ---- CRUD ----
@@ -125,7 +140,9 @@ export function CalendarPage() {
   const handleEventClick = (ev: CalEvent) => { if (selectMode) { toggleSelectEvent(ev.id); return; } setDetailEvent(ev); };
 
   // ---- Period label ----
-  const periodLabel = view === 'week'
+  const periodLabel = view === 'day'
+    ? (() => { const s = new Date(selectedDayKey + 'T00:00:00'); return `${MONTHS[s.getMonth()]} ${s.getFullYear()}`; })()
+    : view === 'week'
     ? (() => {
         const s = weekDays[0], e = weekDays[6];
         if (s.getMonth() === e.getMonth()) return `${s.getDate()}–${e.getDate()} ${MONTHS[s.getMonth()]} ${s.getFullYear()}`;
@@ -147,7 +164,7 @@ export function CalendarPage() {
           {/* View toggle */}
           <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
             {([
-              { key: 'week',  icon: CalendarDays, label: 'Week'  },
+              { key: 'day',   icon: CalendarDays, label: 'Day'   },
               { key: 'month', icon: LayoutGrid,   label: 'Month' },
               { key: 'list',  icon: List,         label: 'List'  },
             ] as const).map(({ key, icon: Icon, label }) => (
@@ -223,8 +240,8 @@ export function CalendarPage() {
       <div className="mb-3"><EventLegend /></div>
 
       {/* Views */}
-      {view === 'week' && (
-        <WeekView weekDays={weekDays} events={events} tasks={tasks} todayKey={todayKey} onDayClick={handleDayClick} onEventClick={handleEventClick} selectedIds={selectedIds} selectMode={selectMode} />
+      {view === 'day' && (
+        <DayView weekDays={weekDays} selectedKey={selectedDayKey} events={events} tasks={tasks} todayKey={todayKey} onSelectDay={handleSelectDay} onEventClick={handleEventClick} selectedIds={selectedIds} />
       )}
       {view === 'month' && (
         <MonthView year={year} month={month} events={events} tasks={tasks} todayKey={todayKey} onDayClick={handleDayClick} onEventClick={handleEventClick} selectedIds={selectedIds} selectMode={selectMode} />

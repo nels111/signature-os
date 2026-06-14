@@ -24,7 +24,7 @@ export interface CalTask {
   status: string;
 }
 
-export type ViewMode = 'month' | 'week' | 'list';
+export type ViewMode = 'day' | 'month' | 'week' | 'list';
 
 export const EVENT_TYPE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   meeting:     { label: 'Meeting',     color: '#1a56db', bg: '#1a56db18' },
