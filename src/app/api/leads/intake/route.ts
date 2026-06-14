@@ -4,6 +4,12 @@ import { prisma } from '@/lib/db';
 import { notify } from '@/lib/notifications';
 import { sendPushToUser } from '@/lib/push';
 import { sendTwilioWhatsapp } from '@/lib/twilio-wa';
+import {
+  OWNER_USER_ID as INTAKE_OWNER_ID,
+  SECONDARY_USER_ID as NICK_USER_ID,
+  OWNER_WA_NUMBER as NELSON_WA,
+  SECONDARY_WA_NUMBER as NICK_WA,
+} from '@/lib/owner-config';
 
 /**
  * Public website lead intake.
@@ -21,13 +27,8 @@ import { sendTwilioWhatsapp } from '@/lib/twilio-wa';
  * Added 2026-06-08 to wire the new WordPress contact form into SigOS (replaces Zoho).
  */
 
-// Website leads are assigned to this owner by default. ownerId is a required FK,
-// so inbound web leads need a real owner. Currently Nelson; reassign in SigOS as needed.
-const INTAKE_OWNER_ID = 'e916185f-2a4f-4e71-a8c1-695cb365912e'; // Nelson
-const NICK_USER_ID    = 'a808f34f-39a3-4c67-af83-682bb6c964d5'; // Nick
-// Text alerts on a new website lead (SMS via Twilio caller number until WA is enabled).
-const NELSON_WA = '+447901260244';
-const NICK_WA   = process.env.NICK_WA_NUMBER || '+447890266882';
+// Website leads are assigned to OWNER_USER_ID by default (ownerId is a required FK).
+// All identities come from env via owner-config — no hardcoded UUIDs/numbers.
 
 export async function POST(request: Request) {
   // API-key path only (mirrors /api/notifications/scheduler).

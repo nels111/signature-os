@@ -21,6 +21,13 @@ import { notify } from '@/lib/notifications';
 import { sendPushToUser } from '@/lib/push';
 import { addDays, format } from 'date-fns';
 import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit';
+// Owner identities resolved from env (see src/lib/owner-config.ts) — no hardcoded UUIDs/numbers.
+import {
+  OWNER_USER_ID as NELSON_USER_ID,
+  SECONDARY_USER_ID as NICK_USER_ID,
+  OWNER_WA_NUMBER as NELSON_WA,
+  SECONDARY_WA_NUMBER as NICK_WA,
+} from '@/lib/owner-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -40,12 +47,6 @@ function corsHeaders(origin: string): HeadersInit {
   };
 }
 const MAX_MESSAGE_LEN = 2000;
-
-// Nelson's user ID (SigOS owner for new leads)
-const NELSON_USER_ID = 'e916185f-2a4f-4e71-a8c1-695cb365912e';
-const NICK_USER_ID   = 'a808f34f-39a3-4c67-af83-682bb6c964d5';
-const NELSON_WA = '+447901260244';
-const NICK_WA = process.env.NICK_WA_NUMBER || '+447890266882';
 
 // ── System prompt ──────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are a member of the Signature Cleans team having a real conversation. Not a chatbot. Not an assistant. A person.
