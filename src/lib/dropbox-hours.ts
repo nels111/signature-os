@@ -36,6 +36,7 @@ export interface HoursSheetData {
     weeklyEarnings: number;
     monthlyEarnings: number;
     annualValue: number;
+    totalMonthlyEarnings: number; // ALL contracts (active + others on the book), for company valuation
   };
   fetchedAt: string;
 }
@@ -162,6 +163,7 @@ export async function fetchHoursSheet(): Promise<HoursSheetData> {
       weeklyEarnings: active.reduce((s, c) => s + c.weeklyEarnings, 0),
       monthlyEarnings: active.reduce((s, c) => s + c.monthlyEarnings, 0),
       annualValue: active.reduce((s, c) => s + c.annualValue, 0),
+      totalMonthlyEarnings: contracts.reduce((s, c) => s + c.monthlyEarnings, 0),
     },
     fetchedAt: new Date().toISOString(),
   };

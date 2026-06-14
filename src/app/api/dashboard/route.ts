@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { fetchHoursSheet } from '@/lib/dropbox-hours';
 import { fetchActualHours } from '@/lib/connecteam-hours';
+import { computeCompanyValue } from '@/lib/valuation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -174,6 +175,10 @@ export async function GET() {
             weeklyEarnings: hoursSheet.totals.weeklyEarnings,
             monthlyEarnings: hoursSheet.totals.monthlyEarnings,
             annualValue: hoursSheet.totals.annualValue,
+            totalMonthlyEarnings: hoursSheet.totals.totalMonthlyEarnings,
+            // Proper company valuation (EBITDA × multiple) — replaces the misleading
+            // active-only annualValue as the headline. See src/lib/valuation.ts + research #77.
+            companyValuation: computeCompanyValue(hoursSheet.totals.totalMonthlyEarnings * 12),
             contracts: hoursSheet.contracts,
             fetchedAt: hoursSheet.fetchedAt,
           }
