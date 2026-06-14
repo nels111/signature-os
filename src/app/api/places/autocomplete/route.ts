@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
       },
-      body: JSON.stringify({ input: q, regionCode: 'GB' }),
+      // regionCode biases formatting; includedRegionCodes restricts results to GB
+      body: JSON.stringify({ input: q, regionCode: 'GB', includedRegionCodes: ['gb'] }),
       // Don't hang the UI on a slow upstream
       signal: AbortSignal.timeout(6000),
     });
