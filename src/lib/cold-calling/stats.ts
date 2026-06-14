@@ -36,6 +36,8 @@ export async function getColdCallingStats(range: Range = 'week'): Promise<ColdCa
     followUpCount,
     recycleCount,
     dormantCount,
+    callsToday,
+    callsWeek,
   ] = await Promise.all([
     // Total calls
     prisma.coldCallAttempt.count({
@@ -120,6 +122,10 @@ export async function getColdCallingStats(range: Range = 'week'): Promise<ColdCa
     prisma.lead.count({
       where: { stage: 'dormant', deletedAt: null },
     }),
+
+    // Calls today / this week (range-independent header stats)
+    prisma.coldCallAttempt.count({ where: { createdAt: { gte: getRangeStart('today') } } }),
+    prisma.coldCallAttempt.count({ where: { createdAt: { gte: getRangeStart('week') } } }),
   ]);
 
   const outcomes: Record<string, number> = {};
@@ -134,6 +140,9 @@ export async function getColdCallingStats(range: Range = 'week'): Promise<ColdCa
     siteVisitsBooked,
     contractRenewalOpportunities: renewalOpps,
     outcomes,
+    callsToday,
+    callsWeek,
+    openCallbacks: callbackCount,
     queueDepth: {
       callbacks: callbackCount,
       fresh: freshCount,

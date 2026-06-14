@@ -149,6 +149,9 @@ export interface ColdCallingStats {
   siteVisitsBooked: number;
   contractRenewalOpportunities: number;
   outcomes: Record<string, number>;
+  callsToday: number;
+  callsWeek: number;
+  openCallbacks: number;
   queueDepth: {
     callbacks: number;
     fresh: number;

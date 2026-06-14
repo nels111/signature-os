@@ -132,12 +132,13 @@ export async function POST(request: NextRequest) {
             // Terminal — remove from queue entirely
             newStage = 'foad';
           } else if (callOutcome === 'site_visit_booked') {
-            // Interested in a visit — move to follow_up_sequence until Nick confirms and books it
-            if (currentRank < stageRank('follow_up_sequence')) {
-              newStage = 'follow_up_sequence';
+            // A visit is booked = a meeting is scheduled. Advance to meeting_scheduled
+            // (consistent with the cold-calling outcome engine + the lead pipeline order).
+            if (currentRank < stageRank('meeting_scheduled')) {
+              newStage = 'meeting_scheduled';
             }
-          } else if (callOutcome === 'answered' || callOutcome === 'callback_needed') {
-            // Spoken to or scheduled — advance to follow_up if not already further along
+          } else if (callOutcome === 'answered' || callOutcome === 'callback_needed' || callOutcome === 'quote_requested') {
+            // Spoken to / scheduled / quote requested — advance to follow_up if not already further along
             if (currentRank < stageRank('follow_up_sequence')) {
               newStage = 'follow_up_sequence';
             }
