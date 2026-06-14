@@ -56,7 +56,7 @@ export function WeekView({
         <div style={{ minWidth: 560 }}>
           {/* Day headers */}
           <div className="grid border-b" style={{
-            gridTemplateColumns: '56px repeat(7, 1fr)',
+            gridTemplateColumns: '56px repeat(7, minmax(0, 1fr))',
             borderColor: 'var(--border)',
             background: 'var(--surface)',
           }}>
@@ -90,7 +90,7 @@ export function WeekView({
           {/* All-day row */}
           {weekDays.some((d) => (allDayByDay[dateKey(d)] ?? []).length > 0) && (
             <div className="grid border-b" style={{
-              gridTemplateColumns: '56px repeat(7, 1fr)',
+              gridTemplateColumns: '56px repeat(7, minmax(0, 1fr))',
               borderColor: 'var(--border)',
               background: 'var(--surface-hover)',
             }}>
@@ -100,7 +100,7 @@ export function WeekView({
               {weekDays.map((day) => {
                 const key = dateKey(day);
                 return (
-                  <div key={key} className="px-1 py-1 space-y-0.5 border-r last:border-r-0 min-h-[28px]" style={{ borderColor: 'var(--border)' }}>
+                  <div key={key} className="px-1 py-1 space-y-0.5 border-r last:border-r-0 min-h-[28px] min-w-0 overflow-hidden" style={{ borderColor: 'var(--border)' }}>
                     {(allDayByDay[key] ?? []).map((ev) => (
                       <EventChip key={ev.id} event={ev} compact selected={selectedIds.has(ev.id)} onClick={(e) => { e.stopPropagation(); onEventClick(ev); }} />
                     ))}
@@ -117,7 +117,7 @@ export function WeekView({
               <div
                 key={hour}
                 className="grid border-b last:border-b-0"
-                style={{ gridTemplateColumns: '56px repeat(7, 1fr)', borderColor: 'var(--border)', minHeight: 56 }}
+                style={{ gridTemplateColumns: '56px repeat(7, minmax(0, 1fr))', borderColor: 'var(--border)', minHeight: 56 }}
               >
                 <div
                   className="text-[11px] font-medium px-1.5 pt-1 text-right flex-shrink-0"
@@ -133,14 +133,14 @@ export function WeekView({
                   return (
                     <div
                       key={key}
-                      className="border-r last:border-r-0 px-0.5 py-0.5 cursor-pointer relative"
+                      className="border-r last:border-r-0 px-0.5 py-0.5 cursor-pointer relative min-w-0 overflow-hidden"
                       style={{
                         borderColor: 'var(--border)',
                         background: isToday ? 'var(--surface-hover)' : 'var(--surface)',
                       }}
                       onClick={() => onDayClick(key)}
                     >
-                      <div className="space-y-0.5">
+                      <div className="space-y-0.5 min-w-0">
                         {hourEvents.map((ev) => (
                           <EventChip key={ev.id} event={ev} compact selected={selectedIds.has(ev.id)} onClick={(e) => { e.stopPropagation(); onEventClick(ev); }} />
                         ))}

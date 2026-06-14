@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, Clock, MapPin, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, Clock, MapPin, CheckCircle2, ChevronUp } from 'lucide-react';
 import { CalEvent, CalTask, EVENT_TYPE_CONFIG, DAYS_LONG, MONTHS_SHORT } from './calendarTypes';
 import { dateKey, formatTime } from './calendarHelpers';
 
@@ -13,8 +14,19 @@ interface ListViewProps {
   selectMode: boolean;
 }
 
+// Prefer the dedicated location field; fall back to legacy "Location:" line in notes.
+function eventLocation(ev: CalEvent): string | null {
+  if (ev.location) return ev.location;
+  if (ev.notes && ev.notes.includes('Location:')) {
+    return ev.notes.split('\n').find((l) => l.startsWith('Location:'))?.replace('Location: ', '') ?? null;
+  }
+  return null;
+}
+
 export function ListView({ events, tasks, onEventClick, selectedIds }: ListViewProps) {
   const router = useRouter();
+  const [showPast, setShowPast] = useState(false);
+  const todayKey = dateKey(new Date());
 
   // Group by date
   const dateSet = new Set<string>();
@@ -22,24 +34,27 @@ export function ListView({ events, tasks, onEventClick, selectedIds }: ListViewP
   for (const t of tasks) dateSet.add(t.dueDate.slice(0, 10));
 
   const sorted = Array.from(dateSet).sort();
-  const items = sorted.map((date) => ({
+  const allItems = sorted.map((date) => ({
     date,
     events: events.filter((e) => e.startDate.slice(0, 10) === date).sort((a, b) => a.startDate.localeCompare(b.startDate)),
     tasks:  tasks.filter((t) => t.dueDate.slice(0, 10) === date),
   }));
 
-  if (items.length === 0) {
+  // Anchor on today: upcoming (today + future) is the default view;
+  // earlier days drop off behind a toggle but stay scrollable back.
+  const pastItems = allItems.filter((it) => it.date < todayKey);
+  const upcomingItems = allItems.filter((it) => it.date >= todayKey);
+
+  if (allItems.length === 0) {
     return (
       <div className="text-center py-16" style={{ color: 'var(--text-secondary)' }}>
         <CalendarDays size={32} className="mx-auto mb-3 opacity-40" />
-        <p className="text-sm">No events this month.</p>
+        <p className="text-sm">No upcoming events.</p>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-1">
-      {items.map(({ date, events: dayEvents, tasks: dayTasks }) => {
+  const renderDay = ({ date, events: dayEvents, tasks: dayTasks }: typeof allItems[number]) => {
         const d = new Date(date + 'T00:00:00');
         const isToday = date === dateKey(new Date());
         return (
@@ -88,10 +103,10 @@ export function ListView({ events, tasks, onEventClick, selectedIds }: ListViewP
                             {formatTime(ev.startDate)} – {formatTime(ev.endDate)}
                           </span>
                         )}
-                        {ev.notes && ev.notes.includes('Location:') && (
+                        {eventLocation(ev) && (
                           <span className="flex items-center gap-1 text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
                             <MapPin size={11} />
-                            {ev.notes.split('\n').find((l) => l.startsWith('Location:'))?.replace('Location: ', '')}
+                            {eventLocation(ev)}
                           </span>
                         )}
                         <span
@@ -123,8 +138,43 @@ export function ListView({ events, tasks, onEventClick, selectedIds }: ListViewP
               ))}
             </div>
           </div>
-        );
-      })}
+    );
+  };
+
+  return (
+    <div className="space-y-1">
+      {/* Earlier days: dropped off the top by default, one tap to reveal + scroll back */}
+      {pastItems.length > 0 && (
+        showPast ? (
+          <>
+            <button
+              onClick={() => setShowPast(false)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-lg border mb-1"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}
+            >
+              <ChevronUp size={13} /> Hide earlier
+            </button>
+            {pastItems.map(renderDay)}
+          </>
+        ) : (
+          <button
+            onClick={() => setShowPast(true)}
+            className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-lg border mb-1"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}
+          >
+            Show {pastItems.length} earlier day{pastItems.length !== 1 ? 's' : ''}
+          </button>
+        )
+      )}
+
+      {upcomingItems.length > 0
+        ? upcomingItems.map(renderDay)
+        : (
+          <div className="text-center py-12" style={{ color: 'var(--text-secondary)' }}>
+            <CalendarDays size={28} className="mx-auto mb-2 opacity-40" />
+            <p className="text-sm">Nothing coming up. {pastItems.length > 0 ? 'Earlier days are above.' : ''}</p>
+          </div>
+        )}
     </div>
   );
 }

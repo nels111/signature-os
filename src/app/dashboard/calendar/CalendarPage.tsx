@@ -48,6 +48,11 @@ export function CalendarPage() {
       if (view === 'week') {
         start = new Date(weekDays[0].getFullYear(), weekDays[0].getMonth(), weekDays[0].getDate()).toISOString();
         end   = new Date(weekDays[6].getFullYear(), weekDays[6].getMonth(), weekDays[6].getDate(), 23, 59, 59).toISOString();
+      } else if (view === 'list') {
+        // List is anchored on today: keep the running month behind (scrollable back)
+        // and look ~3 months ahead so there's always something "downwards".
+        start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        end   = new Date(now.getFullYear(), now.getMonth() + 3, 0, 23, 59, 59).toISOString();
       } else {
         start = new Date(year, month, 1).toISOString();
         end   = new Date(year, month + 1, 0, 23, 59, 59).toISOString();

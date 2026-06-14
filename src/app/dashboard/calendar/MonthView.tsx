@@ -65,7 +65,7 @@ export function MonthView({
                 return (
                   <div
                     key={i}
-                    className="min-h-[110px] p-1.5 border-r last:border-r-0 cursor-pointer hover:bg-[var(--surface-hover)] transition-colors"
+                    className="min-h-[110px] p-1.5 border-r last:border-r-0 cursor-pointer hover:bg-[var(--surface-hover)] transition-colors min-w-0 overflow-hidden"
                     style={{
                       borderColor: 'var(--border)',
                       background: isToday
