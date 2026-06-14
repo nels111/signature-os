@@ -157,7 +157,7 @@ export async function getColdCallingStats(range: Range = 'week'): Promise<ColdCa
 export async function getVaStats(userId: string, range: Range = 'week'): Promise<Omit<ColdCallingStats, 'queueDepth'>> {
   const since = getRangeStart(range);
 
-  const [callsMade, dmConversations, callbacksBooked, siteVisitsBooked, renewalOpps, outcomesRaw] = await Promise.all([
+  const [callsMade, dmConversations, callbacksBooked, siteVisitsBooked, renewalOpps, outcomesRaw, callsToday, callsWeek, openCallbacks] = await Promise.all([
     prisma.coldCallAttempt.count({ where: { userId, createdAt: { gte: since } } }),
     prisma.coldCallAttempt.count({ where: { userId, outcome: 'decision_maker_spoke', createdAt: { gte: since } } }),
     prisma.coldCallAttempt.count({ where: { userId, outcome: 'callback_booked', createdAt: { gte: since } } }),
@@ -169,6 +169,9 @@ export async function getVaStats(userId: string, range: Range = 'week'): Promise
       WHERE "createdAt" >= ${since} AND "userId" = ${userId}
       GROUP BY outcome
     `,
+    prisma.coldCallAttempt.count({ where: { userId, createdAt: { gte: getRangeStart('today') } } }),
+    prisma.coldCallAttempt.count({ where: { userId, createdAt: { gte: getRangeStart('week') } } }),
+    prisma.task.count({ where: { taskType: 'callback', status: { in: ['not_started', 'in_progress', 'waiting'] }, deletedAt: null } }),
   ]);
 
   const outcomes: Record<string, number> = {};
@@ -176,5 +179,5 @@ export async function getVaStats(userId: string, range: Range = 'week'): Promise
     outcomes[row.outcome || 'unknown'] = Number(row.count);
   }
 
-  return { callsMade, decisionMakerConversations: dmConversations, callbacksBooked, siteVisitsBooked, contractRenewalOpportunities: renewalOpps, outcomes };
+  return { callsMade, decisionMakerConversations: dmConversations, callbacksBooked, siteVisitsBooked, contractRenewalOpportunities: renewalOpps, outcomes, callsToday, callsWeek, openCallbacks };
 }
