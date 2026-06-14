@@ -13,6 +13,18 @@ interface HoursSheetData {
   weeklyEarnings: number;
   monthlyEarnings: number;
   annualValue: number;
+  totalMonthlyEarnings?: number;
+  companyValuation?: {
+    annualRecurringRevenue: number;
+    marginPct: number;
+    annualProfit: number;
+    multiple: number;
+    companyValue: number;
+    systemisedMultiple: number;
+    systemisedUpside: number;
+    sheetLegacyValue: number;
+    assumptions: string;
+  };
   contracts: {
     name: string;
     cleanType: string;
@@ -190,11 +202,14 @@ function Sparkline({
 }
 
 // ── RunFig (hero run-rate row) ────────────────────────────────────────────────────
-function RunFig({ label, value, hi }: { label: string; value: string; hi?: boolean }) {
+function RunFig({ label, value, sub, hi }: { label: string; value: string; sub?: string; hi?: boolean }) {
   return (
-    <div className={`sig-runfig${hi ? ' hi' : ''}`}>
+    <div className={`sig-runfig${hi ? ' hi' : ''}${sub ? ' has-sub' : ''}`}>
       <span className="sig-runfig-lbl">{label}</span>
-      <span className="sig-runfig-val">{value}</span>
+      <span className="sig-runfig-valwrap">
+        <span className="sig-runfig-val">{value}</span>
+        {sub && <span className="sig-runfig-sub">{sub}</span>}
+      </span>
     </div>
   );
 }
@@ -341,7 +356,7 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
             </h1>
             <p className="sig-greet-sub">
               {hs
-                ? `Here's where Signature Cleans stands today — ${fmtGBP(hs.annualValue)} annual run-rate, ${weeklyHours} contracted hours/wk toward 1,000.`
+                ? `Here's where Signature Cleans stands today — ${hs.companyValuation ? `${fmtGBP(hs.companyValuation.companyValue)} company value` : `${fmtGBP(hs.annualValue)} annual run-rate`}, ${weeklyHours} contracted hours/wk toward 1,000.`
                 : "Here's where Signature Cleans stands today."}
             </p>
           </div>
@@ -425,7 +440,16 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
               <div className="sig-runrate">
                 <RunFig label="Weekly" value={fmtGBP(hs.weeklyEarnings)} />
                 <RunFig label="Monthly" value={fmtGBP(hs.monthlyEarnings)} />
-                <RunFig label="Annual run-rate" value={fmtGBP(hs.annualValue)} hi />
+                {hs.companyValuation ? (
+                  <RunFig
+                    label="Company value"
+                    value={fmtGBP(hs.companyValuation.companyValue)}
+                    sub={`${hs.companyValuation.multiple}× profit · ${fmtGBP(hs.companyValuation.systemisedUpside)} at ${hs.companyValuation.systemisedMultiple}× systemised`}
+                    hi
+                  />
+                ) : (
+                  <RunFig label="Annual run-rate" value={fmtGBP(hs.annualValue)} hi />
+                )}
               </div>
             </div>
           </section>
