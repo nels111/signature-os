@@ -348,4 +348,184 @@ Currently only Playwright smoke tests (`tests/e2e/`, ~34 cases). For an OS handl
 
 ---
 
-*End of handoff. Keep this file updated as items are completed — it is the living production-readiness checklist for SigOS.*
+## 15. Blast-radius / downstream-impact analysis  **[READ BEFORE EDITING]**
+
+This codebase is **highly coupled** (36 models/enums, 88 API routes). The single biggest risk to "production ready" is a well-intentioned edit that silently breaks something three modules away. For every change below, the table gives **what it touches** and the **safe sequence**. Jaz must run a `grep` for consumers before editing any shared file or schema field.
+
+> **Golden rule — expand then contract.** Never remove/rename a column, enum value, or API field in the same release that changes the code using it. Add the new thing → migrate data → switch readers → deprecate → remove in a *later* release. This keeps every deploy rollback-safe.
+
+### 15.1 Removing the "Accounts" tab (§5.6) — **schema is load-bearing**
+- **Downstream:** `accountId` is a **foreign key on 4 core models** — `Contact` (schema L348), `Lead` (L385), `Deal` (L456), `Quote` (L643), each with an `@@index`. ~28 files reference Account (all CRM routes, schemas in `src/lib/schemas/*`, dashboard `totalAccounts` count, `twilio-wa.ts`, audits). `Site.clientAccountId` is a *different* relation (to `ClientAccount`) — do not confuse them.
+- **Safe path:** **navigation-only change.** Hide the sidebar link + route behind `ENABLE_ACCOUNTS=false`. **Do NOT** drop the table, the `accountId` columns, or the relations — that would break Quotes, Deals, Contacts and Leads. Dashboard still counts accounts (harmless). Re-enable = flip the flag.
+- **Do not:** write a migration that removes Account or `accountId`. That is irreversible against live client data.
+
+### 15.2 Changing the ARR / revenue source (§4) — **10 readers**
+- **Downstream:** earnings/`annualValue` is read by `api/dashboard`, `api/growth`, `api/sites`, `api/sites/[id]`, `api/admin/sync-regular-hours`, and UI `DashboardContent`, `GrowthTracker`, `FinancialsDashboard`, `OpsContent`, `ContractDetailPage`.
+- **Safe path:** keep the **API response shape identical**; change only the *source* of the numbers behind it. If you add a new canonical figure, add it as a **new additive field** (e.g. `arrFromContracts`) and migrate readers one at a time, rather than mutating `annualValue` in place. Show both during a transition period to prove parity, then retire the old one.
+- **Trap:** the Dropbox sheet and the contract records will give different totals — decide the source of truth *first* (§14 Q4), or every page will tell a different story.
+
+### 15.3 Auto-advancing pipeline stages (§5.4) — **writes ripple into 5 systems**
+- **Downstream:** writing `Lead.stage` / `Deal.stage` triggers/affects: the `Activity` log (L750) — you must emit one; `Notification` (L709); cold-calling **queue bucketing** (`src/lib/cold-calling/queue.ts` reads stage to decide Fresh/Follow-up/Recycle); the Pipeline Kanban grouping (`PipelinePage.tsx`, `KanbanCard.tsx`); and dashboard `dealsByStage`.
+- **Risks & safe path:**
+  - **Idempotency:** guard against double-advance (e.g. webhook retries) — only advance if `currentStage` is the expected predecessor.
+  - **Respect manual overrides:** never auto-move a lead a human deliberately set to `not_interested`/`foad`/`archived`. Encode allowed transitions in one place (`src/lib/cold-calling/outcome-rules.ts` already models this — extend it, don't fork the logic).
+  - **Always log + notify** so the change is auditable and visible.
+  - Wrap stage change + activity + notification in a **single Prisma transaction**.
+
+### 15.4 Editing the `LeadStage` / `DealStage` enums — **DB migration + 5 code sites**
+- **Downstream:** `LeadStage` carries **legacy values** (`cold_call`, `cold_email`, `linkedin`, `follow_up_sequence`, `dormant`, `bad_data`, `archived`, `foad`) still present on live rows. Referenced by `queue.ts`, `outcome-rules.ts`, `stats.ts`, `types.ts`, pipeline UI (stage order + colours), and the import/intake mappers (`leads/import`, `leads/intake`).
+- **Safe path:** **add** new enum values freely (additive, low risk). To **remove/rename** one: (1) migrate all rows off it, (2) update every code site above, (3) update Kanban column config, (4) only then drop it — in a later release. Postgres enum value removal requires a migration and fails if any row still uses it.
+
+### 15.5 Hardcoded UUIDs & reseeds (§3) — **2 routes break on reseed**
+- **Downstream:** `NELSON_USER_ID` / `NICK_USER_ID` are hardcoded in **both** `api/agent/chat` and `api/leads/intake`. If the DB is reseeded or those users are recreated, both routes write to non-existent owners (FK error or orphaned leads), and **website bookings silently fail**.
+- **Safe path:** resolve owner at runtime by **role/email lookup** (cached), or move IDs to env. Verify `prisma/seed.ts` doesn't also assume fixed IDs.
+
+### 15.6 Adding `CalendarEvent.location` (§5.8) — **18 consumers, additive = safe**
+- **Downstream:** 11 calendar UI files + `api/calendar`, `api/calendar/[id]`, `api/calendar/[id]/invite`, `api/dashboard`, `api/notifications/scheduler`, `api/agent/chat` (booking), `api/leads/[id]/book-visit`.
+- **Safe path:** add `location String?` (nullable, additive) — **zero breakage**. Then surface it in `CalendarForm`, `EventDetailPanel`/`CalendarEventDetail`, and have the agent + book-visit routes populate it. **Coordinate with §5.9:** both Calendly and the website agent create site-visit events — add a `source`/external-id and **de-dupe** so one booking doesn't appear twice.
+
+### 15.7 Swapping the rate limiter to Redis (§3) — **10 import sites, keep the signature**
+- **Downstream:** `checkRateLimit` is imported by `auth.ts` + 9 routes (quotes generate/send/resend/track×2, emails, twilio/token, shifts/today).
+- **Safe path:** keep the **exact function signature**; only change the internals. If it becomes async (Redis), update all 10 callers to `await` (most are already in async handlers). Add a feature flag to fall back to in-memory if Redis is down (fail-open vs fail-closed — decide per endpoint; login should fail-*closed*).
+
+### 15.8 Encrypting mailbox passwords at rest (§3)
+- **Downstream:** read in `src/lib/imap.ts` + `src/lib/smtp.ts` and the background email sync job; possibly shown in Settings.
+- **Safe path:** add encrypted columns alongside, backfill-encrypt existing rows in a migration script, switch readers to decrypt, then drop the plaintext column (expand-then-contract). Ensure `api/users` / `api/settings` never serialise these fields.
+
+### 15.9 Locking down the public agent endpoint (§3) — **the live website depends on it**
+- **Downstream:** the **WordPress chat widget on signature-cleans.co.uk** calls `/api/agent/chat` (cross-origin). Tightening CORS to the marketing domain + adding a captcha/widget-token means the **website widget must be updated in the same window**, or the public chatbot goes dark.
+- **Safe path:** stage it — add a signed widget token the website sends, deploy website + OS together, then clamp CORS. Test the live widget immediately after deploy.
+
+### 15.10 Franchise scoping (§5.11) — **largest blast radius in the system**
+- **Downstream:** **36 `ownerId`/`userId`/`assigneeId` references** and ~10 core models would gain a `franchiseId`. Every list/aggregate query (dashboard, pipeline, leads, deals, operatives, financials, health, emails) must filter by tenant. **A single forgotten filter = a cross-franchise data leak.**
+- **Safe path:** **do not** sprinkle `where: { franchiseId }` across 88 routes by hand. Enforce isolation centrally — a **Prisma client extension / middleware** that injects the tenant filter automatically, and/or **Postgres Row-Level Security (RLS)** keyed off the session's franchise. Write a short design doc first; build a leak-test that asserts franchise A can never read franchise B. This is why §3 (authorization matrix) must land before this.
+
+---
+
+## 16. Enterprise-grade gaps  **[P1 unless noted]**
+
+The items below are what separates "works for a small team" from "enterprise-grade / franchise-ready." Most are absent today.
+
+### 16.1 Multi-tenancy & data isolation  **[P0 for franchise launch]**
+- [ ] Choose isolation model: shared-schema + `franchiseId` + **Postgres RLS** (recommended) vs schema-per-tenant. Enforce centrally (§15.10).
+- [ ] Tenant-scoping leak tests in CI (tenant A cannot read tenant B for every entity).
+
+### 16.2 Identity, authN & authZ
+- [ ] **MFA/2FA for admin & finance roles** (TOTP). NextAuth credentials currently single-factor.
+- [ ] **SSO option** (Google Workspace / Microsoft Entra) for staff — reduces password risk, eases onboarding/offboarding.
+- [ ] **Password policy + breach check** (min length, HaveIBeenPwned k-anonymity check on set).
+- [ ] **Session management:** short-lived JWT + refresh, server-side revocation/"log out everywhere," idle + absolute timeout. Note: JWT bakes role at login, so **role/permission changes don't take effect until re-login** — document this and/or force re-auth on role change.
+- [ ] **Full RBAC capability matrix**, least privilege, server-enforced on every route (not just middleware path prefixes).
+- [ ] **Offboarding runbook:** disable user → revoke sessions → reassign owned records.
+
+### 16.3 Audit & compliance logging  **[P1]**
+- [ ] There is a business `Activity` log but **no immutable security audit trail.** Add an append-only log of: logins/failures, permission/role changes, data exports, deletions, admin actions, secret access, client-portal access. Tamper-evident (no update/delete), retained per policy.
+- [ ] Surface an admin "audit log" view; ship logs to external storage/SIEM.
+
+### 16.4 Data protection / GDPR (UK GDPR + DPA 2018)  **[P0 — legal]**
+- [ ] **DSAR tooling:** export + erasure ("right to be forgotten") for a contact/lead/client across all tables, including emails and call recordings.
+- [ ] **Retention policy** with automated purge: call recordings, email bodies, transcripts, soft-deleted rows (currently kept forever).
+- [ ] **Call-recording compliance (UK):** inform callers recording is taking place (IVR/notice); secure storage; access controls; retention limit. Verify `webhooks/twilio/recording` storage + the `recordings/[sid]` access check.
+- [ ] **Processor due diligence / DPAs:** Twilio, OpenAI, Dropbox, IONOS, Connecteam, Fireflies, Calendly. Confirm **EU/UK data residency** where required (esp. OpenAI — don't send unnecessary PII; the agent should minimise).
+- [ ] **Public site:** privacy policy, cookie consent, and a clear notice that the chat is AI + how data is used.
+- [ ] **PII minimisation in logs:** the Twilio verify code currently logs signatures/params on mismatch; ensure no PII/secrets in logs.
+
+### 16.5 Encryption  **[P1]**
+- [ ] TLS everywhere (have it via nginx/LE) + HSTS (present). Enforce DB connections over TLS.
+- [ ] **Encryption at rest:** disk-level for Postgres + **column-level** for secrets (mailbox passwords, tokens) — §15.8.
+- [ ] Centralised key management (env today → move to a secret manager, see 16.9).
+
+### 16.6 Reliability, DR & BCP  **[P0]**
+- [ ] Define **RPO/RTO** (e.g. RPO ≤ 24h, RTO ≤ 4h). Automated **daily encrypted offsite backups** + **tested restore drills** (recorded).
+- [ ] **Single-instance risk:** one PM2 process on one box = SPOF. Plan for redundancy (≥2 instances behind nginx, managed Postgres with PITR).
+- [ ] Documented incident-response + escalation runbook.
+- [ ] **Graceful degradation:** integrations already fail-soft (return null) — make that *visible* (banners) and *alerted* (16.8), not silent.
+
+### 16.7 CI/CD & environments  **[P1]**
+- [ ] **Staging environment** mirroring prod (separate DB) — currently appears to be edit-on-prod.
+- [ ] **CI pipeline:** typecheck + lint + unit + E2E + `npm audit` + migration-safety check, gating merge.
+- [ ] **Deploy strategy:** zero-downtime (PM2 `reload`/blue-green), automated `prisma migrate deploy`, **one-click rollback** (code + migration down-path or forward-fix).
+- [ ] **Migration safety:** never `db push` in prod; review every migration for locking/long-running operations on large tables.
+
+### 16.8 Observability & alerting  **[P1]**
+- [ ] **Error tracking** (Sentry) server + client; replace bare `console.error`.
+- [ ] **Metrics + dashboards** (request rate/latency/error %, queue depths, integration health) — Grafana/hosted.
+- [ ] **Uptime monitoring + on-call alerting** (down, error spikes, integration failures, **OpenAI/Twilio spend thresholds**).
+- [ ] **Structured logs** with correlation IDs, shipped off-box, PII-redacted.
+
+### 16.9 Secrets management  **[P1]**
+- [ ] Move from on-disk `.env` to a **secret manager** (Doppler/Vault/AWS or GCP Secret Manager) with rotation + access audit.
+- [ ] Boot-time validation (§2) and rotation runbook (§3).
+
+### 16.10 Edge security  **[P1]**
+- [ ] Put **Cloudflare (or equivalent) in front:** WAF, DDoS protection, bot management, **edge rate limiting** (defence-in-depth for the agent endpoint and login).
+- [ ] Periodic **dependency + container scanning** and an annual **penetration test**.
+
+### 16.11 Background jobs & schedulers  **[P1]**
+- [ ] Current background work uses **in-process `setInterval`** (rate-limit cleanup; email DB-poll/IMAP sync; notifications scheduler). These **duplicate across PM2 instances** and **die on restart**.
+- [ ] Move to a real job system: **BullMQ/Redis** or external cron hitting protected endpoints, with locking (one runner), retries, and idempotency. Especially: email sync, notification scheduler, Connecteam/Dropbox refresh, cadence sends.
+
+### 16.12 Email & messaging deliverability  **[P1]**
+- [ ] **SPF, DKIM, DMARC** for all outbound domains (quote sends, notifications) — or quotes land in spam.
+- [ ] **Webhook idempotency:** Twilio retries webhooks; de-dupe on `CallSid`/`MessageSid` so call records and stage moves aren't doubled.
+- [ ] Bounce/complaint handling for outbound email.
+
+### 16.13 Performance & scale  **[P2]**
+- [ ] **Connection pooling** (PgBouncer or the Prisma data proxy) — serverless/multi-instance Postgres connections will exhaust otherwise.
+- [ ] Index review for tenant + hot filters (16.1/§10); enforce pagination caps (esp. emails: 3,600+ rows).
+- [ ] **Load test** the agent endpoint and dashboard aggregates before franchise rollout.
+
+### 16.14 Documentation & onboarding  **[P2]**
+- [ ] Architecture overview, ERD, runbooks (deploy/restore/incident), API docs (OpenAPI for the Jaz API layer), and a "new developer in 1 hour" guide.
+
+---
+
+## 17. Data-model integrity issues  **[P1]**
+
+Found in `prisma/schema.prisma` during the audit.
+
+- [ ] **Inconsistent soft-delete.** Only **12** of ~30 models have `deletedAt`. CLAUDE.md mandates "never hard delete." Decide which entities need soft-delete (anything client/financial/CRM) and apply consistently; ensure **every read filters `deletedAt: null`** (easy to forget on new queries — consider a Prisma extension that applies it by default).
+- [ ] **Legacy enum cruft.** `LeadStage` mixes current and legacy values (§15.4). Plan a data migration to consolidate (e.g. map `cold_call`/`cold_email`/`linkedin` → `contacted`) and retire the dead ones via expand-then-contract.
+- [ ] **Referential actions.** Audit every relation's `onDelete` behaviour — confirm no accidental cascade-deletes (a deleted Account must not nuke Quotes/Deals) and no orphan rows. Most relations are optional (`accountId String?`) which is safer but can orphan.
+- [ ] **Money types.** Confirm monetary fields are `Decimal`/integer-pence, never `Float` (§4).
+- [ ] **Timezones.** Store UTC; render Europe/London consistently across calendar, shifts (Connecteam grace period), and reports. Verify no naive-local-time bugs around BST transitions.
+- [ ] **Uniqueness/dedupe.** Add unique constraints / dedupe keys where business identity exists (e.g. lead by email+company) to prevent the agent and importers creating duplicates (§15.3, §15.9, §5.7).
+
+---
+
+## 18. Change-management protocol (how Jaz must work)  **[PROCESS]**
+
+For **every** change, follow this loop:
+
+1. **Read** the target file(s) fully before editing.
+2. **Find consumers:** `grep -rn` the symbol/field/route you're about to change; check the §15 blast-radius notes.
+3. **Plan migration** (if schema): write it expand-then-contract; never remove in the same release.
+4. **Feature-flag** anything risky or user-visible (env flag) so it can be toggled off without a redeploy.
+5. **Preserve contracts:** keep API response shapes backward-compatible; add fields, don't repurpose them.
+6. **Transactionally** wrap multi-write operations.
+7. **Test:** unit + the relevant E2E path; run `npm run build` (zero type errors) and the smoke suite.
+8. **Deploy to staging first**, verify, then prod with a rollback plan.
+9. **Monitor** error tracking + the affected KPI for 24h after release.
+10. **Update this doc** (tick the checkbox, note the date).
+
+**Never:** hard-delete data; remove a column/enum value in the same PR as the code change; `db push` in prod; commit secrets; trust LLM/tool output for irreversible writes without server-side validation; edit a shared lib without checking its consumers.
+
+---
+
+## 19. Quick dependency map (cheat-sheet)
+
+| If you touch… | It can break… |
+|---|---|
+| `accountId` / Account schema | Contacts, Leads, Deals, Quotes (4 FKs), dashboard counts, audits |
+| `/api/dashboard` or `/api/growth` response shape | 10 dashboard/financial UI + API readers |
+| `Lead.stage` / `LeadStage` enum | cold-calling queue, outcome rules, stats, pipeline Kanban, importers, activity log, notifications |
+| `checkRateLimit` signature | auth/login + 9 protected routes |
+| `CalendarEvent` shape | 11 calendar UI files + 7 API routes + agent booking + Calendly |
+| Hardcoded user UUIDs / reseed | website agent bookings, lead intake |
+| `src/middleware.ts` exemptions | every route's auth/CSRF posture (agent, webhooks, quote tracking) |
+| Adding `franchiseId` | every list/aggregate query in the app (data-leak risk) |
+| `src/lib/auth.ts` (JWT claims) | role gating everywhere; requires user re-login to take effect |
+
+---
+
+*End of handoff. This is a living document — Jaz should tick boxes, add dates, and append new findings as the codebase evolves. Treat §15 (blast radius) and §18 (change protocol) as mandatory reading before any edit.*
