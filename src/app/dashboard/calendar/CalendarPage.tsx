@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   ChevronLeft, ChevronRight, CalendarDays,
-  List, LayoutGrid, Plus, Trash2,
+  LayoutGrid, Plus, Trash2,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { CalendarForm } from './CalendarForm';
@@ -12,7 +12,6 @@ import { dateKey, getWeekDays } from './calendarHelpers';
 import { EventLegend } from './EventChip';
 import { DayView } from './DayView';
 import { MonthView } from './MonthView';
-import { ListView } from './ListView';
 import { EventDetailPanel } from './EventDetailPanel';
 
 export function CalendarPage() {
@@ -49,11 +48,6 @@ export function CalendarPage() {
       if (view === 'week' || view === 'day') {
         start = new Date(weekDays[0].getFullYear(), weekDays[0].getMonth(), weekDays[0].getDate()).toISOString();
         end   = new Date(weekDays[6].getFullYear(), weekDays[6].getMonth(), weekDays[6].getDate(), 23, 59, 59).toISOString();
-      } else if (view === 'list') {
-        // List is anchored on today: keep the running month behind (scrollable back)
-        // and look ~3 months ahead so there's always something "downwards".
-        start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        end   = new Date(now.getFullYear(), now.getMonth() + 3, 0, 23, 59, 59).toISOString();
       } else {
         start = new Date(year, month, 1).toISOString();
         end   = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
@@ -166,7 +160,6 @@ export function CalendarPage() {
             {([
               { key: 'day',   icon: CalendarDays, label: 'Day'   },
               { key: 'month', icon: LayoutGrid,   label: 'Month' },
-              { key: 'list',  icon: List,         label: 'List'  },
             ] as const).map(({ key, icon: Icon, label }) => (
               <button
                 key={key}
@@ -175,7 +168,7 @@ export function CalendarPage() {
                 style={{
                   background: view === key ? 'var(--brand-blue)' : 'var(--surface)',
                   color: view === key ? '#fff' : 'var(--text-secondary)',
-                  borderRight: key !== 'list' ? '1px solid var(--border)' : 'none',
+                  borderRight: key !== 'month' ? '1px solid var(--border)' : 'none',
                 }}
               >
                 <Icon size={13} />
@@ -245,9 +238,6 @@ export function CalendarPage() {
       )}
       {view === 'month' && (
         <MonthView year={year} month={month} events={events} tasks={tasks} todayKey={todayKey} onDayClick={handleDayClick} onEventClick={handleEventClick} selectedIds={selectedIds} selectMode={selectMode} />
-      )}
-      {view === 'list' && (
-        <ListView events={events} tasks={tasks} onEventClick={handleEventClick} selectedIds={selectedIds} selectMode={selectMode} />
       )}
 
       {/* Modals */}
