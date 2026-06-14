@@ -41,7 +41,9 @@ export function TasksPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  // Default to 'not_started' so incoming work is prioritised (9 Jun call / JAZ-HANDOFF 5.3).
+  // User can switch to "All Statuses" or any other status via the filter.
+  const [filterStatus, setFilterStatus] = useState('not_started');
   const [activeTab, setActiveTab] = useState<'business' | 'personal'>('business');
   const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(true);

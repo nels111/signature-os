@@ -35,7 +35,12 @@ const ALL_NAV_ITEMS = [
   // CRM
   { href: '/dashboard/pipeline', label: 'Pipeline', icon: TrendingUp, section: 'crm', roles: null },
   { href: '/dashboard/deals', label: 'Deals', icon: Handshake, section: 'crm', roles: null },
-  { href: '/dashboard/accounts', label: 'Accounts', icon: Building2, section: 'crm', roles: null },
+  // Accounts tab archived per 9 Jun call (JAZ-HANDOFF 5.6) — nav hidden by default.
+  // Route, /api/accounts and the Account schema are intentionally kept intact.
+  // Re-enable the nav with NEXT_PUBLIC_ENABLE_ACCOUNTS=true (no data migration).
+  ...(process.env.NEXT_PUBLIC_ENABLE_ACCOUNTS === 'true'
+    ? [{ href: '/dashboard/accounts', label: 'Accounts', icon: Building2, section: 'crm', roles: null }]
+    : []),
   { href: '/dashboard/contacts', label: 'Contacts', icon: Users, section: 'crm', roles: null },
   { href: '/dashboard/leads', label: 'Leads', icon: UserPlus, section: 'crm', roles: null },
   { href: '/dashboard/cold-calling', label: 'Cold Calling', icon: Phone, section: 'crm', roles: null },
