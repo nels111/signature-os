@@ -254,6 +254,7 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
   const part = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
 
   const weeklyHours = hs?.weeklyHours ?? 0;
+  const weeklyHoursDisplay = Math.round(weeklyHours); // clean integer for display; gauge uses the precise value
   const pct = hs ? Math.round((weeklyHours / TARGET) * 100) : 0;
   const pipelineTotal = data?.pipelineValue?.reduce((sum, s) => sum + s.value, 0) ?? 0;
   const liveDeals = data?.pipelineValue?.reduce((sum, s) => sum + s.count, 0) ?? 0;
@@ -321,7 +322,7 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
       id: 'actual',
       label: 'Actual hours / wk',
       value: `${ah.weeklyActualHours}`,
-      sub: hs ? `vs ${hs.weeklyHours} contracted` : 'logged this week',
+      sub: hs ? `vs ${Math.round(hs.weeklyHours)} contracted` : 'logged this week',
       color: '#16A34A',
       spark: [],
       views: ['overview', 'ops'],
@@ -356,7 +357,7 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
             </h1>
             <p className="sig-greet-sub">
               {hs
-                ? `Here's where Signature Cleans stands today — ${hs.companyValuation ? `${fmtGBP(hs.companyValuation.companyValue)} company value` : `${fmtGBP(hs.annualValue)} annual run-rate`}, ${weeklyHours} contracted hours/wk toward 1,000.`
+                ? `Here's where Signature Cleans stands today — ${hs.companyValuation ? `${fmtGBP(hs.companyValuation.companyValue)} company value` : `${fmtGBP(hs.annualValue)} annual run-rate`}, ${weeklyHoursDisplay} contracted hours/wk toward 1,000.`
                 : "Here's where Signature Cleans stands today."}
             </p>
           </div>
@@ -410,7 +411,7 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
                 <Target size={14} /> Growth to 1,000 / wk
               </div>
               <div className="sig-hero-figure">
-                <span className="sig-hero-num">{weeklyHours}</span>
+                <span className="sig-hero-num">{weeklyHoursDisplay}</span>
                 <span className="sig-hero-den">/ {TARGET.toLocaleString()} hrs</span>
               </div>
               <div className="sig-hero-pills">
@@ -553,7 +554,7 @@ export function DashboardContent({ role, userName }: DashboardContentProps) {
                       <span className="sig-eyebrow">
                         <Clock size={14} /> Operations
                       </span>
-                      <h3 className="sig-card-title">{weeklyHours} hrs/wk contracted</h3>
+                      <h3 className="sig-card-title">{weeklyHoursDisplay} hrs/wk contracted</h3>
                     </div>
                     <span className="sig-link">
                       View ops <ArrowRight size={14} />
