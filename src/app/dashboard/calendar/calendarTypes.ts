@@ -9,6 +9,7 @@ export interface CalEvent {
   startDate: string;
   endDate: string;
   notes: string | null;
+  location?: string | null;
   repeat?: { freq: string; endDate?: string | null } | null;
   owner: { id: string; name: string | null } | null;
   invites?: Array<{ invitee: { id: string; name: string | null }; status: string }>;

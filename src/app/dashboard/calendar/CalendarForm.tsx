@@ -27,6 +27,7 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
   const [calendarType, setCalendarType] = useState((initialData?.calendarType as string) || 'shared');
   const [allDay, setAllDay] = useState((initialData?.allDay as boolean) || false);
   const [notes, setNotes] = useState((initialData?.notes as string) || '');
+  const [location, setLocation] = useState((initialData?.location as string) || '');
   const [users, setUsers] = useState<User[]>([]);
   const [participantIds, setParticipantIds] = useState<string[]>(() => {
     const invites = initialData?.invites as Array<{ invitee: { id: string } }> | undefined;
@@ -91,6 +92,7 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
       startDate: new Date(startDate).toISOString(),
       endDate: new Date(endDate).toISOString(),
       notes: notes || null,
+      location: location || null,
       participantIds,
       externalParticipants,
       repeat: repeatFreq ? { freq: repeatFreq, interval: 1, endDate: repeatEndDate || null } : null,
@@ -320,12 +322,20 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
         </div>
       </div>
 
+      {/* Location */}
+      <div>
+        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Location</label>
+        <input type="text" value={location} onChange={e => setLocation(e.target.value)}
+          className="w-full px-3 py-2 border rounded-lg text-sm" style={inputStyle}
+          placeholder="Site address or postcode — becomes a tap-to-open Maps link" />
+      </div>
+
       {/* Notes */}
       <div>
-        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Notes / Location</label>
+        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Notes</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
           className="w-full px-3 py-2 border rounded-lg text-sm resize-none" style={inputStyle}
-          placeholder="Location, agenda, or any notes..." />
+          placeholder="Agenda or any notes..." />
       </div>
 
       {/* Actions */}

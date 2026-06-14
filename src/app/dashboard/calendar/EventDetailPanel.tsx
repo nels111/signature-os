@@ -55,6 +55,19 @@ export function EventDetailPanel({ event, onClose, onEdit, onDelete }: EventDeta
         </div>
       )}
 
+      {event.location && (
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-start gap-2 text-sm"
+          style={{ color: '#2056A4' }}
+        >
+          <MapPin size={14} className="mt-0.5 flex-shrink-0" />
+          <span>{event.location} <span style={{ textDecoration: 'underline' }}>· Open in Maps</span></span>
+        </a>
+      )}
+
       {noteLines.length > 0 && (
         <div className="space-y-1">
           {noteLines.map((line, i) => (

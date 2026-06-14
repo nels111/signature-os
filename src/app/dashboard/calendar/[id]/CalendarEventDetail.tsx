@@ -84,6 +84,20 @@ export function CalendarEventDetail() {
           <div><span style={{ color: 'var(--text-secondary)' }}>All Day:</span> <span className="ml-2">{event.allDay ? 'Yes' : 'No'}</span></div>
           <div><span style={{ color: 'var(--text-secondary)' }}>Owner:</span> <span className="ml-2">{String((event.owner as Record<string, unknown>)?.name || '—')}</span></div>
         </div>
+        {typeof event.location === 'string' && event.location && (
+          <div className="pt-2 border-t text-sm" style={{ borderColor: 'var(--border)' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Location:</span>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location as string)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-2 underline"
+              style={{ color: '#2056A4' }}
+            >
+              {event.location as string} · Open in Maps
+            </a>
+          </div>
+        )}
         {typeof event.notes === 'string' && event.notes && (
           <div className="pt-2 border-t text-sm" style={{ borderColor: 'var(--border)' }}>
             <span style={{ color: 'var(--text-secondary)' }}>Notes:</span>
