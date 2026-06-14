@@ -81,4 +81,9 @@ export const RATE_LIMITS = {
   publicQuoteAccept: { windowMs: 60 * 60 * 1000, maxRequests: 5 }, // 5 accept attempts/hr per IP
   // Twilio token mints calls that cost real money. Hard cap per user.
   twilioToken: { windowMs: 60 * 1000, maxRequests: 10 },        // 10 token mints/min per user
+  // Public website AI agent (no auth) — each message costs OpenAI tokens. Cap per IP.
+  agentChat: { windowMs: 60 * 1000, maxRequests: 8 },           // 8 msgs/min per IP
+  agentChatDaily: { windowMs: 24 * 60 * 60 * 1000, maxRequests: 120 }, // 120 msgs/day per IP (spend ceiling)
+  // Bookings + lead creation write to the DB and fire Twilio WA (real cost). Tighter.
+  agentBooking: { windowMs: 60 * 60 * 1000, maxRequests: 3 },   // 3 bookings/leads per hour per IP
 };

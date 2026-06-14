@@ -7,7 +7,9 @@ export const runtime = 'nodejs';
  * Handles visitor conversations: qualifies leads, checks calendar availability,
  * books site visits, creates leads in SigOS, fires WA to Nelson + Nick.
  *
- * Auth: none (public). Rate-limited by IP via middleware.
+ * Auth: none (public). Rate-limited per IP IN THIS ROUTE (RATE_LIMITS.agentChat
+ * + agentChatDaily for messages; agentBooking for DB-writing tools). CORS locked
+ * to the marketing domain (ALLOWED_ORIGINS) — origins are never reflected.
  * Body: { sessionId?: string, message: string, history?: Message[] }
  * Returns: { reply: string, sessionId: string, action?: string }
  */
@@ -18,8 +20,26 @@ import { sendTwilioWhatsapp } from '@/lib/twilio-wa';
 import { notify } from '@/lib/notifications';
 import { sendPushToUser } from '@/lib/push';
 import { addDays, format } from 'date-fns';
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// CORS: only the marketing site may call this public endpoint. Never reflect arbitrary origins.
+const ALLOWED_ORIGINS = new Set([
+  'https://signature-cleans.co.uk',
+  'https://www.signature-cleans.co.uk',
+]);
+function corsHeaders(origin: string): HeadersInit {
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : 'https://signature-cleans.co.uk';
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json',
+  };
+}
+const MAX_MESSAGE_LEN = 2000;
 
 // Nelson's user ID (SigOS owner for new leads)
 const NELSON_USER_ID = 'e916185f-2a4f-4e71-a8c1-695cb365912e';
@@ -318,14 +338,21 @@ async function createLead(params: { name: string; company: string; email?: strin
 
 // ── Main handler ────────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
-  // CORS for cross-origin WP requests
+  // CORS — locked to the marketing site (no reflected origins)
   const origin = request.headers.get('origin') || '';
-  const headers: HeadersInit = {
-    'Access-Control-Allow-Origin': origin || '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json',
-  };
+  const headers: HeadersInit = corsHeaders(origin);
+
+  // Per-IP rate limiting (this endpoint is public + spends OpenAI/Twilio money)
+  const ip = getClientIp(request.headers);
+  const perMin = checkRateLimit(`agent-chat:${ip}`, RATE_LIMITS.agentChat);
+  const perDay = checkRateLimit(`agent-chat-day:${ip}`, RATE_LIMITS.agentChatDaily);
+  if (perMin.limited || perDay.limited) {
+    const retryMs = perMin.retryAfterMs ?? perDay.retryAfterMs ?? 60000;
+    return new Response(
+      JSON.stringify({ reply: "You're sending messages a bit fast — give it a moment and try again, or call us on 01392 931035." }),
+      { status: 429, headers: { ...headers, 'Retry-After': String(Math.ceil(retryMs / 1000)) } },
+    );
+  }
 
   let body: { message?: string; history?: OpenAI.Chat.ChatCompletionMessageParam[] };
   try {
@@ -336,6 +363,7 @@ export async function POST(request: Request) {
 
   const userMessage = (body.message || '').trim();
   if (!userMessage) return new Response(JSON.stringify({ error: 'message required' }), { status: 400, headers });
+  if (userMessage.length > MAX_MESSAGE_LEN) return new Response(JSON.stringify({ error: 'message too long' }), { status: 400, headers });
 
   const history: OpenAI.Chat.ChatCompletionMessageParam[] = Array.isArray(body.history) ? body.history.slice(-20) : [];
 
@@ -371,6 +399,15 @@ export async function POST(request: Request) {
         const fn = (tc as unknown as { function: { name: string; arguments: string } }).function;
         const args = JSON.parse(fn.arguments || '{}');
 
+        // Cap the tools that write to the DB + fire Twilio WhatsApp (real cost / spam risk), per IP
+        if (fn.name === 'book_site_visit' || fn.name === 'create_lead') {
+          const writeLimit = checkRateLimit(`agent-write:${ip}`, RATE_LIMITS.agentBooking);
+          if (writeLimit.limited) {
+            messages.push({ role: 'tool', tool_call_id: tc.id, content: 'Unable to complete that automatically right now — please call us on 01392 931035 and the team will sort it.' });
+            continue;
+          }
+        }
+
         switch (fn.name) {
           case 'check_calendar_availability':
             result = await checkCalendarAvailability(args.preferred_week);
@@ -399,13 +436,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function OPTIONS() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+export async function OPTIONS(request: Request) {
+  const origin = request.headers.get('origin') || '';
+  return new Response(null, { status: 204, headers: corsHeaders(origin) });
 }
