@@ -247,7 +247,9 @@ export function ActivityTimeline({ entityType, entityId, entityName }: ActivityT
           subject: taskSubject,
           dueDate: callbackDate,
           priority: 'high',
-          taskType: 'business',
+          // Must be 'callback' so the cold-calling queue (getCallbackLeads) +
+          // stats (openCallbacks) pick it up — they filter taskType: 'callback'.
+          taskType: 'callback',
         };
         if (entityType === 'lead') taskBody.linkedLeadId = entityId;
         if (entityType === 'deal') taskBody.linkedDealId = entityId;
