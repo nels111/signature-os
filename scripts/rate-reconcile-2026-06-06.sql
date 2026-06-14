@@ -4,8 +4,8 @@
 --   Smile Dental : £27×15h = £405/wk SigOS vs £375 canonical  (+£30/wk phantom)
 --   RG Setsquare : £27×4h  = £108/wk SigOS vs £100 canonical  (+£8/wk phantom)
 -- ROLLBACK reference (pre-change state, both rateConfirmed=true):
---   RG Setsquare  id=97a16953-ae14-40a0-ab02-30308f0622ba  was 27.00
---   Smile Dental  id=77f281f9-970b-4861-903c-66883651d5cc  was 27.00
+--   RG Setsquare  id=blissful-heyrovsky-8  was 27.00
+--   Smile Dental  id=blissful-heyrovsky-8  was 27.00
 --
 -- APPLY ONLY AFTER NELSON CONFIRMS these two are at the £25 floor (pricing-adjacent).
 
