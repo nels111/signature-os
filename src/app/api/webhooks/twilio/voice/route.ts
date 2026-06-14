@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { validateTwilioSignature } from '@/lib/twilio-verify';
+import { validateTwilioSignature, shouldSkipTwilioValidation } from '@/lib/twilio-verify';
 
 // Escape XML special characters in attribute or text content. Without this an
 // attacker can craft a "To" value that closes the <Number> element and injects
@@ -41,7 +41,7 @@ function normaliseUkNumber(raw: string | null): string | null {
 export async function POST(request: NextRequest) {
   try {
     // Twilio signature validation: enforce in production, allow opt-out in dev/test.
-    const skipValidation = process.env.TWILIO_SKIP_SIGNATURE_VALIDATION === 'true';
+    const skipValidation = shouldSkipTwilioValidation();
     if (!skipValidation) {
       const valid = await validateTwilioSignature(request);
       if (!valid) {

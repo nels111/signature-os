@@ -1,6 +1,23 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 
 /**
+ * Whether Twilio signature validation may be skipped.
+ * ALWAYS false in production: the TWILIO_SKIP_SIGNATURE_VALIDATION flag is honoured
+ * only OUTSIDE production, so a misconfigured prod env can never disable webhook auth.
+ * Logs loudly if the flag is set in production (it is being ignored).
+ */
+export function shouldSkipTwilioValidation(): boolean {
+  const flag = process.env.TWILIO_SKIP_SIGNATURE_VALIDATION === 'true';
+  if (process.env.NODE_ENV === 'production') {
+    if (flag) {
+      console.error('[twilio-verify] TWILIO_SKIP_SIGNATURE_VALIDATION=true is IGNORED in production — signature validation is FORCED ON.');
+    }
+    return false;
+  }
+  return flag;
+}
+
+/**
  * Validate that a webhook POST genuinely came from Twilio.
  *
  * Twilio signs every webhook with HMAC-SHA1 using your AUTH_TOKEN.

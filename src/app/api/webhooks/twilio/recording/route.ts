@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { validateTwilioSignature } from '@/lib/twilio-verify';
+import { validateTwilioSignature, shouldSkipTwilioValidation } from '@/lib/twilio-verify';
 
 // Only allow transcription downloads from the canonical Twilio recording host.
 // Without this an attacker can craft a RecordingUrl to anywhere and we'll
@@ -15,7 +15,7 @@ const TWILIO_RECORDING_HOST = 'api.twilio.com';
 // Transcription is handled separately after recording is attached.
 export async function POST(request: NextRequest) {
   try {
-    const skipValidation = process.env.TWILIO_SKIP_SIGNATURE_VALIDATION === 'true';
+    const skipValidation = shouldSkipTwilioValidation();
     if (!skipValidation) {
       const valid = await validateTwilioSignature(request);
       if (!valid) {
