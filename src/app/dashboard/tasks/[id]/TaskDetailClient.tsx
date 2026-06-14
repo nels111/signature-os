@@ -92,6 +92,20 @@ export function TaskDetailClient() {
               <div><span style={{ color: 'var(--text-secondary)' }}>Completed:</span> <span className="ml-2">{formatDate(task.completedAt as string)}</span></div>
             )}
           </div>
+          {typeof task.location === 'string' && task.location && (
+            <div className="pt-3 border-t text-sm" style={{ borderColor: 'var(--border)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Location:</span>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.location as string)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2 underline"
+                style={{ color: '#2056A4' }}
+              >
+                {task.location as string} · Open in Maps
+              </a>
+            </div>
+          )}
         </div>
       )}
 

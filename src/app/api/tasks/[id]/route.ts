@@ -74,7 +74,7 @@ export async function PATCH(
       updateData.completedAt = new Date();
     }
   } else {
-    const fields = ['subject', 'dueDate', 'priority', 'status', 'taskType', 'description',
+    const fields = ['subject', 'dueDate', 'priority', 'status', 'taskType', 'description', 'location',
       'repeat', 'reminder', 'linkedLeadId', 'linkedDealId', 'linkedContactId',
       ...(adminCaller ? ['ownerId'] : [])];
 

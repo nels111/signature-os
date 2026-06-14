@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { useSession } from 'next-auth/react';
 import { Users, Check, UserPlus, X, Mail, RefreshCw } from 'lucide-react';
 
@@ -325,9 +326,8 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
       {/* Location */}
       <div>
         <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Location</label>
-        <input type="text" value={location} onChange={e => setLocation(e.target.value)}
-          className="w-full px-3 py-2 border rounded-lg text-sm" style={inputStyle}
-          placeholder="Site address or postcode — becomes a tap-to-open Maps link" />
+        <LocationAutocomplete value={location} onChange={setLocation} inputStyle={inputStyle}
+          placeholder="Start typing a place — becomes a tap-to-open Maps link" />
       </div>
 
       {/* Notes */}

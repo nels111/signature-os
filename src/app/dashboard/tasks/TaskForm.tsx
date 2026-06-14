@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { taskSchema } from '@/lib/schemas/task';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
 
 const PRIORITIES = ['highest', 'high', 'normal', 'low', 'lowest'];
 const STATUSES = ['not_started', 'in_progress', 'completed', 'deferred', 'waiting'];
@@ -37,6 +38,7 @@ export function TaskForm({ initialData, onSubmit, onCancel, loading }: TaskFormP
   const [status, setStatus] = useState((initialData?.status as string) || 'not_started');
   const [taskType, setTaskType] = useState((initialData?.taskType as string) || 'business');
   const [description, setDescription] = useState((initialData?.description as string) || '');
+  const [location, setLocation] = useState((initialData?.location as string) || '');
   const [ownerId, setOwnerId] = useState((initialData?.ownerId as string) || '');
   const [users, setUsers] = useState<UserOption[]>([]);
 
@@ -66,6 +68,7 @@ export function TaskForm({ initialData, onSubmit, onCancel, loading }: TaskFormP
       status,
       taskType,
       description: description || null,
+      location: location || null,
       ownerId: ownerId || undefined,
     });
   };
@@ -172,6 +175,12 @@ export function TaskForm({ initialData, onSubmit, onCancel, loading }: TaskFormP
           style={inputStyle}
           placeholder="Task details..."
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Location</label>
+        <LocationAutocomplete value={location} onChange={setLocation} inputStyle={inputStyle}
+          placeholder="Start typing a place — becomes a tap-to-open Maps link" />
       </div>
 
       <div className="flex gap-3 justify-end pt-2">

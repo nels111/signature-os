@@ -496,6 +496,7 @@ model Task {
   status          TaskStatus @default(not_started)
   taskType        TaskType   @default(business)
   description     String?
+  location        String?
   repeat          Json?
   reminder        Json?
   linkedLeadId    String?

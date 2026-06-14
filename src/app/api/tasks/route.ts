@@ -88,6 +88,7 @@ export async function POST(request: Request) {
       status: (body.status as never) || 'not_started',
       taskType: (body.taskType as never) || 'business',
       description: (body.description as string) || null,
+      location: (body.location as string) || null,
       repeat: (body.repeat as never) || null,
       reminder: (body.reminder as never) || null,
       linkedLeadId: (body.linkedLeadId as string) || null,
