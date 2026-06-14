@@ -52,3 +52,6 @@ next-env.d.ts
 credentials.json
 *.key
 .credentials
+
+# .env.example IS committed (template, no secrets) — must come after the .env.* rules above
+!.env.example
