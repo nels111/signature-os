@@ -59,7 +59,7 @@ export async function PATCH(
   }
 
   const updateData: Record<string, unknown> = {};
-  const fields = ['title', 'eventType', 'calendarType', 'allDay', 'startDate', 'endDate', 'notes', 'repeat', 'alerts'];
+  const fields = ['title', 'eventType', 'calendarType', 'allDay', 'startDate', 'endDate', 'notes', 'location', 'repeat', 'alerts'];
   for (const f of fields) {
     if (body[f] !== undefined) {
       if (f === 'startDate' || f === 'endDate') updateData[f] = new Date(body[f] as string | number | Date);

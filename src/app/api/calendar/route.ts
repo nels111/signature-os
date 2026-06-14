@@ -139,6 +139,7 @@ export async function POST(request: Request) {
       startDate: new Date(body.startDate as string),
       endDate: new Date(body.endDate as string),
       notes: (body.notes as string) || null,
+      location: (body.location as string) || null,
       repeat: (body.repeat as never) || null,
       alerts: (body.alerts as never) || null,
       ownerId: session.user.id,
