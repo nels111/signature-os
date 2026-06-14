@@ -90,13 +90,12 @@ export async function GET(request: Request) {
   }
   eventsWithExt.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
+  // Strict per-user visibility — match /api/tasks: a user only ever sees tasks
+  // assigned to them (personal AND shared/business). No cross-user task bleed.
   const taskWhere: Record<string, unknown> = {
     deletedAt: null,
     status: { not: 'completed' },
-    OR: [
-      { taskType: { not: 'personal' } },
-      { taskType: 'personal', ownerId: session.user.id },
-    ],
+    ownerId: session.user.id,
   };
   taskWhere.dueDate = { gte: startDateBound, lte: endDateBound };
 
