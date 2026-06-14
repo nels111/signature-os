@@ -17,8 +17,6 @@ import {
   Mail,
   LayoutGrid,
   Phone,
-  Briefcase,
-  ClipboardCheck,
   ChevronLeft,
   ChevronRight,
   X,
@@ -46,8 +44,8 @@ const ALL_NAV_ITEMS = [
   { href: '/dashboard/cold-calling', label: 'Cold Calling', icon: Phone, section: 'crm', roles: null },
   // Business Hub
   { href: '/dashboard/hub', label: 'Business Hub', icon: LayoutGrid, section: 'hub', roles: null },
-  { href: '/dashboard/clients', label: 'Clients', icon: Briefcase, section: 'hub', roles: ['admin', 'sales', 'operations'] },
-  { href: '/dashboard/audits', label: 'Audits', icon: ClipboardCheck, section: 'hub', roles: ['admin', 'operations'] },
+  // Clients + Audits removed from top-level nav per 9 Jun call (declutter) —
+  // both remain accessible as apps inside the Business Hub page. Routes intact.
   // System
   { href: '/dashboard/settings', label: 'Settings', icon: SettingsIcon, section: 'system', roles: ['admin'] },
 ];

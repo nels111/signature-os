@@ -93,13 +93,15 @@
   /* Motion */
   --ease-expo: cubic-bezier(0.23, 1, 0.32, 1);
 
-  /* Sidebar — X/Twitter dark style (unchanged) */
-  --sidebar-bg: #0f1419;
-  --sidebar-hover: rgba(231, 233, 234, 0.08);
-  --sidebar-active: rgba(231, 233, 234, 0.12);
-  --sidebar-text: #e7e9ea;
-  --sidebar-text-muted: #71767b;
-  --sidebar-border: rgba(231, 233, 234, 0.08);
+  /* Brand navy — deep shade of --brand-blue (#2056A4) for the sidebar/header */
+  --brand-navy: #0B2A4D;
+  /* Sidebar — brand navy (was near-black #0f1419) per 9 Jun call */
+  --sidebar-bg: var(--brand-navy);
+  --sidebar-hover: rgba(231, 233, 234, 0.10);
+  --sidebar-active: rgba(231, 233, 234, 0.14);
+  --sidebar-text: #eef3f9;
+  --sidebar-text-muted: #8fa6c0;
+  --sidebar-border: rgba(231, 233, 234, 0.10);
 }
 
 @theme inline {
