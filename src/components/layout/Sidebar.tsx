@@ -46,8 +46,8 @@ const ALL_NAV_ITEMS = [
   { href: '/dashboard/hub', label: 'Business Hub', icon: LayoutGrid, section: 'hub', roles: null },
   // Clients + Audits removed from top-level nav per 9 Jun call (declutter) —
   // both remain accessible as apps inside the Business Hub page. Routes intact.
-  // System
-  { href: '/dashboard/settings', label: 'Settings', icon: SettingsIcon, section: 'system', roles: ['admin'] },
+  // System — Settings open to all users (personal prefs); admin-only controls gated inside the page
+  { href: '/dashboard/settings', label: 'Settings', icon: SettingsIcon, section: 'system', roles: null },
 ];
 
 // VA role: dashboard + leads + tasks + hub (cold calling accessible from hub)

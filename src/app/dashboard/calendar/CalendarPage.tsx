@@ -12,6 +12,7 @@ import { dateKey, getWeekDays } from './calendarHelpers';
 import { EventLegend } from './EventChip';
 import { DayView } from './DayView';
 import { MonthView } from './MonthView';
+import { readPrefs } from '@/lib/useUserPrefs';
 import { EventDetailPanel } from './EventDetailPanel';
 
 export function CalendarPage() {
@@ -37,6 +38,13 @@ export function CalendarPage() {
 
   const weekDays = getWeekDays(weekBase);
   const todayKey = dateKey(now);
+
+  // Apply the user's saved default calendar view once on mount (avoids SSR
+  // hydration mismatch by deferring to the client).
+  useEffect(() => {
+    const pref = readPrefs().defaultCalendarView;
+    if (pref === 'day' || pref === 'month') setView(pref);
+  }, []);
 
   // ---- Data loading ----
   useEffect(() => {
