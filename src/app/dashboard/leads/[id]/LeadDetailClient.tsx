@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ActivityTimeline } from '@/components/ActivityTimeline';
+import { PhoneLink, EmailLink } from '@/components/ContactLinks';
 import { LeadForm } from '../LeadForm';
 import type { LeadFormData } from '@/lib/schemas/lead';
 
@@ -348,8 +349,8 @@ export function LeadDetailClient({ id }: { id: string }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DetailField label="Company Name" value={lead.companyName} />
             <DetailField label="Contact Name" value={lead.contactName} />
-            <DetailField label="Email" value={lead.email} />
-            <DetailField label="Phone" value={lead.phone} />
+            <DetailField label="Email" value={lead.email} type="email" />
+            <DetailField label="Phone" value={lead.phone} type="phone" />
             <div>
               <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Source
@@ -676,10 +677,12 @@ function DetailField({
   label,
   value,
   link,
+  type,
 }: {
   label: string;
   value: string | null | undefined;
   link?: string;
+  type?: 'phone' | 'email';
 }) {
   const router = useRouter();
   return (
@@ -688,7 +691,11 @@ function DetailField({
         {label}
       </span>
       {value ? (
-        link ? (
+        type === 'phone' ? (
+          <PhoneLink phone={value} />
+        ) : type === 'email' ? (
+          <EmailLink email={value} />
+        ) : link ? (
           <button
             onClick={() => router.push(link)}
             className="text-sm hover:underline"

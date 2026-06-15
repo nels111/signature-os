@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ActivityTimeline } from '@/components/ActivityTimeline';
+import { PhoneLink, EmailLink } from '@/components/ContactLinks';
 import { ContactForm } from '../ContactForm';
 import type { ContactFormData } from '@/lib/schemas/contact';
 
@@ -193,8 +194,8 @@ export function ContactDetailClient({ id }: { id: string }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DetailField label="First Name" value={contact.firstName} />
             <DetailField label="Last Name" value={contact.lastName} />
-            <DetailField label="Email" value={contact.email} />
-            <DetailField label="Phone" value={contact.phone} />
+            <DetailField label="Email" value={contact.email} type="email" />
+            <DetailField label="Phone" value={contact.phone} type="phone" />
             <DetailField label="Company" value={contact.company} />
             <DetailField
               label="Account"
@@ -376,10 +377,12 @@ function DetailField({
   label,
   value,
   link,
+  type,
 }: {
   label: string;
   value: string | null | undefined;
   link?: string;
+  type?: 'phone' | 'email';
 }) {
   const router = useRouter();
   return (
@@ -388,7 +391,11 @@ function DetailField({
         {label}
       </span>
       {value ? (
-        link ? (
+        type === 'phone' ? (
+          <PhoneLink phone={value} />
+        ) : type === 'email' ? (
+          <EmailLink email={value} />
+        ) : link ? (
           <button
             onClick={() => router.push(link)}
             className="text-sm hover:underline"
