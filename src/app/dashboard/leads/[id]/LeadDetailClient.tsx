@@ -32,6 +32,8 @@ interface Lead {
   deals: Array<{ id: string; name: string; stage: string; value: string | null }>;
   emails?: Array<{
     id: string;
+    messageId: string;
+    mailbox: string;
     from: string;
     to: string[];
     cc?: string[];

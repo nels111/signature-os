@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Paperclip } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Paperclip, Reply } from 'lucide-react';
 import { EmailBodyIframe } from '@/app/dashboard/emails/EmailBodyIframe';
+import { ComposeModal } from '@/app/dashboard/emails/ComposeModal';
 import {
   extractName, extractEmail, getInitial, hashColor, formatFullDate,
   formatFileSize, attachmentUrl, isDownloadType,
@@ -10,6 +11,8 @@ import {
 
 export interface ThreadEmail {
   id: string;
+  messageId: string;
+  mailbox: string;
   from: string;
   to: string[];
   cc?: string[];
@@ -29,6 +32,24 @@ function isOutbound(from: string): boolean {
 
 export function EmailThread({ emails }: { emails?: ThreadEmail[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [replyEmail, setReplyEmail] = useState<ThreadEmail | null>(null);
+
+  // Build the ComposeModal reply payload from a thread email.
+  function buildReply(em: ThreadEmail) {
+    const out = isOutbound(em.from);
+    // Reply to the external party: original sender (inbound) or first external recipient (outbound).
+    const target = out
+      ? (em.to || []).map(extractEmail).find((a) => a && !/@signature-cleans\.co\.uk$/i.test(a)) || extractEmail(em.to?.[0] || '')
+      : extractEmail(em.from);
+    const subject = /^re:/i.test(em.subject) ? em.subject : `Re: ${em.subject}`;
+    return {
+      to: target || '',
+      subject,
+      inReplyTo: em.messageId || '',
+      references: em.messageId || '',
+      bodyHtml: em.bodyHtml || (em.bodyText ? `<pre>${em.bodyText}</pre>` : ''),
+    };
+  }
 
   if (!emails || emails.length === 0) {
     return (
@@ -42,6 +63,15 @@ export function EmailThread({ emails }: { emails?: ThreadEmail[] }) {
   }
 
   return (
+    <>
+    {replyEmail && (
+      <ComposeModal
+        replyTo={buildReply(replyEmail)}
+        mailbox={replyEmail.mailbox}
+        onClose={() => setReplyEmail(null)}
+        onSent={() => setReplyEmail(null)}
+      />
+    )}
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
       <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
         <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Emails</h3>
@@ -98,9 +128,18 @@ export function EmailThread({ emails }: { emails?: ThreadEmail[] }) {
               {/* Expanded: real email */}
               {open && (
                 <div className="px-4 pb-4" style={{ background: 'var(--surface)' }}>
-                  <div className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
-                    <div>{formatFullDate(em.date)}</div>
-                    <div className="truncate">To: {em.to?.join(', ')}{em.cc?.length ? ` · Cc: ${em.cc.join(', ')}` : ''}</div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <div>{formatFullDate(em.date)}</div>
+                      <div className="truncate">To: {em.to?.join(', ')}{em.cc?.length ? ` · Cc: ${em.cc.join(', ')}` : ''}</div>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setReplyEmail(em); }}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg text-white flex-shrink-0"
+                      style={{ background: 'var(--brand-blue)' }}
+                    >
+                      <Reply size={13} /> Reply
+                    </button>
                   </div>
                   <div className="rounded-lg border" style={{ borderColor: 'var(--border)', background: '#fff' }}>
                     {em.bodyHtml
@@ -138,5 +177,6 @@ export function EmailThread({ emails }: { emails?: ThreadEmail[] }) {
         })}
       </div>
     </div>
+    </>
   );
 }

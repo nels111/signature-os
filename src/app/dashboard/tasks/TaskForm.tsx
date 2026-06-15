@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { taskSchema } from '@/lib/schemas/task';
+import { taskSchema, TASK_TYPES } from '@/lib/schemas/task';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 
 const PRIORITIES = ['highest', 'high', 'normal', 'low', 'lowest'];
 const STATUSES = ['not_started', 'in_progress', 'completed', 'deferred', 'waiting'];
-const TASK_TYPES = ['business', 'personal', 'mobilisation', 'onboarding', 'audit_action', 'issue_followup'];
 
 function formatLabel(s: string) {
   return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

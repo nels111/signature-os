@@ -36,6 +36,7 @@ export async function GET(
         take: CHILDREN_LIMIT,
         select: {
           id: true, from: true, to: true, cc: true, subject: true,
+          messageId: true, mailbox: true,
           bodyText: true, bodyHtml: true, date: true, isRead: true,
           openCount: true, folder: true,
           attachments: { select: { id: true, filename: true, contentType: true, size: true } },

@@ -26,7 +26,7 @@ interface Contact {
   leads: Array<{ id: string; companyName: string; stage: string; source: string }>;
   deals: Array<{ id: string; name: string; stage: string; value: string | null }>;
   emails?: Array<{
-    id: string; from: string; to: string[]; cc?: string[]; subject: string;
+    id: string; messageId: string; mailbox: string; from: string; to: string[]; cc?: string[]; subject: string;
     bodyText: string | null; bodyHtml: string | null;
     date: string; isRead: boolean; openCount: number; folder: string;
     attachments: Array<{ id: string; filename: string; contentType: string; size: number }>;
