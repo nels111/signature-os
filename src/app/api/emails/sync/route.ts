@@ -82,17 +82,23 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Auto-link to CRM on creation (or if not yet linked)
+      // Auto-link to CRM on creation (or if not yet linked).
+      // Match on BOTH sender and recipients so inbound (from) and outbound
+      // (to — emails we sent the lead) both attach to the thread.
       if (!result.linkedContactId && !result.linkedLeadId) {
-        const fromEmail = extractEmailAddress(email.from);
-        if (fromEmail) {
+        const candidates = [
+          extractEmailAddress(email.from),
+          ...(Array.isArray(email.to) ? email.to.map((t: string) => extractEmailAddress(t)) : []),
+        ].filter((a): a is string => !!a);
+
+        if (candidates.length) {
           const [contact, lead] = await Promise.all([
             prisma.contact.findFirst({
-              where: { email: { equals: fromEmail, mode: 'insensitive' }, deletedAt: null },
+              where: { email: { in: candidates, mode: 'insensitive' }, deletedAt: null },
               select: { id: true },
             }),
             prisma.lead.findFirst({
-              where: { email: { equals: fromEmail, mode: 'insensitive' }, deletedAt: null },
+              where: { email: { in: candidates, mode: 'insensitive' }, deletedAt: null },
               select: { id: true },
             }),
           ]);
