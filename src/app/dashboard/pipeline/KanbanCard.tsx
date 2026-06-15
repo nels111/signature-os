@@ -20,7 +20,15 @@ interface LeadItem {
   contactName: string;
   source: string;
   stage: string;
+  siteVisitAt?: string | null;
   owner: { id: string; name: string | null } | null;
+}
+
+// A booked meeting is "due for confirmation" once its start time + 1hr has passed.
+function meetingDueForConfirm(item: LeadItem): boolean {
+  if (item.stage !== 'meeting_scheduled' || !item.siteVisitAt) return false;
+  const due = new Date(item.siteVisitAt).getTime() + 60 * 60 * 1000;
+  return Date.now() > due;
 }
 
 interface DealItem {
@@ -51,14 +59,24 @@ function staleDays(isoDate: string | null | undefined): number {
   return Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
 }
 
-export function LeadKanbanCard({ item }: { item: LeadItem }) {
+export function LeadKanbanCard({
+  item,
+  onMeetingConfirm,
+}: {
+  item: LeadItem;
+  onMeetingConfirm?: (leadId: string, attended: boolean) => void;
+}) {
   const router = useRouter();
+  const dueForConfirm = meetingDueForConfirm(item);
 
   return (
     <div
       onClick={() => router.push(`/dashboard/leads/${item.id}`)}
       className="rounded-xl border p-3 shadow-sm hover:shadow-md transition-all cursor-pointer"
-      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
+      style={{
+        borderColor: dueForConfirm ? '#8b5cf6' : 'var(--border)',
+        backgroundColor: 'var(--surface)',
+      }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -85,6 +103,34 @@ export function LeadKanbanCard({ item }: { item: LeadItem }) {
           {SOURCE_LABELS[item.source] || item.source}
         </span>
       </div>
+
+      {dueForConfirm && onMeetingConfirm && (
+        <div
+          className="mt-2.5 pt-2.5 border-t"
+          style={{ borderColor: 'var(--border)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="text-xs font-medium mb-1.5" style={{ color: '#7c3aed' }}>
+            Did this meeting happen?
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onMeetingConfirm(item.id, true)}
+              className="flex-1 text-xs font-semibold py-1.5 rounded-lg text-white"
+              style={{ backgroundColor: '#7c3aed' }}
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => onMeetingConfirm(item.id, false)}
+              className="flex-1 text-xs font-semibold py-1.5 rounded-lg border"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            >
+              No
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -43,6 +43,8 @@ const LEAD_STAGES = [
 const DEAL_STAGES = [
   { id: 'quote_sent', label: 'Quote Sent', color: 'var(--deal-quote-sent)' },
   { id: 'follow_up_from_quote', label: 'Follow-up from Quote', color: 'var(--deal-follow-up)' },
+  { id: 'negotiating', label: 'Negotiating', color: '#f97316' },
+  { id: 'on_hold', label: 'On Hold', color: '#94a3b8' },
   { id: 'closed_won', label: 'Closed Won', color: 'var(--deal-won)' },
   { id: 'closed_lost', label: 'Closed Lost', color: 'var(--deal-lost)' },
 ];
@@ -263,6 +265,29 @@ export function PipelinePage() {
     setMeetingOutcome('');
   };
 
+  // Inline "did the meeting happen?" confirmation (1hr after a booked meeting).
+  const handleMeetingConfirm = useCallback(async (leadId: string, attended: boolean) => {
+    if (attended) {
+      // Same flow as dragging to Meeting Done — capture the outcome.
+      setPendingOutcomeLeadId(leadId);
+      setMeetingOutcome('');
+      setShowOutcomeModal(true);
+      return;
+    }
+    // Meeting didn't happen — send back to Contacted for re-engagement.
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: 'contacted' } : l)));
+    try {
+      await fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: 'contacted' }),
+      });
+      reloadLeads();
+    } catch {
+      reloadLeads();
+    }
+  }, [reloadLeads]);
+
   // Build columns
   const leadColumns: KanbanColumn<LeadItem>[] = LEAD_STAGES.map((stage) => ({
     ...stage,
@@ -373,7 +398,7 @@ export function PipelinePage() {
           columns={leadColumns}
           onDragEnd={handleLeadDragEnd}
           getItemId={(item) => item.id}
-          renderCard={(item) => <LeadKanbanCard item={item} />}
+          renderCard={(item) => <LeadKanbanCard item={item} onMeetingConfirm={handleMeetingConfirm} />}
         />
       )}
 

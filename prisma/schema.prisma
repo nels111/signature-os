@@ -58,6 +58,8 @@ enum MeetingOutcome {
 enum DealStage {
   quote_sent
   follow_up_from_quote
+  negotiating
+  on_hold
   closed_won
   closed_lost
 }

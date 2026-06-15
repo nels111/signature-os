@@ -124,8 +124,16 @@ export async function PATCH(
     });
   }
 
-  // Auto-create deal when stage changes to quote_delivered
+  // Auto-create deal when stage changes to quote_delivered — but only once.
+  // Guard against duplicates if the lead re-enters this stage.
   if (stageChanged && body.stage === 'quote_delivered') {
+    const existingDeal = await prisma.deal.findFirst({
+      where: { convertedFromId: lead.id, deletedAt: null },
+      select: { id: true },
+    });
+    if (existingDeal) {
+      return Response.json({ lead, deal: existingDeal, dealAlreadyExisted: true });
+    }
     const deal = await prisma.deal.create({
       data: {
         name: lead.companyName,

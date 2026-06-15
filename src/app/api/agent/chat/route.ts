@@ -286,6 +286,7 @@ async function bookSiteVisit(params: {
       source: 'website',
       stage: 'meeting_scheduled',
       ownerId: NELSON_USER_ID,
+      siteVisitAt: startDate,
       notes: `Booked via website agent. Service interest: ${params.service_interest || 'TBC'}. ${params.notes || ''}`,
     },
   });

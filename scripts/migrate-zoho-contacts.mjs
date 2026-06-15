@@ -77,6 +77,19 @@ async function fetchAll(token, module, fields) {
   return out;
 }
 
+// Exclude obvious test rows and internal staff (not real client contacts).
+const INTERNAL_EMAILS = new Set([
+  'nelson@signature-cleans.co.uk', 'nick@signature-cleans.co.uk',
+  'jasmin@signature-cleans.co.uk', 'jaz@signature-cleans.co.uk',
+  'hello@signature-cleans.co.uk',
+]);
+function isTestOrInternal(z, email) {
+  const blob = `${z.Full_Name || ''} ${z.First_Name || ''} ${z.Last_Name || ''} ${z.Account_Name?.name || ''}`.toLowerCase();
+  if (/\btest\b|test company|demo/.test(blob)) return true;
+  if (email && (INTERNAL_EMAILS.has(email) || email.endsWith('@signature-cleans.co.uk'))) return true;
+  return false;
+}
+
 function splitName(full) {
   const parts = (full || '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { first: 'Unknown', last: '—' };
@@ -113,10 +126,11 @@ async function main() {
   });
   const existingEmails = new Set(existing.map((c) => (c.email || '').toLowerCase()).filter(Boolean));
 
-  const plan = { create: [], skipDuplicate: [], skipNoData: [], dealsAttached: 0 };
+  const plan = { create: [], skipDuplicate: [], skipNoData: [], skipTestInternal: [], dealsAttached: 0 };
 
   for (const z of contacts) {
     const email = (z.Email || '').toLowerCase().trim() || null;
+    if (isTestOrInternal(z, email)) { plan.skipTestInternal.push(z.Full_Name || z.Account_Name?.name || z.id); continue; }
     let first = z.First_Name, last = z.Last_Name;
     if (!first && !last) { const s = splitName(z.Full_Name); first = s.first; last = s.last; }
     first = (first || 'Unknown').trim();
@@ -156,6 +170,7 @@ async function main() {
   console.log(`  would CREATE     : ${plan.create.length}`);
   console.log(`  skip (duplicate) : ${plan.skipDuplicate.length}`);
   console.log(`  skip (no data)   : ${plan.skipNoData.length}`);
+  console.log(`  skip (test/internal): ${plan.skipTestInternal.length} ${plan.skipTestInternal.length ? '→ ' + plan.skipTestInternal.join(', ') : ''}`);
   console.log(`  deal lines attached to contacts: ${plan.dealsAttached}`);
   console.log(`\nSAMPLE (first 5 to create):`);
   for (const c of plan.create.slice(0, 5)) {
