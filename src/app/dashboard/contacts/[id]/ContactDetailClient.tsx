@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { PhoneLink, EmailLink } from '@/components/ContactLinks';
+import { EmailThread } from '@/components/EmailThread';
 import { ContactForm } from '../ContactForm';
 import type { ContactFormData } from '@/lib/schemas/contact';
 
@@ -24,6 +25,11 @@ interface Contact {
   account: { id: string; name: string } | null;
   leads: Array<{ id: string; companyName: string; stage: string; source: string }>;
   deals: Array<{ id: string; name: string; stage: string; value: string | null }>;
+  emails?: Array<{
+    id: string; from: string; to: string[]; subject: string; bodyText: string | null;
+    date: string; isRead: boolean; openCount: number; folder: string;
+    attachments: Array<{ id: string; filename: string }>;
+  }>;
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -57,7 +63,7 @@ export function ContactDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'details' | 'linked' | 'activity'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'linked' | 'emails' | 'activity'>('details');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -127,6 +133,7 @@ export function ContactDetailClient({ id }: { id: string }) {
   const tabs = [
     { key: 'details' as const, label: 'Details' },
     { key: 'linked' as const, label: 'Linked Entities' },
+    { key: 'emails' as const, label: `Emails (${contact.emails?.length || 0})` },
     { key: 'activity' as const, label: 'Activity' },
   ];
 
@@ -310,6 +317,8 @@ export function ContactDetailClient({ id }: { id: string }) {
           </div>
         </div>
       )}
+
+      {activeTab === 'emails' && <EmailThread emails={contact.emails} />}
 
       {activeTab === 'activity' && (
         <ActivityTimeline entityType="contact" entityId={contact.id} />

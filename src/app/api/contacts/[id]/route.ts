@@ -31,6 +31,15 @@ export async function GET(
         orderBy: { createdAt: 'desc' },
         take: CHILDREN_LIMIT,
       },
+      emails: {
+        orderBy: { date: 'desc' },
+        take: CHILDREN_LIMIT,
+        select: {
+          id: true, from: true, to: true, subject: true, bodyText: true,
+          date: true, isRead: true, openCount: true, folder: true,
+          attachments: { select: { id: true, filename: true } },
+        },
+      },
     },
   });
 
