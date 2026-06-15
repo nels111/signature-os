@@ -67,6 +67,10 @@ export function EmailBodyIframe({ html }: EmailBodyIframeProps) {
   // of empty paragraphs and stacked <br>s that render as huge blank gaps — the
   // main reason raw emails look messy. Collapse them.
   const tidied = (html || '')
+    // Outlook/Word wrap blank lines in <o:p>&nbsp;</o:p>; strip those tags so the
+    // empty-paragraph pass below can remove the now-empty <p class=MsoNormal>.
+    .replace(/<o:p>[\s\S]*?<\/o:p>/gi, '')
+    .replace(/<o:p\s*\/?>/gi, '')
     // Drop paragraphs/divs that contain nothing but whitespace, &nbsp; or <br>.
     .replace(/<(p|div)\b[^>]*>(?:\s|&nbsp;|&#160;|<br\s*\/?>)*<\/\1>/gi, '')
     // Collapse 3+ consecutive line breaks down to a single blank line.
