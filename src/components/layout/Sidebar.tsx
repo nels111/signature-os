@@ -14,7 +14,6 @@ import {
   UserPlus,
   CheckSquare,
   Calendar,
-  Mail,
   LayoutGrid,
   Phone,
   ChevronLeft,
@@ -29,7 +28,8 @@ const ALL_NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview', roles: null },
   { href: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare, section: 'overview', roles: null },
   { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar, section: 'overview', roles: ['admin', 'sales', 'operations', 'viewer'] },
-  { href: '/dashboard/emails', label: 'Email', icon: Mail, section: 'overview', roles: ['admin', 'sales', 'operations', 'viewer'] },
+  // Standalone Email inbox retired per 9 Jun call — email now lives as a thread
+  // on each lead/contact (auto-synced). Route kept intact, just unlinked.
   // CRM
   { href: '/dashboard/pipeline', label: 'Pipeline', icon: TrendingUp, section: 'crm', roles: null },
   { href: '/dashboard/deals', label: 'Deals', icon: Handshake, section: 'crm', roles: null },
