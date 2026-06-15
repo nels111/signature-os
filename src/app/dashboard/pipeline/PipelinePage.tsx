@@ -27,17 +27,15 @@ interface DealItem {
   [key: string]: unknown;
 }
 
+// Lead pipeline stops at Quote Sent (15 Jun). Once a quote is sent a Deal is
+// auto-created and the rest of the journey lives in the Deal pipeline. Lost/
+// parked leads (not interested, dead, on hold) remain in the Leads list view.
 const LEAD_STAGES = [
   { id: 'new_lead',                 label: 'New Lead',       color: '#6b7280' },
   { id: 'contacted',                label: 'Contacted',      color: '#3b82f6' },
   { id: 'meeting_scheduled',        label: 'Meeting Booked', color: '#8b5cf6' },
   { id: 'meeting_attended',         label: 'Meeting Done',   color: '#a78bfa' },
   { id: 'quote_delivered',          label: 'Quote Sent',     color: '#f59e0b' },
-  { id: 'negotiating',              label: 'Negotiating',    color: '#f97316' },
-  { id: 'won',                      label: 'Won',            color: '#10b981' },
-  { id: 'contact_when_contract_up', label: 'On Hold',        color: '#6366f1' },
-  { id: 'not_interested_for_now',   label: 'Not Interested', color: '#9ca3af' },
-  { id: 'foad',                     label: 'Dead',           color: '#ef4444' },
 ];
 
 const DEAL_STAGES = [
