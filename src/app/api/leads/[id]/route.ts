@@ -33,9 +33,10 @@ export async function GET(
         orderBy: { date: 'desc' },
         take: CHILDREN_LIMIT,
         select: {
-          id: true, from: true, to: true, subject: true, bodyText: true,
-          date: true, isRead: true, openCount: true, folder: true,
-          attachments: { select: { id: true, filename: true } },
+          id: true, from: true, to: true, cc: true, subject: true,
+          bodyText: true, bodyHtml: true, date: true, isRead: true,
+          openCount: true, folder: true,
+          attachments: { select: { id: true, filename: true, contentType: true, size: true } },
         },
       },
     },

@@ -34,13 +34,15 @@ interface Lead {
     id: string;
     from: string;
     to: string[];
+    cc?: string[];
     subject: string;
     bodyText: string | null;
+    bodyHtml: string | null;
     date: string;
     isRead: boolean;
     openCount: number;
     folder: string;
-    attachments: Array<{ id: string; filename: string }>;
+    attachments: Array<{ id: string; filename: string; contentType: string; size: number }>;
   }>;
 }
 
