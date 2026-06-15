@@ -133,24 +133,24 @@ const APPS: App[] = [
   {
     id: 'onboarding',
     name: 'Onboarding Platform',
-    description: 'Digital onboarding, training, and induction flows.',
-    href: '#',
+    description: 'Admin view: who is in onboarding, progress, and documents.',
+    href: 'https://onboarding.signature-cleans.co.uk/admin',
     icon: GraduationCap,
-    accentColor: '#94a3b8',
-    accentBg: 'rgba(148,163,184,0.06)',
-    status: 'soon',
-    roles: null,
+    accentColor: '#0ea5e9',
+    accentBg: 'rgba(14,165,233,0.08)',
+    status: 'live',
+    roles: ['admin', 'operations'],
   },
   {
     id: 'stock',
     name: 'Stock & Supplies',
-    description: 'Order and track cleaning supplies across all sites.',
-    href: '#',
+    description: 'Admin view: supply requests and stock across all sites.',
+    href: 'https://stock-request-omega.vercel.app/admin',
     icon: Package,
-    accentColor: '#94a3b8',
-    accentBg: 'rgba(148,163,184,0.06)',
-    status: 'soon',
-    roles: null,
+    accentColor: '#f59e0b',
+    accentBg: 'rgba(245,158,11,0.08)',
+    status: 'live',
+    roles: ['admin', 'operations'],
   },
 ];
 
@@ -417,6 +417,16 @@ function AppCard({ app, index }: { app: App; index: number }) {
   );
 
   if (isSoon) return card;
+
+  // External admin apps (hosted separately) open in a new tab.
+  const isExternal = app.href.startsWith('http');
+  if (isExternal) {
+    return (
+      <a href={app.href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+        {card}
+      </a>
+    );
+  }
 
   return (
     <Link href={app.href} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
