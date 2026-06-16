@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { Bell } from 'lucide-react';
 import { taskSchema, TASK_TYPES } from '@/lib/schemas/task';
+import { REMINDER_PRESETS } from '@/lib/reminders';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 
 const PRIORITIES = ['highest', 'high', 'normal', 'low', 'lowest'];
@@ -40,6 +42,12 @@ export function TaskForm({ initialData, onSubmit, onCancel, loading }: TaskFormP
   const [location, setLocation] = useState((initialData?.location as string) || '');
   const [ownerId, setOwnerId] = useState((initialData?.ownerId as string) || '');
   const [users, setUsers] = useState<UserOption[]>([]);
+  // Reminder: '' = no reminder, otherwise minutes-before-due as a string.
+  const [reminderMin, setReminderMin] = useState<string>(() => {
+    const r = initialData?.reminder as { minutesBefore?: number | null } | null | undefined;
+    if (r && typeof r.minutesBefore === 'number') return String(r.minutesBefore);
+    return '';
+  });
 
   // Default ownerId to current user once session loads
   useEffect(() => {
@@ -69,6 +77,7 @@ export function TaskForm({ initialData, onSubmit, onCancel, loading }: TaskFormP
       description: description || null,
       location: location || null,
       ownerId: ownerId || undefined,
+      reminder: reminderMin === '' ? null : { minutesBefore: Number(reminderMin) },
     });
   };
 
@@ -180,6 +189,25 @@ export function TaskForm({ initialData, onSubmit, onCancel, loading }: TaskFormP
         <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Location</label>
         <LocationAutocomplete value={location} onChange={setLocation} inputStyle={inputStyle}
           placeholder="Start typing a place — becomes a tap-to-open Maps link" />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          <Bell size={13} className="inline mr-1.5 mb-0.5" />
+          Reminder
+        </label>
+        <select
+          value={reminderMin}
+          onChange={e => setReminderMin(e.target.value)}
+          className="w-full px-3 py-2 border rounded-lg text-sm"
+          style={inputStyle}
+        >
+          {REMINDER_PRESETS.map(p => (
+            <option key={p.value ?? 'none'} value={p.value === null ? '' : String(p.value)}>
+              {p.value === 0 ? (p.atLabel ?? p.label) : p.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex gap-3 justify-end pt-2">

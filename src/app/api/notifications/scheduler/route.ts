@@ -1,9 +1,16 @@
 export const runtime = 'nodejs';
 
 import { prisma } from '@/lib/db';
-import { notifyTaskDue, notifyTaskOverdue, notifyEventReminder, notifyLeadCold } from '@/lib/notifications';
+import { notifyTaskDue, notifyTaskOverdue, notifyTaskReminder, notifyEventReminder, notifyLeadCold } from '@/lib/notifications';
 import { expandRecurringEvent } from '@/lib/recurring';
 import { sendPushToUser } from '@/lib/push';
+import {
+  effectiveReminderMinutes,
+  reminderFiresInWindow,
+  reminderLeadLabel,
+  LEGACY_EVENT_DEFAULT_MINUTES,
+  MAX_REMINDER_MINUTES,
+} from '@/lib/reminders';
 
 /**
  * Cron-driven notification scheduler.
@@ -12,13 +19,14 @@ import { sendPushToUser } from '@/lib/push';
  *
  * POST /api/notifications/scheduler
  *
- * Optional body: { jobs: ('task_due'|'task_overdue'|'event_reminder')[] }
- * When omitted, all three jobs run.
+ * Optional body: { jobs: ('task_due'|'task_overdue'|'task_reminder'|'event_reminder'|'lead_cold')[] }
+ * When omitted, all jobs run.
  *
  * Cron schedule (intended, set up separately):
  *   - task_due       08:00 daily
  *   - task_overdue   09:00 daily
- *   - event_reminder every 5 min
+ *   - task_reminder  every 5 min (point-in-time custom task reminders)
+ *   - event_reminder every 5 min (custom alert offset, default 30 min before)
  *   - lead_cold      08:30 daily
  *
  * Edge cases:
@@ -41,7 +49,7 @@ export async function POST(request: Request) {
   } catch {
     body = null;
   }
-  const jobs = body?.jobs ?? ['task_due', 'task_overdue', 'event_reminder', 'lead_cold'];
+  const jobs = body?.jobs ?? ['task_due', 'task_overdue', 'task_reminder', 'event_reminder', 'lead_cold'];
 
   const results: Record<string, { scanned: number; created: number; deduped: number }> = {};
 
@@ -50,6 +58,9 @@ export async function POST(request: Request) {
   }
   if (jobs.includes('task_overdue')) {
     results.task_overdue = await runTaskOverdue();
+  }
+  if (jobs.includes('task_reminder')) {
+    results.task_reminder = await runTaskReminder();
   }
   if (jobs.includes('event_reminder')) {
     results.event_reminder = await runEventReminder();
@@ -91,8 +102,18 @@ async function runTaskDue() {
       subject: t.subject,
       dueDate: t.dueDate,
     });
-    if (r.created) created += 1;
-    else deduped += 1;
+    if (r.created) {
+      created += 1;
+      sendPushToUser(t.ownerId, {
+        title: 'Task due today',
+        body: t.subject,
+        icon: '/icon-192.png',
+        url: `/dashboard/tasks?task=${t.id}`,
+        tag: `task-due-${t.id}`,
+      }).catch(err => console.error('[scheduler] task_due push failed:', err));
+    } else {
+      deduped += 1;
+    }
   }
   return { scanned: tasks.length, created, deduped };
 }
@@ -127,28 +148,120 @@ async function runTaskOverdue() {
       subject: t.subject,
       dueDate: t.dueDate,
     });
-    if (r.created) created += 1;
-    else deduped += 1;
+    if (r.created) {
+      created += 1;
+      const days = Math.max(1, Math.floor((Date.now() - t.dueDate.getTime()) / (24 * 60 * 60 * 1000)));
+      sendPushToUser(t.ownerId, {
+        title: days === 1 ? 'Task overdue' : `Task overdue (${days} days)`,
+        body: t.subject,
+        icon: '/icon-192.png',
+        url: `/dashboard/tasks?task=${t.id}`,
+        tag: `task-overdue-${t.id}`,
+      }).catch(err => console.error('[scheduler] task_overdue push failed:', err));
+    } else {
+      deduped += 1;
+    }
   }
   return { scanned: tasks.length, created, deduped };
 }
 
-async function runEventReminder() {
-  // Fire reminders ~30 minutes before an event starts (centred on 30 min, with a
-  // 10-min window so the every-5-min cron reliably catches each occurrence).
+/**
+ * Point-in-time custom task reminders.
+ *
+ * For tasks with reminder = { minutesBefore: N }, fire a single push+bell when
+ * dueDate - N falls in the current cron window. Tasks with no reminder set are
+ * ignored here (they still get the daily task_due / task_overdue digest).
+ *
+ * Runs on the every-5-min cron alongside event_reminder.
+ */
+async function runTaskReminder() {
   const now = new Date();
-  const windowStart = new Date(now.getTime() + 25 * 60 * 1000); // 25 min from now
-  const windowEnd = new Date(now.getTime() + 35 * 60 * 1000);   // 35 min from now
+  // Window matches the every-5-min cron with a 1-min overlap; dedup prevents
+  // double-fire on the overlap.
+  const windowEnd = new Date(now.getTime() + 6 * 60 * 1000);
+  // A reminder can lead the due date by at most MAX_REMINDER_MINUTES, so only
+  // tasks due within that horizon (plus the window) can fire now.
+  const horizon = new Date(now.getTime() + (MAX_REMINDER_MINUTES + 6) * 60 * 1000);
+  const SCHEDULER_BATCH_LIMIT = 500;
+
+  const tasks = await prisma.task.findMany({
+    where: {
+      deletedAt: null,
+      dueDate: { gte: now, lte: horizon },
+      status: { notIn: ['completed'] },
+    },
+    select: { id: true, subject: true, dueDate: true, ownerId: true, reminder: true },
+    orderBy: { dueDate: 'asc' },
+    take: SCHEDULER_BATCH_LIMIT,
+  });
+
+  let created = 0;
+  let deduped = 0;
+
+  for (const t of tasks) {
+    // Tasks pass null default: only an explicitly-set reminder fires here.
+    const minutesBefore = effectiveReminderMinutes(t.reminder, null);
+    if (minutesBefore === null) continue;
+    if (!reminderFiresInWindow(t.dueDate, minutesBefore, now, windowEnd)) continue;
+
+    // Dedup: one custom reminder per task within 24h (a single offset means a
+    // single fire; 24h comfortably covers cron-window overlap).
+    const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const existing = await prisma.notification.findFirst({
+      where: {
+        userId: t.ownerId,
+        type: 'task_reminder',
+        entityId: t.id,
+        createdAt: { gte: since },
+      },
+      select: { id: true },
+    });
+    if (existing) { deduped += 1; continue; }
+
+    const r = await notifyTaskReminder({
+      ownerUserId: t.ownerId,
+      taskId: t.id,
+      subject: t.subject,
+      minutesBefore,
+    });
+    if (r.created) {
+      created += 1;
+      sendPushToUser(t.ownerId, {
+        title: `Task ${reminderLeadLabel(minutesBefore, true)}`,
+        body: t.subject,
+        icon: '/icon-192.png',
+        url: `/dashboard/tasks?task=${t.id}`,
+        tag: `task-reminder-${t.id}`,
+      }).catch(err => console.error('[scheduler] task_reminder push failed:', err));
+    } else {
+      deduped += 1;
+    }
+  }
+
+  return { scanned: tasks.length, created, deduped };
+}
+
+async function runEventReminder() {
+  // Fire a single reminder per event at its custom lead time (the `alerts` field,
+  // { minutesBefore: N }). Events with no alert set fall back to the legacy
+  // 30-min-before default so pre-feature events keep their heads-up; events with
+  // an explicit "No reminder" are skipped.
+  const now = new Date();
+  // 6-min window matches the every-5-min cron with a 1-min overlap; dedup covers it.
+  const windowEnd = new Date(now.getTime() + 6 * 60 * 1000);
+  // The earliest a reminder can fire ahead of an event is MAX_REMINDER_MINUTES,
+  // so only occurrences starting within that horizon can fire in this window.
+  const horizon = new Date(now.getTime() + (MAX_REMINDER_MINUTES + 6) * 60 * 1000);
 
   const SCHEDULER_BATCH_LIMIT = 500;
 
-  // Fetch all events whose series has started by windowEnd.
-  // Non-recurring: filtered by startDate in window.
-  // Recurring: may have a future occurrence even if original startDate is in the past.
+  // Non-recurring: startDate within the horizon.
+  // Recurring: series started by the horizon (a future occurrence may exist even
+  // if the original startDate is in the past), so fetch startDate <= horizon.
   const allEvents = await prisma.calendarEvent.findMany({
     where: {
       deletedAt: null,
-      startDate: { lte: windowEnd },
+      startDate: { lte: horizon },
     },
     select: {
       id: true,
@@ -156,6 +269,7 @@ async function runEventReminder() {
       startDate: true,
       endDate: true,
       repeat: true,
+      alerts: true,
       ownerId: true,
       invites: { select: { inviteeId: true } },
     },
@@ -163,20 +277,32 @@ async function runEventReminder() {
     take: SCHEDULER_BATCH_LIMIT,
   });
 
-  // Build unified list: find each event's notification time if it falls in the window
-  const toNotify: Array<{ id: string; title: string; notifyAt: Date; ownerId: string; invites: { inviteeId: string }[] }> = [];
+  // Resolve each event's lead time, then find the occurrence whose notify time
+  // (occurrenceStart - leadMinutes) falls in this window.
+  const toNotify: Array<{
+    id: string; title: string; notifyAt: Date; minutesUntil: number;
+    ownerId: string; invites: { inviteeId: string }[];
+  }> = [];
 
   for (const ev of allEvents) {
-    if (!ev.repeat) {
-      // Non-recurring: include only if startDate is in window
-      if (ev.startDate >= windowStart && ev.startDate <= windowEnd) {
-        toNotify.push({ ...ev, notifyAt: ev.startDate });
-      }
-    } else {
-      // Recurring: expand and check for occurrence in window
-      const occurrences = expandRecurringEvent(ev, windowStart, windowEnd);
-      if (occurrences.length > 0) {
-        toNotify.push({ ...ev, notifyAt: occurrences[0].startDate });
+    const leadMinutes = effectiveReminderMinutes(ev.alerts, LEGACY_EVENT_DEFAULT_MINUTES);
+    if (leadMinutes === null) continue; // explicit "No reminder"
+
+    const occurrenceStarts: Date[] = ev.repeat
+      ? expandRecurringEvent(ev, now, horizon).map(o => o.startDate)
+      : (ev.startDate >= now && ev.startDate <= horizon ? [ev.startDate] : []);
+
+    for (const start of occurrenceStarts) {
+      if (reminderFiresInWindow(start, leadMinutes, now, windowEnd)) {
+        toNotify.push({
+          id: ev.id,
+          title: ev.title,
+          notifyAt: start,
+          minutesUntil: Math.max(0, Math.round((start.getTime() - now.getTime()) / 60000)),
+          ownerId: ev.ownerId,
+          invites: ev.invites,
+        });
+        break; // one reminder per event per run
       }
     }
   }
@@ -185,8 +311,6 @@ async function runEventReminder() {
   let deduped = 0;
 
   for (const e of toNotify) {
-    const minutesUntil = Math.round((e.notifyAt.getTime() - now.getTime()) / 60000);
-
     // Recipients = owner + invitees (deduped via Set)
     const recipientIds = new Set<string>([e.ownerId]);
     for (const inv of e.invites) recipientIds.add(inv.inviteeId);
@@ -213,10 +337,20 @@ async function runEventReminder() {
         eventId: e.id,
         title: e.title,
         startTime: e.notifyAt,
-        minutesUntil,
+        minutesUntil: e.minutesUntil,
       });
-      if (r.created) created += 1;
-      else deduped += 1;
+      if (r.created) {
+        created += 1;
+        sendPushToUser(userId, {
+          title: e.minutesUntil <= 0 ? 'Event starting now' : `Event in ${e.minutesUntil} min`,
+          body: e.title,
+          icon: '/icon-192.png',
+          url: '/dashboard/calendar',
+          tag: `event-reminder-${e.id}`,
+        }).catch(err => console.error('[scheduler] event_reminder push failed:', err));
+      } else {
+        deduped += 1;
+      }
     }
   }
 

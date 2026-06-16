@@ -196,6 +196,7 @@ enum RtwType {
 enum NotificationType {
   task_due
   task_overdue
+  task_reminder
   event_reminder
   email_received
   deal_stage_changed

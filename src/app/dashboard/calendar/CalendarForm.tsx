@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import LocationAutocomplete from '@/components/LocationAutocomplete';
 import { useSession } from 'next-auth/react';
-import { Users, Check, UserPlus, X, Mail, RefreshCw } from 'lucide-react';
+import { Users, Check, UserPlus, X, Mail, RefreshCw, Bell } from 'lucide-react';
+import { REMINDER_PRESETS } from '@/lib/reminders';
 
 const EVENT_TYPES = ['meeting', 'site_survey', 'follow_up', 'calendly', 'personal'];
 const CALENDAR_TYPES = ['shared', 'personal'];
@@ -49,6 +50,14 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
   const [repeatEndDate, setRepeatEndDate] = useState<string>(() => {
     const r = initialData?.repeat as { endDate?: string } | null | undefined;
     return r?.endDate ? (r.endDate as string).slice(0, 10) : '';
+  });
+
+  // Reminder: '' = no reminder, otherwise minutes-before-start as a string.
+  // New events default to 30-min-before (matches the long-standing scheduler default).
+  const [alertMin, setAlertMin] = useState<string>(() => {
+    const a = initialData?.alerts as { minutesBefore?: number | null } | null | undefined;
+    if (a) return typeof a.minutesBefore === 'number' ? String(a.minutesBefore) : '';
+    return '30';
   });
 
   function toLocalInput(dateStr: string): string {
@@ -97,6 +106,7 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
       participantIds,
       externalParticipants,
       repeat: repeatFreq ? { freq: repeatFreq, interval: 1, endDate: repeatEndDate || null } : null,
+      alerts: alertMin === '' ? { minutesBefore: null } : { minutesBefore: Number(alertMin) },
     });
   };
 
@@ -198,6 +208,26 @@ export function CalendarForm({ initialData, defaultDate, onSubmit, onCancel, loa
             />
           </div>
         )}
+      </div>
+
+      {/* Reminder */}
+      <div>
+        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          <Bell size={13} className="inline mr-1.5 mb-0.5" />
+          Reminder
+        </label>
+        <select
+          value={alertMin}
+          onChange={e => setAlertMin(e.target.value)}
+          className="w-full px-3 py-2 border rounded-lg text-sm"
+          style={inputStyle}
+        >
+          {REMINDER_PRESETS.map(p => (
+            <option key={p.value ?? 'none'} value={p.value === null ? '' : String(p.value)}>
+              {p.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Participants */}

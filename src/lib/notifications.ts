@@ -148,6 +148,32 @@ export async function notifyTaskOverdue(params: {
   });
 }
 
+export async function notifyTaskReminder(params: {
+  ownerUserId: string;
+  taskId: string;
+  subject: string;
+  minutesBefore: number;
+}) {
+  const lead = params.minutesBefore <= 0
+    ? 'now due'
+    : params.minutesBefore < 60
+      ? `due in ${params.minutesBefore} min`
+      : params.minutesBefore < 1440
+        ? `due in ${Math.round(params.minutesBefore / 60)} hour${Math.round(params.minutesBefore / 60) === 1 ? '' : 's'}`
+        : `due in ${Math.round(params.minutesBefore / 1440)} day${Math.round(params.minutesBefore / 1440) === 1 ? '' : 's'}`;
+  return notify({
+    userId: params.ownerUserId,
+    type: 'task_reminder',
+    title: `Task ${lead}`,
+    message: params.subject,
+    entityType: 'task',
+    entityId: params.taskId,
+    // A single custom reminder per task; dedup keeps cron-window overlap from
+    // double-firing within 24h.
+    dedupWindowHours: 24,
+  });
+}
+
 export async function notifyEventReminder(params: {
   userId: string;
   eventId: string;
