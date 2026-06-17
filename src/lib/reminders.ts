@@ -98,7 +98,15 @@ export function reminderFiresInWindow(
   windowEnd: Date,
 ): boolean {
   const notifyMs = targetTime.getTime() - minutesBefore * 60_000;
-  return notifyMs >= windowStart.getTime() && notifyMs <= windowEnd.getTime();
+  // Catch-up: fire as soon as the reminder time has arrived OR already passed,
+  // rather than only inside the exact 6-minute cron tick. Callers bound candidates
+  // to upcoming items (target >= now) and dedup per entity for 24h, so a reminder
+  // missed because a cron window was skipped (e.g. an app restart) or because the
+  // item was created after its lead time had already elapsed still fires on the
+  // next run, exactly once, instead of being lost forever. The lower bound spans
+  // the full candidate horizon so no valid reminder is ever excluded.
+  const catchUpFloor = windowStart.getTime() - (MAX_REMINDER_MINUTES + 10) * 60_000;
+  return notifyMs <= windowEnd.getTime() && notifyMs >= catchUpFloor;
 }
 
 /** Human label for a lead time, used in notification copy. */

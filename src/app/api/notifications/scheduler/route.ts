@@ -295,9 +295,11 @@ async function runEventReminder() {
     for (const inv of e.invites) recipientIds.add(inv.inviteeId);
 
     for (const userId of recipientIds) {
-      // Dedup: skip if we already sent an event_reminder for this event within the last 60 min
-      // (safe for recurring since occurrences are at minimum 1 day apart)
-      const since = new Date(now.getTime() - 60 * 60 * 1000);
+      // Dedup: skip if we already sent an event_reminder for this event within the
+      // last 24h. Matches the task-reminder dedup window so the catch-up logic in
+      // reminderFiresInWindow can re-fire a missed reminder on the next run without
+      // ever double-firing (safe for recurring since occurrences are >= 1 day apart).
+      const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       const existing = await prisma.notification.findFirst({
         where: {
           userId,
