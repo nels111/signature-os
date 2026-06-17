@@ -2,7 +2,6 @@ export const runtime = 'nodejs';
 
 import { prisma } from '@/lib/db';
 import { notifyQuoteViewed } from '@/lib/notifications';
-import { sendPushToUser } from '@/lib/push';
 import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit';
 
 // 1x1 transparent GIF (43 bytes)
@@ -74,20 +73,12 @@ export async function GET(
         // Fires async so it never delays the pixel response.
         if (isFirstView && q.createdBy) {
           const companyLabel = q.companyName || 'A client';
-          Promise.allSettled([
-            notifyQuoteViewed({
-              creatorUserId: q.createdBy,
-              quoteId: q.id,
-              companyName: companyLabel,
-            }),
-            sendPushToUser(q.createdBy, {
-              title: 'Quote opened',
-              body: `${companyLabel} has viewed your quote`,
-              icon: '/icon-192.png',
-              url: `/dashboard/quotes/${q.id}`,
-              tag: `quote-viewed-${q.id}`,
-            }),
-          ]).catch(err => console.error('[pixel] notification error', err));
+          // notify() sends the bell entry AND the matching deep-linked push.
+          notifyQuoteViewed({
+            creatorUserId: q.createdBy,
+            quoteId: q.id,
+            companyName: companyLabel,
+          }).catch(err => console.error('[pixel] notification error', err));
         }
       }
     }

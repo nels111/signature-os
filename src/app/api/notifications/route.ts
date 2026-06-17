@@ -124,3 +124,44 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to update notifications' }, { status: 500 });
   }
 }
+
+// DELETE /api/notifications - Remove notifications (one, several, or all) for the
+// current user. Used by the bell dropdown to clear an item on click and to
+// "Clear all". Always scoped to the caller's own userId.
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const { ids, deleteAll } = body as { ids?: string[]; deleteAll?: boolean };
+
+    if (deleteAll) {
+      await prisma.notification.deleteMany({
+        where: { userId: session.user.id },
+      });
+    } else if (ids?.length) {
+      await prisma.notification.deleteMany({
+        where: { id: { in: ids }, userId: session.user.id },
+      });
+    } else {
+      return NextResponse.json({ error: 'ids or deleteAll required' }, { status: 400 });
+    }
+
+    const unreadCount = await prisma.notification.count({
+      where: { userId: session.user.id, read: false },
+    });
+
+    return NextResponse.json({ ok: true, unreadCount });
+  } catch (error) {
+    console.error('Notification delete error:', error);
+    return NextResponse.json({ error: 'Failed to delete notifications' }, { status: 500 });
+  }
+}

@@ -5,7 +5,6 @@ import { prisma } from '@/lib/db';
 import { isAdmin } from '@/lib/authz';
 import type { TaskStatus } from '@prisma/client';
 import { notifyTaskAssigned } from '@/lib/notifications';
-import { sendPushToUser } from '@/lib/push';
 
 export async function GET(
   _request: Request,
@@ -115,21 +114,14 @@ export async function PATCH(
     newOwnerId !== session.user.id
   ) {
     const taskLabel = (updateData.subject ?? existing.subject) as string;
-    Promise.allSettled([
-      notifyTaskAssigned({
-        assigneeUserId: newOwnerId,
-        actorUserId: session.user.id,
-        taskId: task.id,
-        taskTitle: taskLabel,
-      }),
-      sendPushToUser(newOwnerId, {
-        title: 'Task assigned to you',
-        body: taskLabel,
-        icon: '/icon-192.png',
-        url: `/dashboard/tasks/${task.id}`,
-        tag: `task-assigned-${task.id}`,
-      }),
-    ]).catch(err => console.error('[tasks] reassignment notification error', err));
+    // notify() sends the bell entry AND the matching push (deep-linked), so the
+    // in-app bell and the iOS/web banner always correspond.
+    notifyTaskAssigned({
+      assigneeUserId: newOwnerId,
+      actorUserId: session.user.id,
+      taskId: task.id,
+      taskTitle: taskLabel,
+    }).catch(err => console.error('[tasks] reassignment notification error', err));
   }
 
   return Response.json(task);

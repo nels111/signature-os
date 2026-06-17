@@ -3,11 +3,9 @@ export const runtime = 'nodejs';
 import { prisma } from '@/lib/db';
 import { notifyTaskDue, notifyTaskOverdue, notifyTaskReminder, notifyEventReminder, notifyLeadCold } from '@/lib/notifications';
 import { expandRecurringEvent } from '@/lib/recurring';
-import { sendPushToUser } from '@/lib/push';
 import {
   effectiveReminderMinutes,
   reminderFiresInWindow,
-  reminderLeadLabel,
   LEGACY_EVENT_DEFAULT_MINUTES,
   MAX_REMINDER_MINUTES,
 } from '@/lib/reminders';
@@ -103,14 +101,8 @@ async function runTaskDue() {
       dueDate: t.dueDate,
     });
     if (r.created) {
+      // notify() already sent the matching push (bell + banner stay in sync).
       created += 1;
-      sendPushToUser(t.ownerId, {
-        title: 'Task due today',
-        body: t.subject,
-        icon: '/icon-192.png',
-        url: `/dashboard/tasks?task=${t.id}`,
-        tag: `task-due-${t.id}`,
-      }).catch(err => console.error('[scheduler] task_due push failed:', err));
     } else {
       deduped += 1;
     }
@@ -149,15 +141,8 @@ async function runTaskOverdue() {
       dueDate: t.dueDate,
     });
     if (r.created) {
+      // notify() already sent the matching push (bell + banner stay in sync).
       created += 1;
-      const days = Math.max(1, Math.floor((Date.now() - t.dueDate.getTime()) / (24 * 60 * 60 * 1000)));
-      sendPushToUser(t.ownerId, {
-        title: days === 1 ? 'Task overdue' : `Task overdue (${days} days)`,
-        body: t.subject,
-        icon: '/icon-192.png',
-        url: `/dashboard/tasks?task=${t.id}`,
-        tag: `task-overdue-${t.id}`,
-      }).catch(err => console.error('[scheduler] task_overdue push failed:', err));
     } else {
       deduped += 1;
     }
@@ -225,14 +210,8 @@ async function runTaskReminder() {
       minutesBefore,
     });
     if (r.created) {
+      // notify() already sent the matching push (bell + banner stay in sync).
       created += 1;
-      sendPushToUser(t.ownerId, {
-        title: `Task ${reminderLeadLabel(minutesBefore, true)}`,
-        body: t.subject,
-        icon: '/icon-192.png',
-        url: `/dashboard/tasks?task=${t.id}`,
-        tag: `task-reminder-${t.id}`,
-      }).catch(err => console.error('[scheduler] task_reminder push failed:', err));
     } else {
       deduped += 1;
     }
@@ -340,14 +319,8 @@ async function runEventReminder() {
         minutesUntil: e.minutesUntil,
       });
       if (r.created) {
+        // notify() already sent the matching push (bell + banner stay in sync).
         created += 1;
-        sendPushToUser(userId, {
-          title: e.minutesUntil <= 0 ? 'Event starting now' : `Event in ${e.minutesUntil} min`,
-          body: e.title,
-          icon: '/icon-192.png',
-          url: '/dashboard/calendar',
-          tag: `event-reminder-${e.id}`,
-        }).catch(err => console.error('[scheduler] event_reminder push failed:', err));
       } else {
         deduped += 1;
       }
@@ -431,15 +404,8 @@ async function runLeadColdAlert() {
         daysSince,
       });
       if (r.created) {
+        // notify() already sent the matching push (bell + banner stay in sync).
         created += 1;
-        // Push only on first alert (r.created) to avoid push spam
-        sendPushToUser(admin.id, {
-          title: `Lead gone cold (${daysSince}d)`,
-          body: label,
-          icon: '/icon-192.png',
-          url: `/dashboard/leads/${lead.id}`,
-          tag: `lead-cold-${lead.id}`,
-        }).catch(err => console.error('[scheduler] cold lead push failed:', err));
       } else {
         deduped += 1;
       }

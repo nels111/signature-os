@@ -5,6 +5,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import { notify } from '@/lib/notifications';
 import { getNextLead } from './queue';
 import {
   sendGatekeeperEmail,
@@ -39,31 +40,23 @@ async function notifyNick(title: string, message: string, entityId?: string) {
   // Find Nick's user record
   const nick = await prisma.user.findFirst({
     where: { email: NICK_EMAIL },
-    select: { id: true, pushSubscriptions: true },
+    select: { id: true },
   });
   if (!nick) return;
 
-  // SigOS in-app notification
-  await prisma.notification.create({
-    data: {
-      userId: nick.id,
-      type: 'site_visit_booked',
-      title,
-      message,
-      entityType: entityId ? 'lead' : undefined,
-      entityId: entityId ?? undefined,
-    },
+  // notify() writes the in-app bell entry AND sends the matching deep-linked
+  // push in one path, so the bell and the iOS/web banner always correspond.
+  // Dedup disabled to preserve the prior always-fire behaviour for these
+  // outcome alerts.
+  await notify({
+    userId: nick.id,
+    type: 'site_visit_booked',
+    title,
+    message,
+    entityType: entityId ? 'lead' : null,
+    entityId: entityId ?? null,
+    dedupWindowHours: 0,
   });
-
-  // Web push (fire and forget — don't fail the outcome if push fails)
-  if (nick.pushSubscriptions.length > 0) {
-    try {
-      const { sendPushToUser } = await import('@/lib/push');
-      await sendPushToUser(nick.id, { title, body: message }).catch(() => null);
-    } catch {
-      // Push infra not available — notification already created in DB
-    }
-  }
 }
 
 // ── Main engine ──────────────────────────────────────────────────────────────

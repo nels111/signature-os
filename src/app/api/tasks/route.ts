@@ -4,7 +4,6 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { resolveOwnerIdOnCreate } from '@/lib/authz';
 import { notifyTaskAssigned } from '@/lib/notifications';
-import { sendPushToUser } from '@/lib/push';
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -102,21 +101,14 @@ export async function POST(request: Request) {
   const assigneeId = task.ownerId;
   if (assigneeId && assigneeId !== session.user.id) {
     const taskLabel = task.subject;
-    Promise.allSettled([
-      notifyTaskAssigned({
-        assigneeUserId: assigneeId,
-        actorUserId: session.user.id,
-        taskId: task.id,
-        taskTitle: taskLabel,
-      }),
-      sendPushToUser(assigneeId, {
-        title: 'Task assigned to you',
-        body: taskLabel,
-        icon: '/icon-192.png',
-        url: `/dashboard/tasks/${task.id}`,
-        tag: `task-assigned-${task.id}`,
-      }),
-    ]).catch(err => console.error('[tasks] assignment notification error', err));
+    // notify() sends the bell entry AND the matching push (deep-linked), so the
+    // in-app bell and the iOS/web banner always correspond.
+    notifyTaskAssigned({
+      assigneeUserId: assigneeId,
+      actorUserId: session.user.id,
+      taskId: task.id,
+      taskTitle: taskLabel,
+    }).catch(err => console.error('[tasks] assignment notification error', err));
   }
 
   return Response.json(task, { status: 201 });

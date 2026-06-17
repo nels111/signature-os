@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db';
 import type { NotificationType } from '@prisma/client';
+import { sendPushToUser } from '@/lib/push';
+import { notificationUrl } from '@/lib/notification-url';
 
 /**
  * Notification helper with 24-hour dedup.
@@ -63,6 +65,20 @@ export async function notify(opts: NotifyOptions): Promise<{ created: boolean; r
         entityId: opts.entityId ?? null,
       },
     });
+
+    // Fire the matching push so the in-app bell and the iOS/web push banner
+    // always correspond, with the correct deep-link baked in. Best-effort: a
+    // push failure must never break notification creation.
+    try {
+      await sendPushToUser(opts.userId, {
+        title: opts.title,
+        body: opts.message,
+        url: notificationUrl(opts.entityType, opts.entityId),
+        tag: `${opts.type}-${opts.entityId ?? ''}`,
+      });
+    } catch (err) {
+      console.error('[notify] push failed (notification still created)', err);
+    }
 
     return { created: true };
   } catch (err) {

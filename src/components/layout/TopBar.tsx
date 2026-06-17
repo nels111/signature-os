@@ -3,10 +3,11 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Bell, BellRing, BellOff, LogOut, ChevronDown, Clock, Timer, Menu } from 'lucide-react';
+import { Search, Bell, BellRing, BellOff, LogOut, ChevronDown, Clock, Timer, Menu, X } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useLayout } from './LayoutContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { notificationUrl } from '@/lib/notification-url';
 
 interface Notification {
   id: string;
@@ -116,36 +117,34 @@ export function TopBar() {
     return () => document.removeEventListener('click', handler);
   }, []);
 
-  const markAllRead = async () => {
+  // Clear all notifications for this user.
+  const clearAll = async () => {
     await fetch('/api/notifications', {
-      method: 'PATCH',
+      method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ markAll: true }),
+      body: JSON.stringify({ deleteAll: true }),
     });
-    // Invalidate so TanStack Query re-fetches fresh data
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
   };
 
-  const handleNotifClick = (notif: Notification) => {
+  // Dismiss a single notification without navigating (the row's "x").
+  const dismissNotif = (id: string) => {
     fetch('/api/notifications', {
-      method: 'PATCH',
+      method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: [notif.id] }),
+      body: JSON.stringify({ ids: [id] }),
     }).then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }));
+  };
 
-    if (notif.entityType && notif.entityId) {
-      const routes: Record<string, string> = {
-        task: '/dashboard/tasks',
-        lead: '/dashboard/leads',
-        deal: '/dashboard/deals',
-        contact: '/dashboard/contacts',
-        quote: '/dashboard/quotes',
-      };
-      const base = routes[notif.entityType];
-      if (base) {
-        router.push(`${base}/${notif.entityId}`);
-      }
-    }
+  const handleNotifClick = (notif: Notification) => {
+    // Clicking clears the notification (Nelson: "it clears itself when we've
+    // clicked that") and deep-links to the related record. The shared resolver
+    // keeps this in sync with the server-side push URL, so the bell and the
+    // iOS/web banner always land on the same place.
+    dismissNotif(notif.id);
+
+    const url = notificationUrl(notif.entityType, notif.entityId);
+    if (url !== '/dashboard') router.push(url);
 
     setShowNotifs(false);
   };
@@ -298,13 +297,13 @@ export function TopBar() {
                 <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                   Notifications
                 </span>
-                {unreadCount > 0 && (
+                {notifications.length > 0 && (
                   <button
-                    onClick={markAllRead}
+                    onClick={clearAll}
                     className="text-xs font-medium"
                     style={{ color: 'var(--brand-blue)' }}
                   >
-                    Mark all read
+                    Clear all
                   </button>
                 )}
               </div>
@@ -315,13 +314,22 @@ export function TopBar() {
                   </div>
                 ) : (
                   notifications.map(n => (
-                    <button
+                    <div
                       key={n.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleNotifClick(n)}
-                      className="w-full text-left px-4 py-3 flex items-start gap-3 transition-colors"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleNotifClick(n);
+                        }
+                      }}
+                      className="w-full text-left px-4 py-3 flex items-start gap-3 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2"
                       style={{
                         borderBottom: '1px solid var(--border)',
                         backgroundColor: n.read ? 'transparent' : 'var(--brand-blue-subtle)',
+                        touchAction: 'manipulation',
                       }}
                     >
                       {!n.read && (
@@ -330,7 +338,7 @@ export function TopBar() {
                           style={{ backgroundColor: 'var(--brand-blue)' }}
                         />
                       )}
-                      <div className={n.read ? 'ml-5' : ''}>
+                      <div className={`flex-1 min-w-0 ${n.read ? 'ml-5' : ''}`}>
                         <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                           {n.title}
                         </div>
@@ -341,7 +349,19 @@ export function TopBar() {
                           {timeAgo(n.createdAt)}
                         </div>
                       </div>
-                    </button>
+                      <button
+                        type="button"
+                        aria-label="Dismiss notification"
+                        onClick={e => {
+                          e.stopPropagation();
+                          dismissNotif(n.id);
+                        }}
+                        className="flex-shrink-0 -mr-1.5 p-2 rounded-md transition-colors hover:opacity-70"
+                        style={{ color: 'var(--text-muted)', touchAction: 'manipulation' }}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   ))
                 )}
               </div>

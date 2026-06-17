@@ -2,7 +2,6 @@ export const runtime = 'nodejs';
 
 import { prisma } from '@/lib/db';
 import { notify } from '@/lib/notifications';
-import { sendPushToUser } from '@/lib/push';
 import { sendTwilioWhatsapp } from '@/lib/twilio-wa';
 import {
   OWNER_USER_ID as INTAKE_OWNER_ID,
@@ -82,6 +81,7 @@ export async function POST(request: Request) {
     const label = `${lead.companyName}${lead.contactName ? ` (${lead.contactName})` : ''}`;
     try {
       for (const uid of [INTAKE_OWNER_ID, NICK_USER_ID]) {
+        // notify() sends the bell entry AND the matching deep-linked push.
         await notify({
           userId: uid,
           type: 'lead_assigned',
@@ -89,12 +89,6 @@ export async function POST(request: Request) {
           message: label,
           entityType: 'lead',
           entityId: lead.id,
-        }).catch(() => {});
-        await sendPushToUser(uid, {
-          title: 'New website lead',
-          body: label,
-          url: `/dashboard/leads/${lead.id}`,
-          tag: `lead-${lead.id}`,
         }).catch(() => {});
       }
       // SMS text to Nelson + Nick.
