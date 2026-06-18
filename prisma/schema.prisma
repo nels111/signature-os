@@ -405,6 +405,8 @@ model Lead {
   isCallable         Boolean    @default(true)
   removedFromQueueAt DateTime?
   dormantUntil       DateTime?
+  // ── Redesign: single source of truth for the calling funnel (v2) ──
+  callStatus         LeadCallStatus?
 
   // ── Contact intelligence ────────────────────────────────
   decisionMakerName  String?
@@ -445,6 +447,7 @@ model Lead {
   @@index([isCallable, stage, nextCallAt])
   @@index([dormantUntil])
   @@index([lastCalledAt])
+  @@index([callStatus, nextCallAt])
   @@map("leads")
 }
 
@@ -1203,4 +1206,40 @@ model Compliance {
   @@index([rtwExpiry])
   @@index([overallStatus])
   @@map("compliance_records")
+}
+
+// ============ COLD-CALLING REDESIGN (v2) ============
+
+/// Single source of truth for where a lead sits in the calling funnel.
+/// Distinct from the dialler-level `CallStatus` (per-attempt state).
+enum LeadCallStatus {
+  new
+  retry
+  callback
+  nurturing
+  booked
+  renewal
+  dormant
+  dead
+}
+
+/// Observable email side-effect log. Emails are enqueued AFTER the outcome
+/// transaction commits; an `email_sent` Activity is only written once a row
+/// here reaches `sent`. Failures stay visible and retryable. `leadId` is a
+/// soft reference (no FK) to keep the migration purely additive.
+model EmailOutbox {
+  id        String    @id @default(cuid())
+  leadId    String?
+  template  String // gatekeeper | callback | send_info | site_visit
+  toAddress String
+  subject   String
+  status    String    @default("queued") // queued | sent | failed
+  attempts  Int       @default(0)
+  lastError String?
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([leadId])
+  @@map("email_outbox")
 }
