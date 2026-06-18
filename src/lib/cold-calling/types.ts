@@ -49,6 +49,7 @@ export interface ColdCallingLead {
   phone: string | null;
   website: string | null;
   stage: string;
+  callStatus: string | null;
   queueType: QueueType | null;
   nextCallAt: string | null;
   lastCalledAt: string | null;

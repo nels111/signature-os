@@ -1,9 +1,24 @@
 /**
- * Cold Calling — queue logic
- * Strict priority order: callbacks → fresh → follow-ups → recycle
- * Uses actual DB dates/stages, not just queueType enum, to prevent stale queue bugs.
+ * Cold Calling — queue logic (v2).
+ *
+ * Single source of truth: a lead's queue is derived purely from `callStatus` +
+ * `nextCallAt`. One lead has one callStatus, so it sits in exactly one queue —
+ * the "lead in two queues" / "badge disagrees with list" classes are gone.
+ * Counts and lists use the SAME predicate, so they can never diverge.
+ *
+ * The response keeps the original shape (callbacks / fresh / followUps / recycle
+ * / dormant) so the existing UI keeps working:
+ *   callbacks <- callStatus 'callback'
+ *   fresh     <- callStatus 'new'
+ *   followUps <- callStatus 'nurturing' | 'renewal'
+ *   recycle   <- callStatus 'retry'
+ *   dormant   <- callStatus 'dormant' (revival)
+ *
+ * `getNextLead` claims the top lead with `FOR UPDATE SKIP LOCKED` so two callers
+ * never get the same lead.
  */
 
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import type { ColdCallingLead, QueueResponse } from './types';
 
@@ -15,6 +30,7 @@ const LEAD_SELECT = {
   phone: true,
   source: true,
   stage: true,
+  callStatus: true,
   queueType: true,
   nextCallAt: true,
   lastCalledAt: true,
@@ -48,8 +64,9 @@ function serializeLead(raw: Record<string, unknown>, attempts: ColdCallingLead['
     contactName: (raw.contactName as string | null) ?? null,
     email: (raw.email as string | null) ?? null,
     phone: (raw.phone as string | null) ?? null,
-    website: null, // not on Lead model
+    website: null,
     stage: raw.stage as string,
+    callStatus: (raw.callStatus as string | null) ?? null,
     queueType: (raw.queueType as ColdCallingLead['queueType']) ?? null,
     nextCallAt: raw.nextCallAt ? (raw.nextCallAt as Date).toISOString() : null,
     lastCalledAt: raw.lastCalledAt ? (raw.lastCalledAt as Date).toISOString() : null,
@@ -81,14 +98,7 @@ async function getRecentAttempts(leadId: string, take = 5): Promise<ColdCallingL
     where: { leadId },
     orderBy: { createdAt: 'desc' },
     take,
-    select: {
-      id: true,
-      outcome: true,
-      durationSeconds: true,
-      notes: true,
-      createdAt: true,
-      user: { select: { name: true } },
-    },
+    select: { id: true, outcome: true, durationSeconds: true, notes: true, createdAt: true, user: { select: { name: true } } },
   });
   return attempts.map((a) => ({
     id: a.id,
@@ -100,218 +110,90 @@ async function getRecentAttempts(leadId: string, take = 5): Promise<ColdCallingL
   }));
 }
 
-// ── 1. Callbacks — due tasks of type callback ────────────────────────────────
-
-async function getCallbackLeads(limit: number): Promise<ColdCallingLead[]> {
-  const now = new Date();
-  const tasks = await prisma.task.findMany({
-    where: {
-      taskType: 'callback',
-      status: { in: ['not_started', 'in_progress', 'waiting'] },
-      dueDate: { lte: now },
-      deletedAt: null,
-      linkedLead: { isCallable: true, deletedAt: null },
-    },
-    include: {
-      linkedLead: { select: LEAD_SELECT },
-    },
-    orderBy: { dueDate: 'asc' },
-    take: limit,
-  });
-
-  const seen = new Set<string>();
-  const leads: ColdCallingLead[] = [];
-  for (const t of tasks) {
-    if (!t.linkedLead || seen.has(t.linkedLead.id)) continue;
-    seen.add(t.linkedLead.id);
-    const attempts = await getRecentAttempts(t.linkedLead.id);
-    leads.push(serializeLead(t.linkedLead as Record<string, unknown>, attempts));
-  }
-  return leads;
+/** "Due now" filter for a given set of callStatuses. */
+function dueWhere(statuses: string[]): Prisma.LeadWhereInput {
+  return {
+    deletedAt: null,
+    phone: { not: null },
+    callStatus: { in: statuses as never[] },
+    OR: [{ nextCallAt: null }, { nextCallAt: { lte: new Date() } }],
+  };
 }
 
-// ── 2. Fresh leads — never called, have a phone ──────────────────────────────
-
-async function getFreshLeads(limit: number): Promise<ColdCallingLead[]> {
+async function listFor(statuses: string[], limit: number, withAttempts: boolean): Promise<ColdCallingLead[]> {
   const raw = await prisma.lead.findMany({
-    where: {
-      isCallable: true,
-      stage: { in: ['new_lead', 'cold_call'] as never[] },
-      firstCalledAt: null,
-      phone: { not: null },
-      deletedAt: null,
-    },
-    select: LEAD_SELECT,
-    orderBy: { createdAt: 'asc' },
-    take: limit,
-  });
-
-  const leads: ColdCallingLead[] = [];
-  for (const r of raw) {
-    leads.push(serializeLead(r as Record<string, unknown>));
-  }
-  return leads;
-}
-
-// ── 3. Follow-ups — due follow-up/renewal tasks ──────────────────────────────
-
-async function getFollowUpLeads(limit: number): Promise<ColdCallingLead[]> {
-  const now = new Date();
-  const tasks = await prisma.task.findMany({
-    where: {
-      taskType: { in: ['follow_up_call', 'contract_renewal_follow_up'] as never[] },
-      status: { in: ['not_started', 'in_progress', 'waiting'] },
-      dueDate: { lte: now },
-      deletedAt: null,
-      linkedLead: {
-        isCallable: true,
-        stage: { in: ['follow_up_sequence', 'contact_when_contract_up'] as never[] },
-        deletedAt: null,
-      },
-    },
-    include: {
-      linkedLead: { select: LEAD_SELECT },
-    },
-    orderBy: { dueDate: 'asc' },
-    take: limit,
-  });
-
-  const seen = new Set<string>();
-  const leads: ColdCallingLead[] = [];
-  for (const t of tasks) {
-    if (!t.linkedLead || seen.has(t.linkedLead.id)) continue;
-    seen.add(t.linkedLead.id);
-    const attempts = await getRecentAttempts(t.linkedLead.id);
-    leads.push(serializeLead(t.linkedLead as Record<string, unknown>, attempts));
-  }
-  return leads;
-}
-
-// ── 4. Recycle leads — called before, nextCallAt due ────────────────────────
-
-async function getRecycleLeads(limit: number): Promise<ColdCallingLead[]> {
-  const now = new Date();
-  const raw = await prisma.lead.findMany({
-    where: {
-      isCallable: true,
-      stage: { in: ['cold_call', 'not_interested_for_now'] as never[] },
-      firstCalledAt: { not: null },
-      nextCallAt: { lte: now },
-      deletedAt: null,
-    },
+    where: dueWhere(statuses),
     select: LEAD_SELECT,
     orderBy: [{ nextCallAt: 'asc' }, { createdAt: 'asc' }],
     take: limit,
   });
-
   const leads: ColdCallingLead[] = [];
   for (const r of raw) {
-    const attempts = await getRecentAttempts(r.id);
+    const attempts = withAttempts ? await getRecentAttempts(r.id) : [];
     leads.push(serializeLead(r as Record<string, unknown>, attempts));
   }
   return leads;
 }
 
-// ── Dormant count ────────────────────────────────────────────────────────────
-
-async function getDormantCount(): Promise<number> {
-  return prisma.lead.count({
-    where: { stage: 'dormant', deletedAt: null },
-  });
+async function countFor(statuses: string[]): Promise<number> {
+  return prisma.lead.count({ where: dueWhere(statuses) });
 }
-
-// ── True counts (independent of paginated lists) ──────────────────────────────
-
-async function getTrueCounts(): Promise<{ callbacks: number; fresh: number; followUps: number; recycle: number }> {
-  const now = new Date();
-  const [callbacks, fresh, followUps, recycle] = await Promise.all([
-    // Callback tasks due now
-    prisma.task.count({
-      where: {
-        taskType: 'callback',
-        status: { in: ['not_started', 'in_progress', 'waiting'] },
-        dueDate: { lte: now },
-        deletedAt: null,
-        linkedLead: { isCallable: true, deletedAt: null },
-      },
-    }),
-    // Fresh leads never called with a phone number
-    prisma.lead.count({
-      where: {
-        isCallable: true,
-        stage: { in: ['new_lead', 'cold_call'] as never[] },
-        firstCalledAt: null,
-        phone: { not: null },
-        deletedAt: null,
-      },
-    }),
-    // Follow-up / renewal tasks due now
-    prisma.task.count({
-      where: {
-        taskType: { in: ['follow_up_call', 'contract_renewal_follow_up'] as never[] },
-        status: { in: ['not_started', 'in_progress', 'waiting'] },
-        dueDate: { lte: now },
-        deletedAt: null,
-        linkedLead: {
-          isCallable: true,
-          stage: { in: ['follow_up_sequence', 'contact_when_contract_up'] as never[] },
-          deletedAt: null,
-        },
-      },
-    }),
-    // Recycle leads with nextCallAt due
-    prisma.lead.count({
-      where: {
-        isCallable: true,
-        stage: 'cold_call',
-        firstCalledAt: { not: null },
-        nextCallAt: { lte: now },
-        deletedAt: null,
-      },
-    }),
-  ]);
-  return { callbacks, fresh, followUps, recycle };
-}
-
-// ── Public API ───────────────────────────────────────────────────────────────
 
 export async function getQueue(limit = 25): Promise<QueueResponse> {
-  const [callbacks, fresh, followUps, recycle, dormantCount, trueCounts] = await Promise.all([
-    getCallbackLeads(limit),
-    getFreshLeads(limit),
-    getFollowUpLeads(limit),
-    getRecycleLeads(limit),
-    getDormantCount(),
-    getTrueCounts(),
+  const [callbacks, fresh, followUps, recycle, cbN, frN, fuN, rcN, dormN] = await Promise.all([
+    listFor(['callback'], limit, true),
+    listFor(['new'], limit, false),
+    listFor(['nurturing', 'renewal'], limit, true),
+    listFor(['retry'], limit, true),
+    countFor(['callback']),
+    countFor(['new']),
+    countFor(['nurturing', 'renewal']),
+    countFor(['retry']),
+    // Dormant badge: leads parked for revival (count those due to resurface).
+    countFor(['dormant']),
   ]);
 
-  const activeLead =
-    callbacks[0] ?? fresh[0] ?? followUps[0] ?? recycle[0] ?? null;
+  const activeLead = callbacks[0] ?? followUps[0] ?? recycle[0] ?? fresh[0] ?? null;
 
   return {
     activeLead,
     queues: { callbacks, fresh, followUps, recycle },
-    counts: {
-      callbacks: trueCounts.callbacks,
-      fresh: trueCounts.fresh,
-      followUps: trueCounts.followUps,
-      recycle: trueCounts.recycle,
-      dormant: dormantCount,
-    },
+    counts: { callbacks: cbN, fresh: frN, followUps: fuN, recycle: rcN, dormant: dormN },
   };
 }
 
-export async function getNextLead(): Promise<{ lead: ColdCallingLead | null; queueType: string | null }> {
-  const [callbacks, fresh, followUps, recycle] = await Promise.all([
-    getCallbackLeads(1),
-    getFreshLeads(1),
-    getFollowUpLeads(1),
-    getRecycleLeads(1),
-  ]);
+/**
+ * The next lead to call, claimed with a row lock so concurrent callers never get
+ * the same lead. Priority: callback -> renewal -> retry -> nurturing -> new ->
+ * dormant, then soonest due.
+ */
+export async function getNextLead(_userId?: string): Promise<{ lead: ColdCallingLead | null; queueType: string | null }> {
+  const picked = await prisma.$queryRaw<{ id: string; callStatus: string }[]>`
+    SELECT id, "callStatus"
+    FROM leads
+    WHERE "deletedAt" IS NULL AND phone IS NOT NULL
+      AND "callStatus" IN ('new','retry','callback','nurturing','renewal','dormant')
+      AND ("nextCallAt" IS NULL OR "nextCallAt" <= now())
+    ORDER BY
+      CASE "callStatus"
+        WHEN 'callback' THEN 0 WHEN 'renewal' THEN 1 WHEN 'retry' THEN 2
+        WHEN 'nurturing' THEN 3 WHEN 'new' THEN 4 ELSE 5 END,
+      "nextCallAt" NULLS FIRST
+    FOR UPDATE SKIP LOCKED
+    LIMIT 1`;
 
-  if (callbacks[0]) return { lead: callbacks[0], queueType: 'callback' };
-  if (fresh[0]) return { lead: fresh[0], queueType: 'fresh' };
-  if (followUps[0]) return { lead: followUps[0], queueType: 'follow_up' };
-  if (recycle[0]) return { lead: recycle[0], queueType: 'recycle' };
-  return { lead: null, queueType: null };
+  if (picked.length === 0) return { lead: null, queueType: null };
+
+  const row = await prisma.lead.findUnique({ where: { id: picked[0].id }, select: LEAD_SELECT });
+  if (!row) return { lead: null, queueType: null };
+  const attempts = await getRecentAttempts(row.id);
+  const bucketMap: Record<string, string> = {
+    callback: 'callback',
+    new: 'fresh',
+    nurturing: 'follow_up',
+    renewal: 'follow_up',
+    retry: 'recycle',
+    dormant: 'recycle',
+  };
+  return { lead: serializeLead(row as Record<string, unknown>, attempts), queueType: bucketMap[picked[0].callStatus] ?? null };
 }
