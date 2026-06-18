@@ -117,7 +117,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/auth') ||
-    pathname === '/api/_health' ||
+    pathname === '/api/healthz' ||
     pathname === '/login' ||
     pathname === '/favicon.ico' ||
     pathname.startsWith('/api/quotes/track/') ||
