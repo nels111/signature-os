@@ -1,5 +1,13 @@
 /**
- * Cold Calling — stats queries
+ * Cold Calling — stats (v2).
+ *
+ * Fixes from the redesign:
+ *  - queueDepth is derived from `callStatus` using the SAME predicate as the
+ *    queue, so the badges can never disagree with the lists.
+ *  - VA and admin stats share ONE shape (both include queueDepth; the queue is
+ *    global, so the depth is the same — only the per-call tallies are scoped).
+ *  - "today / week / month" boundaries are computed in Europe/London, not the
+ *    server's local timezone.
  */
 
 import { prisma } from '@/lib/db';
@@ -7,177 +15,95 @@ import type { ColdCallingStats } from './types';
 
 type Range = 'today' | 'week' | 'month';
 
-function getRangeStart(range: Range): Date {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (range === 'today') return start;
+/** Start of the given range in Europe/London, returned as a UTC instant. */
+function ukRangeStart(range: Range, now = new Date()): Date {
+  // Wall-clock UK time expressed in the server's local fields, plus the offset
+  // back to a real UTC instant. Works regardless of the server timezone.
+  const ukLocal = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  const offsetMs = now.getTime() - ukLocal.getTime();
+  const start = new Date(ukLocal.getFullYear(), ukLocal.getMonth(), ukLocal.getDate());
   if (range === 'week') {
     const day = start.getDay();
-    const diff = day === 0 ? -6 : 1 - day; // Monday
+    const diff = day === 0 ? -6 : 1 - day; // back to Monday
     start.setDate(start.getDate() + diff);
-    return start;
+  } else if (range === 'month') {
+    start.setDate(1);
   }
-  // month
-  return new Date(now.getFullYear(), now.getMonth(), 1);
+  return new Date(start.getTime() + offsetMs);
 }
 
-export async function getColdCallingStats(range: Range = 'week'): Promise<ColdCallingStats> {
-  const since = getRangeStart(range);
+const CALLABLE = ['new', 'retry', 'callback', 'nurturing', 'renewal', 'dormant'];
 
-  const [
-    callsMade,
-    dmConversations,
-    callbacksBooked,
-    siteVisitsBooked,
-    renewalOpps,
-    outcomesRaw,
-    callbackCount,
-    freshCount,
-    followUpCount,
-    recycleCount,
-    dormantCount,
-    callsToday,
-    callsWeek,
-  ] = await Promise.all([
-    // Total calls
-    prisma.coldCallAttempt.count({
-      where: { createdAt: { gte: since } },
-    }),
+/** Count of due leads in the given callStatuses — identical predicate to the queue. */
+async function dueCount(statuses: string[]): Promise<number> {
+  return prisma.lead.count({
+    where: {
+      deletedAt: null,
+      phone: { not: null },
+      callStatus: { in: statuses as never[] },
+      OR: [{ nextCallAt: null }, { nextCallAt: { lte: new Date() } }],
+    },
+  });
+}
 
-    // Decision maker conversations
-    prisma.coldCallAttempt.count({
-      where: { outcome: 'decision_maker_spoke', createdAt: { gte: since } },
-    }),
-
-    // Callbacks booked
-    prisma.coldCallAttempt.count({
-      where: { outcome: 'callback_booked', createdAt: { gte: since } },
-    }),
-
-    // Site visits booked
-    prisma.coldCallAttempt.count({
-      where: { outcome: 'site_visit_booked', createdAt: { gte: since } },
-    }),
-
-    // Contract renewal dates captured
-    prisma.coldCallAttempt.count({
-      where: { outcome: 'contract_renewal_date', createdAt: { gte: since } },
-    }),
-
-    // Outcome breakdown
-    prisma.$queryRaw<Array<{ outcome: string | null; count: bigint }>>`
-      SELECT outcome::text, COUNT(*)::bigint as count
-      FROM cold_call_attempts
-      WHERE "createdAt" >= ${since}
-      GROUP BY outcome
-    `,
-
-    // Queue depth: callbacks
-    prisma.task.count({
-      where: {
-        taskType: 'callback',
-        status: { in: ['not_started', 'in_progress', 'waiting'] },
-        deletedAt: null,
-        linkedLead: { isCallable: true, deletedAt: null },
-      },
-    }),
-
-    // Queue depth: fresh
-    prisma.lead.count({
-      where: {
-        isCallable: true,
-        stage: { in: ['new_lead', 'cold_call'] as never[] },
-        firstCalledAt: null,
-        phone: { not: null },
-        deletedAt: null,
-      },
-    }),
-
-    // Queue depth: follow-ups
-    prisma.task.count({
-      where: {
-        taskType: { in: ['follow_up_call', 'contract_renewal_follow_up'] as never[] },
-        status: { in: ['not_started', 'in_progress', 'waiting'] },
-        deletedAt: null,
-        linkedLead: {
-          isCallable: true,
-          stage: { in: ['follow_up_sequence', 'contact_when_contract_up'] as never[] },
-          deletedAt: null,
-        },
-      },
-    }),
-
-    // Queue depth: recycle
-    prisma.lead.count({
-      where: {
-        isCallable: true,
-        stage: 'cold_call',
-        firstCalledAt: { not: null },
-        nextCallAt: { lte: new Date() },
-        deletedAt: null,
-      },
-    }),
-
-    // Dormant
-    prisma.lead.count({
-      where: { stage: 'dormant', deletedAt: null },
-    }),
-
-    // Calls today / this week (range-independent header stats)
-    prisma.coldCallAttempt.count({ where: { createdAt: { gte: getRangeStart('today') } } }),
-    prisma.coldCallAttempt.count({ where: { createdAt: { gte: getRangeStart('week') } } }),
+async function queueDepth(): Promise<ColdCallingStats['queueDepth']> {
+  const [callbacks, fresh, followUps, recycle, dormant] = await Promise.all([
+    dueCount(['callback']),
+    dueCount(['new']),
+    dueCount(['nurturing', 'renewal']),
+    dueCount(['retry']),
+    dueCount(['dormant']),
   ]);
+  return { callbacks, fresh, followUps, recycle, dormant };
+}
+
+/** Per-call tallies, optionally scoped to one user. */
+async function tallies(range: Range, userId?: string) {
+  const since = ukRangeStart(range);
+  const scope = userId ? { userId } : {};
+  const [callsMade, dm, callbacks, siteVisits, renewals, outcomesRaw, callsToday, callsWeek, openCallbacks] =
+    await Promise.all([
+      prisma.coldCallAttempt.count({ where: { ...scope, createdAt: { gte: since } } }),
+      prisma.coldCallAttempt.count({ where: { ...scope, outcome: 'decision_maker_spoke', createdAt: { gte: since } } }),
+      prisma.coldCallAttempt.count({ where: { ...scope, outcome: 'callback_booked', createdAt: { gte: since } } }),
+      prisma.coldCallAttempt.count({ where: { ...scope, outcome: 'site_visit_booked', createdAt: { gte: since } } }),
+      prisma.coldCallAttempt.count({ where: { ...scope, outcome: 'contract_renewal_date', createdAt: { gte: since } } }),
+      userId
+        ? prisma.$queryRaw<Array<{ outcome: string | null; count: bigint }>>`
+            SELECT outcome::text, COUNT(*)::bigint as count FROM cold_call_attempts
+            WHERE "createdAt" >= ${since} AND "userId" = ${userId} GROUP BY outcome`
+        : prisma.$queryRaw<Array<{ outcome: string | null; count: bigint }>>`
+            SELECT outcome::text, COUNT(*)::bigint as count FROM cold_call_attempts
+            WHERE "createdAt" >= ${since} GROUP BY outcome`,
+      prisma.coldCallAttempt.count({ where: { ...scope, createdAt: { gte: ukRangeStart('today') } } }),
+      prisma.coldCallAttempt.count({ where: { ...scope, createdAt: { gte: ukRangeStart('week') } } }),
+      dueCount(['callback']),
+    ]);
 
   const outcomes: Record<string, number> = {};
-  for (const row of outcomesRaw) {
-    outcomes[row.outcome || 'unknown'] = Number(row.count);
-  }
+  for (const row of outcomesRaw) outcomes[row.outcome || 'unknown'] = Number(row.count);
 
   return {
     callsMade,
-    decisionMakerConversations: dmConversations,
-    callbacksBooked,
-    siteVisitsBooked,
-    contractRenewalOpportunities: renewalOpps,
+    decisionMakerConversations: dm,
+    callbacksBooked: callbacks,
+    siteVisitsBooked: siteVisits,
+    contractRenewalOpportunities: renewals,
     outcomes,
     callsToday,
     callsWeek,
-    openCallbacks: callbackCount,
-    queueDepth: {
-      callbacks: callbackCount,
-      fresh: freshCount,
-      followUps: followUpCount,
-      recycle: recycleCount,
-      dormant: dormantCount,
-    },
+    openCallbacks,
   };
 }
 
-// VA-scoped stats (only their own calls)
-export async function getVaStats(userId: string, range: Range = 'week'): Promise<Omit<ColdCallingStats, 'queueDepth'>> {
-  const since = getRangeStart(range);
+/** Admin (global) stats — uniform shape including queueDepth. */
+export async function getColdCallingStats(range: Range = 'week'): Promise<ColdCallingStats> {
+  const [t, depth] = await Promise.all([tallies(range), queueDepth()]);
+  return { ...t, queueDepth: depth };
+}
 
-  const [callsMade, dmConversations, callbacksBooked, siteVisitsBooked, renewalOpps, outcomesRaw, callsToday, callsWeek, openCallbacks] = await Promise.all([
-    prisma.coldCallAttempt.count({ where: { userId, createdAt: { gte: since } } }),
-    prisma.coldCallAttempt.count({ where: { userId, outcome: 'decision_maker_spoke', createdAt: { gte: since } } }),
-    prisma.coldCallAttempt.count({ where: { userId, outcome: 'callback_booked', createdAt: { gte: since } } }),
-    prisma.coldCallAttempt.count({ where: { userId, outcome: 'site_visit_booked', createdAt: { gte: since } } }),
-    prisma.coldCallAttempt.count({ where: { userId, outcome: 'contract_renewal_date', createdAt: { gte: since } } }),
-    prisma.$queryRaw<Array<{ outcome: string | null; count: bigint }>>`
-      SELECT outcome::text, COUNT(*)::bigint as count
-      FROM cold_call_attempts
-      WHERE "createdAt" >= ${since} AND "userId" = ${userId}
-      GROUP BY outcome
-    `,
-    prisma.coldCallAttempt.count({ where: { userId, createdAt: { gte: getRangeStart('today') } } }),
-    prisma.coldCallAttempt.count({ where: { userId, createdAt: { gte: getRangeStart('week') } } }),
-    prisma.task.count({ where: { taskType: 'callback', status: { in: ['not_started', 'in_progress', 'waiting'] }, deletedAt: null } }),
-  ]);
-
-  const outcomes: Record<string, number> = {};
-  for (const row of outcomesRaw) {
-    outcomes[row.outcome || 'unknown'] = Number(row.count);
-  }
-
-  return { callsMade, decisionMakerConversations: dmConversations, callbacksBooked, siteVisitsBooked, contractRenewalOpportunities: renewalOpps, outcomes, callsToday, callsWeek, openCallbacks };
+/** VA stats — SAME shape (per-call tallies scoped to the VA; global queue depth). */
+export async function getVaStats(userId: string, range: Range = 'week'): Promise<ColdCallingStats> {
+  const [t, depth] = await Promise.all([tallies(range, userId), queueDepth()]);
+  return { ...t, queueDepth: depth };
 }
