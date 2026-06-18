@@ -12,7 +12,7 @@
 import { addDays } from './time';
 
 /** The ONE field that decides which queue a lead is in. */
-export type CallStatus =
+export type LeadCallStatus =
   | 'new' // never called, has phone -> due now
   | 'retry' // attempted, no contact yet -> due at nextCallAt
   | 'callback' // promised callback at a set time -> due at nextCallAt
@@ -29,15 +29,15 @@ export const CALLABLE_STATUSES = [
   'nurturing',
   'renewal',
   'dormant',
-] as const satisfies readonly CallStatus[];
+] as const satisfies readonly LeadCallStatus[];
 
-export const TERMINAL_STATUSES = ['booked', 'dead'] as const satisfies readonly CallStatus[];
+export const TERMINAL_STATUSES = ['booked', 'dead'] as const satisfies readonly LeadCallStatus[];
 
-export function isCallableStatus(s: CallStatus): boolean {
-  return (CALLABLE_STATUSES as readonly CallStatus[]).includes(s);
+export function isCallableStatus(s: LeadCallStatus): boolean {
+  return (CALLABLE_STATUSES as readonly LeadCallStatus[]).includes(s);
 }
-export function isTerminalStatus(s: CallStatus): boolean {
-  return (TERMINAL_STATUSES as readonly CallStatus[]).includes(s);
+export function isTerminalStatus(s: LeadCallStatus): boolean {
+  return (TERMINAL_STATUSES as readonly LeadCallStatus[]).includes(s);
 }
 
 /**
@@ -57,7 +57,7 @@ export const CALL_PARAMS = {
 
 /** Minimal current state the engine needs (a slice of the Lead row). */
 export interface LeadCallState {
-  callStatus: CallStatus | null;
+  callStatus: LeadCallStatus | null;
   noAnswerAttempts: number;
   voicemailAttempts: number;
   gatekeeperAttempts: number;
@@ -89,7 +89,7 @@ export interface OutcomeInput {
 export type OutcomeEmail = 'gatekeeper' | 'callback' | 'send_info' | 'site_visit' | null;
 
 export interface OutcomeDecision {
-  callStatus: CallStatus;
+  callStatus: LeadCallStatus;
   nextCallAt: Date | null;
   /** Absolute new counter values (not deltas). */
   counters: {

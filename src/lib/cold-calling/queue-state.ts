@@ -8,7 +8,7 @@
  * they can never diverge.
  */
 
-import type { CallStatus } from './state';
+import type { LeadCallStatus } from './state';
 import { isCallableStatus, isTerminalStatus } from './state';
 import { isDue } from './time';
 
@@ -17,7 +17,7 @@ export type QueueBucket = 'callback' | 'renewal' | 'retry' | 'nurturing' | 'new'
 
 export interface QueueRow {
   id: string;
-  callStatus: CallStatus;
+  callStatus: LeadCallStatus;
   nextCallAt: Date | null;
 }
 

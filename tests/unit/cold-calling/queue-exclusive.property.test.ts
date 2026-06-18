@@ -1,10 +1,10 @@
 import { describe, test, expect } from 'vitest';
 import fc from 'fast-check';
 import { classify, BUCKET_PRIORITY, type QueueRow } from '@/lib/cold-calling/queue-state';
-import { CALLABLE_STATUSES, TERMINAL_STATUSES, isTerminalStatus, type CallStatus } from '@/lib/cold-calling/state';
+import { CALLABLE_STATUSES, TERMINAL_STATUSES, isTerminalStatus, type LeadCallStatus } from '@/lib/cold-calling/state';
 import { isDue } from '@/lib/cold-calling/time';
 
-const ALL_STATUSES: CallStatus[] = [...CALLABLE_STATUSES, ...TERMINAL_STATUSES];
+const ALL_STATUSES: LeadCallStatus[] = [...CALLABLE_STATUSES, ...TERMINAL_STATUSES];
 
 describe('property: a lead is in at most one queue, always a due one', () => {
   test('classify returns null or exactly one valid bucket; terminal always null; result always due', () => {
