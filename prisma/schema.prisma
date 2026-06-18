@@ -406,7 +406,8 @@ model Lead {
   removedFromQueueAt DateTime?
   dormantUntil       DateTime?
   // ── Redesign: single source of truth for the calling funnel (v2) ──
-  callStatus         LeadCallStatus?
+  // Defaults to `new` so a freshly created lead is never invisible to the queue.
+  callStatus         LeadCallStatus? @default(new)
 
   // ── Contact intelligence ────────────────────────────────
   decisionMakerName  String?
