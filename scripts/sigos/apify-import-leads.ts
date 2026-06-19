@@ -30,6 +30,13 @@ const SEARCHES = (argVal('--searches') ?? DEFAULT_SEARCHES).split(',').map((s) =
 const LOCATIONS = (argVal('--location') ?? 'Exeter, UK;Plymouth, UK').split(';').map((s) => s.trim()).filter(Boolean);
 const PER_SEARCH = Number(argVal('--limit') ?? 25);
 
+// Junk filters: Google Maps over-returns non-prospects for broad searches.
+const CATEGORY_BLOCK = [
+  'parking', 'auto broker', 'personal trainer', 'massage', 'martial arts',
+  'self defense', 'self-defense', 'garden center', 'garden centre',
+];
+const NAME_BLOCK = ['webuyanycar', 'yourparkingspace'];
+
 function normName(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -72,13 +79,20 @@ async function main() {
   let dupExisting = 0;
   let dupBatch = 0;
   let noPhone = 0;
+  let offTarget = 0;
 
   for (const p of places) {
     const name = (p.title || '').trim();
     const phone = (p.phone || p.phoneUnformatted || '').trim();
     if (!name) continue;
     if (!phone) { noPhone++; continue; }
+    const cat = (p.categoryName || '').toLowerCase();
     const nk = normName(name);
+    // Drop non-prospect categories (parking, brokers, sole-trader PTs) and known chains.
+    if (CATEGORY_BLOCK.some((b) => cat.includes(b)) || NAME_BLOCK.some((b) => nk.includes(b))) {
+      offTarget++;
+      continue;
+    }
     const pk = phoneDigits(phone);
     if (seenNames.has(nk) || (pk && seenPhones.has(pk))) { dupExisting++; continue; }
     // within-batch dedupe
@@ -95,7 +109,7 @@ async function main() {
   }
 
   console.log(`\nNew to import: ${toCreate.length}`);
-  console.log(`Skipped — already in OS: ${dupExisting} · duplicate in batch: ${dupBatch} · no phone: ${noPhone}`);
+  console.log(`Skipped — already in OS: ${dupExisting} · duplicate in batch: ${dupBatch} · no phone: ${noPhone} · off-target: ${offTarget}`);
   console.log('\nSample of new leads:');
   for (const l of toCreate.slice(0, 12)) {
     console.log(`  ${l.companyName.slice(0, 34).padEnd(36)} ${l.phone.padEnd(16)} ${l.sector ?? ''}`);
