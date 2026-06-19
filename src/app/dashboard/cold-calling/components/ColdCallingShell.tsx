@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Phone, RefreshCw, List, X, ChevronDown, ChevronUp, UserPlus } from 'lucide-react';
 import type { ColdCallingLead, ColdCallingStats, DiallerState, OutcomePayload, QueueResponse } from '@/lib/cold-calling/types';
 import { LeadContextPanel } from './LeadContextPanel';
-import { CallPanel } from './CallPanel';
+import { BrowserDiallerPanel } from './BrowserDiallerPanel';
 import { OutcomePanel } from './OutcomePanel';
 import { QueueSidebar } from './QueueSidebar';
 import { AdminStatsPanel } from './AdminStatsPanel';
@@ -13,7 +13,9 @@ interface CallSession {
   state: DiallerState;
   activeLead: ColdCallingLead | null;
   attemptId: string | null;
+  twilioCallSid: string | null;
   selectedOutcome: string | null;
+  durationSeconds: number;
   error?: string;
 }
 
@@ -25,6 +27,9 @@ interface Props {
   statsRange: 'today' | 'week' | 'month';
   isVa: boolean;
   onSelectLead: (lead: ColdCallingLead) => void;
+  onStartCall: () => void;
+  onHangUp: () => void;
+  onCallStateChange: (state: 'ringing' | 'in_call' | 'ended', callSid?: string) => void;
   onOutcomeSubmit: (payload: OutcomePayload) => Promise<void>;
   onStatsRangeChange: (range: 'today' | 'week' | 'month') => void;
   onNewLeadClick: () => void;
@@ -36,26 +41,39 @@ export function ColdCallingShell({
   queue,
   queueLoading,
   stats,
+  statsRange,
   isVa,
   onSelectLead,
+  onStartCall,
+  onHangUp,
+  onCallStateChange,
   onOutcomeSubmit,
+  onStatsRangeChange,
   onNewLeadClick,
   onRefresh,
 }: Props) {
-  const { state, activeLead, error } = session;
+  const { state, activeLead, attemptId, durationSeconds, error } = session;
   const [mobileQueueOpen, setMobileQueueOpen] = useState(false);
   const [mobileOutcomeOpen, setMobileOutcomeOpen] = useState(false);
   const [leadDetailsOpen, setLeadDetailsOpen] = useState(false);
 
+  const canLog = state === 'ended' || (state === 'ready' && !activeLead?.phone);
+  const isActiveCall = state === 'dialling' || state === 'ringing' || state === 'in_call';
   const isSaving = state === 'saving_outcome';
-  // The VA calls on their own phone, so the outcome is always loggable once a
-  // lead is active (no in-app dialler gating it behind a "call ended" state).
-  const canLog = !!activeLead && !isSaving;
+  const isCallEnded = state === 'ended';
 
-  // Close lead details + mobile outcome sheet when the active lead changes.
+  // Auto-open outcome sheet on mobile when call ends
+  useEffect(() => {
+    if (isCallEnded) {
+      setMobileOutcomeOpen(true);
+    } else {
+      setMobileOutcomeOpen(false);
+    }
+  }, [isCallEnded]);
+
+  // Close lead details when a new lead is selected
   useEffect(() => {
     setLeadDetailsOpen(false);
-    setMobileOutcomeOpen(false);
   }, [activeLead?.id]);
 
   const handleOutcomeSubmit = async (payload: OutcomePayload) => {
@@ -132,7 +150,7 @@ export function ColdCallingShell({
               <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
-                  style={{ background: 'color-mix(in srgb, var(--brand-blue) 10%, transparent)', color: 'var(--brand-blue)' }}
+                  style={{ background: isActiveCall ? '#22c55e18' : 'color-mix(in srgb, var(--brand-blue) 10%, transparent)', color: isActiveCall ? '#16a34a' : 'var(--brand-blue)' }}
                 >
                   {activeLead.companyName.charAt(0).toUpperCase()}
                 </div>
@@ -162,18 +180,25 @@ export function ColdCallingShell({
               </div>
             )}
 
-            {/* Call panel — number + start (VA dials on own phone) */}
+            {/* Dialler — ALWAYS visible, call button here */}
             <div className="flex-shrink-0 px-4 pb-4">
-              <CallPanel lead={activeLead} />
+              <BrowserDiallerPanel
+                lead={activeLead}
+                state={state}
+                durationSeconds={durationSeconds}
+                onStartCall={onStartCall}
+                onHangUp={onHangUp}
+                onCallStateChange={onCallStateChange}
+                attemptId={attemptId}
+              />
             </div>
 
-            {/* Log outcome — always available */}
-            {!mobileOutcomeOpen && (
+            {/* After call ends: outcome shortcut row */}
+            {isCallEnded && !mobileOutcomeOpen && (
               <div className="flex-shrink-0 px-4 pb-4">
                 <button
                   onClick={() => setMobileOutcomeOpen(true)}
-                  disabled={!canLog}
-                  className="w-full py-3 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-50"
+                  className="w-full py-3 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
                   style={{ background: 'color-mix(in srgb, var(--brand-blue) 15%, transparent)', color: 'var(--brand-blue)', border: '1px solid color-mix(in srgb, var(--brand-blue) 30%, transparent)' }}
                 >
                   Log Outcome
@@ -198,23 +223,29 @@ export function ColdCallingShell({
           />
         </div>
 
-        {/* Centre: Lead context + call panel */}
+        {/* Centre: Lead context + dialler */}
         <div className="flex-1 min-w-0 overflow-y-auto flex flex-col">
           <div className="flex-shrink-0">
             <LeadContextPanel lead={activeLead} diallerState={state} />
           </div>
-          {activeLead && (
-            <div className="flex-shrink-0 px-5 pb-4">
-              <CallPanel lead={activeLead} />
-            </div>
-          )}
+          <div className="flex-shrink-0 px-5 pb-4">
+            <BrowserDiallerPanel
+              lead={activeLead}
+              state={state}
+              durationSeconds={durationSeconds}
+              onStartCall={onStartCall}
+              onHangUp={onHangUp}
+              onCallStateChange={onCallStateChange}
+              attemptId={attemptId}
+            />
+          </div>
         </div>
 
         {/* Right: Outcome panel */}
         <div className="w-80 flex-shrink-0 overflow-y-auto" style={{ borderLeft: '1px solid var(--border)' }}>
           <OutcomePanel
             lead={activeLead}
-            disabled={!canLog}
+            disabled={!canLog || isSaving}
             saving={isSaving}
             onSubmit={onOutcomeSubmit}
           />
@@ -250,7 +281,7 @@ export function ColdCallingShell({
         </div>
       )}
 
-      {/* ── MOBILE: Outcome bottom sheet ── */}
+      {/* ── MOBILE: Outcome bottom sheet (auto-opens after call ends) ── */}
       {mobileOutcomeOpen && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden">
           <div className="absolute inset-0 bg-black" onClick={() => setMobileOutcomeOpen(false)} />
@@ -269,7 +300,7 @@ export function ColdCallingShell({
             <div className="overflow-y-auto flex-1">
               <OutcomePanel
                 lead={activeLead}
-                disabled={!canLog}
+                disabled={!canLog || isSaving}
                 saving={isSaving}
                 onSubmit={handleOutcomeSubmit}
               />

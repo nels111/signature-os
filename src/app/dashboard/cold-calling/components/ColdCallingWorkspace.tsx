@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import type { ColdCallingLead, ColdCallingStats, DiallerState, OutcomePayload, QueueResponse } from '@/lib/cold-calling/types';
 import { ColdCallingShell } from './ColdCallingShell';
@@ -12,7 +12,9 @@ interface CallSession {
   state: DiallerState;
   activeLead: ColdCallingLead | null;
   attemptId: string | null;
+  twilioCallSid: string | null;
   selectedOutcome: string | null;
+  durationSeconds: number;
   error?: string;
 }
 
@@ -20,21 +22,28 @@ export function ColdCallingWorkspace() {
   const { data: session } = useSession();
   const isVa = session?.user?.role === 'va';
 
+  // Queue state
   const [queue, setQueue] = useState<QueueResponse | null>(null);
   const [queueLoading, setQueueLoading] = useState(true);
 
+  // Stats state
   const [stats, setStats] = useState<ColdCallingStats | null>(null);
   const [statsRange, setStatsRange] = useState<'today' | 'week' | 'month'>('week');
 
+  // Call session state machine
   const [callSession, setCallSession] = useState<CallSession>({
     state: 'loading',
     activeLead: null,
     attemptId: null,
+    twilioCallSid: null,
     selectedOutcome: null,
+    durationSeconds: 0,
   });
 
   const [newLeadOpen, setNewLeadOpen] = useState(false);
   const [newLeadLoading, setNewLeadLoading] = useState(false);
+
+  const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Fetch queue ────────────────────────────────────────────────────────────
   const fetchQueue = useCallback(async () => {
@@ -43,6 +52,7 @@ export function ColdCallingWorkspace() {
       if (!res.ok) throw new Error('Queue fetch failed');
       const data: QueueResponse = await res.json();
       setQueue(data);
+      // Auto-select first available lead in priority order if none is active
       const autoLead =
         data.activeLead ??
         data.queues.callbacks[0] ??
@@ -55,7 +65,7 @@ export function ColdCallingWorkspace() {
         state: prev.state === 'loading' ? 'ready' : prev.state,
         activeLead: prev.activeLead ?? autoLead,
       }));
-    } catch {
+    } catch (err) {
       setCallSession(prev => ({ ...prev, state: 'error', error: 'Failed to load queue' }));
     } finally {
       setQueueLoading(false);
@@ -82,11 +92,102 @@ export function ColdCallingWorkspace() {
       state: 'ready',
       activeLead: lead,
       attemptId: null,
+      twilioCallSid: null,
       selectedOutcome: null,
+      durationSeconds: 0,
     }));
   }, []);
 
-  // ── Log outcome (creates the attempt on submit; VA calls from their own phone) ─
+  // ── Start call ────────────────────────────────────────────────────────────
+  const handleStartCall = useCallback(async () => {
+    const lead = callSession.activeLead;
+    if (!lead) return;
+
+    setCallSession(prev => ({ ...prev, state: 'dialling', error: undefined }));
+
+    try {
+      // Create attempt record
+      const res = await fetch('/api/cold-calling/calls/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      if (!res.ok) throw new Error('Failed to start call');
+      const { attemptId } = await res.json();
+
+      setCallSession(prev => ({ ...prev, attemptId, state: 'ringing' }));
+
+      // Twilio browser dialler handled by BrowserDiallerPanel — it calls back with state updates
+    } catch (err) {
+      setCallSession(prev => ({
+        ...prev,
+        state: 'error',
+        error: err instanceof Error ? err.message : 'Failed to start call',
+      }));
+    }
+  }, [callSession.activeLead]);
+
+  // ── Call state callbacks from dialler ────────────────────────────────────
+  const handleCallStateChange = useCallback((state: 'ringing' | 'in_call' | 'ended', callSid?: string) => {
+    setCallSession(prev => {
+      const next = { ...prev };
+      if (state === 'ringing') next.state = 'ringing';
+      if (state === 'in_call') {
+        next.state = 'in_call';
+        if (callSid) {
+          next.twilioCallSid = callSid;
+          // Attach SID to attempt
+          if (prev.attemptId) {
+            fetch(`/api/cold-calling/calls/${prev.attemptId}/twilio`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ twilioCallSid: callSid, status: 'in_progress', startedAt: new Date().toISOString() }),
+            }).catch(console.error);
+          }
+        }
+        // Start duration timer
+        let secs = 0;
+        durationRef.current = setInterval(() => {
+          secs++;
+          setCallSession(p => ({ ...p, durationSeconds: secs }));
+        }, 1000);
+      }
+      if (state === 'ended') {
+        next.state = 'ended';
+        if (durationRef.current) clearInterval(durationRef.current);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleHangUp = useCallback(() => {
+    handleCallStateChange('ended');
+  }, [handleCallStateChange]);
+
+  // ── Log outcome ───────────────────────────────────────────────────────────
+  const handleOutcomeSubmit = useCallback(async (payload: OutcomePayload) => {
+    if (!callSession.attemptId) {
+      // No attempt was created (manual log without dialler) — create one now
+      const lead = callSession.activeLead;
+      if (!lead) return;
+      try {
+        const res = await fetch('/api/cold-calling/calls/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ leadId: lead.id }),
+        });
+        if (!res.ok) throw new Error('Failed to create attempt');
+        const { attemptId } = await res.json();
+        setCallSession(prev => ({ ...prev, attemptId }));
+        await submitOutcome(attemptId, payload);
+      } catch (err) {
+        setCallSession(prev => ({ ...prev, error: err instanceof Error ? err.message : 'Failed' }));
+      }
+      return;
+    }
+    await submitOutcome(callSession.attemptId, payload);
+  }, [callSession.attemptId, callSession.activeLead]);
+
   const submitOutcome = useCallback(async (attemptId: string, payload: OutcomePayload) => {
     setCallSession(prev => ({ ...prev, state: 'saving_outcome' }));
     try {
@@ -101,45 +202,29 @@ export function ColdCallingWorkspace() {
       }
       const data = await res.json();
 
+      // Advance to next lead
       setCallSession({
-        state: 'ready',
+        state: data.nextLead ? 'ready' : 'ready',
         activeLead: data.nextLead ?? null,
         attemptId: null,
+        twilioCallSid: null,
         selectedOutcome: null,
+        durationSeconds: 0,
       });
 
+      // Refresh queue and stats silently
       fetchQueue();
       fetchStats(statsRange);
+
       window.dispatchEvent(new CustomEvent('sigos:call-logged'));
     } catch (err) {
       setCallSession(prev => ({
         ...prev,
-        state: 'ready',
+        state: 'ended',
         error: err instanceof Error ? err.message : 'Failed to save outcome',
       }));
     }
   }, [fetchQueue, fetchStats, statsRange]);
-
-  const handleOutcomeSubmit = useCallback(async (payload: OutcomePayload) => {
-    if (callSession.attemptId) {
-      await submitOutcome(callSession.attemptId, payload);
-      return;
-    }
-    const lead = callSession.activeLead;
-    if (!lead) return;
-    try {
-      const res = await fetch('/api/cold-calling/calls/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: lead.id }),
-      });
-      if (!res.ok) throw new Error('Failed to create attempt');
-      const { attemptId } = await res.json();
-      await submitOutcome(attemptId, payload);
-    } catch (err) {
-      setCallSession(prev => ({ ...prev, error: err instanceof Error ? err.message : 'Failed' }));
-    }
-  }, [callSession.attemptId, callSession.activeLead, submitOutcome]);
 
   const handleCreateLead = async (data: LeadFormData) => {
     setNewLeadLoading(true);
@@ -150,7 +235,9 @@ export function ColdCallingWorkspace() {
         body: JSON.stringify({ ...data, stage: 'cold_call', source: data.source || 'cold_call' }),
       });
       if (!res.ok) throw new Error('Failed to create lead');
+      const lead = await res.json();
       setNewLeadOpen(false);
+      // Clear active lead so fetchQueue auto-selects the new one
       setCallSession(prev => ({ ...prev, activeLead: null }));
       await fetchQueue();
     } catch (err) {
@@ -162,29 +249,32 @@ export function ColdCallingWorkspace() {
 
   return (
     <>
-      <ColdCallingShell
-        session={callSession}
-        queue={queue}
-        queueLoading={queueLoading}
-        stats={stats}
-        statsRange={statsRange}
-        isVa={isVa}
-        onSelectLead={selectLead}
-        onOutcomeSubmit={handleOutcomeSubmit}
-        onStatsRangeChange={setStatsRange}
-        onNewLeadClick={() => setNewLeadOpen(true)}
-        onRefresh={() => { fetchQueue(); fetchStats(statsRange); }}
-      />
-      {newLeadOpen && (
-        <Modal open={newLeadOpen} title="Add Lead to Queue" onClose={() => setNewLeadOpen(false)}>
-          <LeadForm
-            initialData={{ stage: 'cold_call', source: 'cold_call' }}
-            onSubmit={handleCreateLead}
-            onCancel={() => setNewLeadOpen(false)}
-            loading={newLeadLoading}
-          />
-        </Modal>
-      )}
+    <ColdCallingShell
+      session={callSession}
+      queue={queue}
+      queueLoading={queueLoading}
+      stats={stats}
+      statsRange={statsRange}
+      isVa={isVa}
+      onSelectLead={selectLead}
+      onStartCall={handleStartCall}
+      onHangUp={handleHangUp}
+      onCallStateChange={handleCallStateChange}
+      onOutcomeSubmit={handleOutcomeSubmit}
+      onStatsRangeChange={setStatsRange}
+      onNewLeadClick={() => setNewLeadOpen(true)}
+      onRefresh={() => { fetchQueue(); fetchStats(statsRange); }}
+    />
+    {newLeadOpen && (
+      <Modal open={newLeadOpen} title="Add Lead to Queue" onClose={() => setNewLeadOpen(false)}>
+        <LeadForm
+          initialData={{ stage: 'cold_call', source: 'cold_call' }}
+          onSubmit={handleCreateLead}
+          onCancel={() => setNewLeadOpen(false)}
+          loading={newLeadLoading}
+        />
+      </Modal>
+    )}
     </>
   );
 }
