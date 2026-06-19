@@ -25,7 +25,6 @@ interface Props {
   statsRange: 'today' | 'week' | 'month';
   isVa: boolean;
   onSelectLead: (lead: ColdCallingLead) => void;
-  onStartCall: () => void;
   onOutcomeSubmit: (payload: OutcomePayload) => Promise<void>;
   onStatsRangeChange: (range: 'today' | 'week' | 'month') => void;
   onNewLeadClick: () => void;
@@ -39,12 +38,11 @@ export function ColdCallingShell({
   stats,
   isVa,
   onSelectLead,
-  onStartCall,
   onOutcomeSubmit,
   onNewLeadClick,
   onRefresh,
 }: Props) {
-  const { state, activeLead, attemptId, error } = session;
+  const { state, activeLead, error } = session;
   const [mobileQueueOpen, setMobileQueueOpen] = useState(false);
   const [mobileOutcomeOpen, setMobileOutcomeOpen] = useState(false);
   const [leadDetailsOpen, setLeadDetailsOpen] = useState(false);
@@ -53,7 +51,6 @@ export function ColdCallingShell({
   // The VA calls on their own phone, so the outcome is always loggable once a
   // lead is active (no in-app dialler gating it behind a "call ended" state).
   const canLog = !!activeLead && !isSaving;
-  const callStarted = !!attemptId;
 
   // Close lead details + mobile outcome sheet when the active lead changes.
   useEffect(() => {
@@ -135,7 +132,7 @@ export function ColdCallingShell({
               <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
-                  style={{ background: callStarted ? '#22c55e18' : 'color-mix(in srgb, var(--brand-blue) 10%, transparent)', color: callStarted ? '#16a34a' : 'var(--brand-blue)' }}
+                  style={{ background: 'color-mix(in srgb, var(--brand-blue) 10%, transparent)', color: 'var(--brand-blue)' }}
                 >
                   {activeLead.companyName.charAt(0).toUpperCase()}
                 </div>
@@ -167,7 +164,7 @@ export function ColdCallingShell({
 
             {/* Call panel — number + start (VA dials on own phone) */}
             <div className="flex-shrink-0 px-4 pb-4">
-              <CallPanel lead={activeLead} attemptId={attemptId} onStartCall={onStartCall} />
+              <CallPanel lead={activeLead} />
             </div>
 
             {/* Log outcome — always available */}
@@ -208,7 +205,7 @@ export function ColdCallingShell({
           </div>
           {activeLead && (
             <div className="flex-shrink-0 px-5 pb-4">
-              <CallPanel lead={activeLead} attemptId={attemptId} onStartCall={onStartCall} />
+              <CallPanel lead={activeLead} />
             </div>
           )}
         </div>

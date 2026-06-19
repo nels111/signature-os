@@ -86,30 +86,7 @@ export function ColdCallingWorkspace() {
     }));
   }, []);
 
-  // ── Start call: open an attempt to log against (VA dials on their own phone) ─
-  const handleStartCall = useCallback(async () => {
-    const lead = callSession.activeLead;
-    if (!lead || callSession.attemptId) return;
-
-    setCallSession(prev => ({ ...prev, error: undefined }));
-    try {
-      const res = await fetch('/api/cold-calling/calls/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: lead.id }),
-      });
-      if (!res.ok) throw new Error('Failed to start call');
-      const { attemptId } = await res.json();
-      setCallSession(prev => ({ ...prev, attemptId }));
-    } catch (err) {
-      setCallSession(prev => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Failed to start call',
-      }));
-    }
-  }, [callSession.activeLead, callSession.attemptId]);
-
-  // ── Log outcome (creates an attempt first if one wasn't started) ────────────
+  // ── Log outcome (creates the attempt on submit; VA calls from their own phone) ─
   const submitOutcome = useCallback(async (attemptId: string, payload: OutcomePayload) => {
     setCallSession(prev => ({ ...prev, state: 'saving_outcome' }));
     try {
@@ -193,7 +170,6 @@ export function ColdCallingWorkspace() {
         statsRange={statsRange}
         isVa={isVa}
         onSelectLead={selectLead}
-        onStartCall={handleStartCall}
         onOutcomeSubmit={handleOutcomeSubmit}
         onStatsRangeChange={setStatsRange}
         onNewLeadClick={() => setNewLeadOpen(true)}
