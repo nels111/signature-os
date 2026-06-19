@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { fetchHoursSheet } from '@/lib/dropbox-hours'
+import { syncSitesFromSheet } from '@/lib/sites-sync'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -101,10 +102,21 @@ export async function POST() {
     }
   }
 
+  // Reconcile Site records from the sheet (create/update/deactivate) — moved out
+  // of GET /api/sites so reads have no side-effects. Best-effort: a failure here
+  // does not fail the sheet-row sync.
+  let siteSync = null
+  try {
+    siteSync = await syncSitesFromSheet({ sheetData: sheet })
+  } catch (err) {
+    errors.push({ row: '__site_sync__', error: err instanceof Error ? err.message : String(err) })
+  }
+
   return NextResponse.json({
     ok: true,
     upserted,
     linked,
+    siteSync,
     totals: sheet.totals,
     fetchedAt: sheet.fetchedAt,
     errors: errors.length > 0 ? errors : undefined,

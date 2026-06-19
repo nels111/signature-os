@@ -12,6 +12,7 @@
 
 import { fetchHoursSheet } from '../src/lib/dropbox-hours'
 import { prisma } from '../src/lib/db'
+import { syncSitesFromSheet } from '../src/lib/sites-sync'
 
 const LOG_TAG = '[sync-hours-sheet]'
 
@@ -103,6 +104,16 @@ async function run() {
   }
 
   log(`auto-linked ${linked} new sites`)
+
+  // Reconcile Site records (create / update cellTier+active / deactivate) — this
+  // used to run as a side-effect of GET /api/sites; now it runs here in the cron.
+  try {
+    const s = await syncSitesFromSheet({ sheetData: sheet })
+    log(`site reconcile: +${s.created} new, ~${s.updated} updated, -${s.deactivated} deactivated, ${s.linked} linked`)
+  } catch (err) {
+    log(`ERROR: site reconcile failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
   log(`totals: ${sheet.totals.activeContracts} active, ${sheet.totals.weeklyHours.toFixed(1)} hrs/wk, £${sheet.totals.weeklyEarnings.toFixed(2)}/wk`)
   log('sync complete')
   await prisma.$disconnect()
