@@ -29,7 +29,10 @@ const NELSON_SMS = process.env.NELSON_WA_NUMBER || '';
 const NICK_SMS = process.env.NICK_WA_NUMBER || '';
 
 const STAFF_USER_IDS = [NELSON_ID, NICK_ID].filter(Boolean);
-const STAFF_SMS = [NELSON_SMS, NICK_SMS].filter(Boolean);
+// SMS recipients. Defaults to both; set ANSWERING_SMS_TO_NICK=false to send SMS to Nelson only
+// (e.g. while the answering line is still being tuned). Bell + push are unaffected.
+const SMS_TO_NICK = process.env.ANSWERING_SMS_TO_NICK !== 'false';
+const STAFF_SMS = [NELSON_SMS, ...(SMS_TO_NICK ? [NICK_SMS] : [])].filter(Boolean);
 
 interface LeadMatch { id: string; companyName: string; ownerId: string }
 interface ContactMatch { id: string; firstName: string; lastName: string }
