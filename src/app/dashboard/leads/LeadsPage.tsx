@@ -34,6 +34,7 @@ const SOURCE_LABELS: Record<string, string> = {
   partner: 'Partner',
   mark_walker: 'Partner',   // legacy — display same as partner
   direct_mail: 'Direct Mail',
+  inbound_call: 'Inbound Call',
   other: 'Other',
 };
 

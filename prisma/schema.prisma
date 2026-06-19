@@ -25,6 +25,7 @@ enum LeadSource {
   partner
   linkedin
   direct_mail
+  inbound_call  // captured by the 24/7 ElevenLabs answering service
   other
 }
 

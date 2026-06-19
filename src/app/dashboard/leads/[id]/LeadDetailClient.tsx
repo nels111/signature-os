@@ -57,6 +57,7 @@ const SOURCE_LABELS: Record<string, string> = {
   partner: 'Partner',
   mark_walker: 'Partner',   // legacy
   direct_mail: 'Direct Mail',
+  inbound_call: 'Inbound Call',
   other: 'Other',
 };
 
@@ -69,6 +70,7 @@ const SOURCE_VARIANTS: Record<string, 'default' | 'success' | 'warning' | 'dange
   partner: 'success',
   mark_walker: 'success',   // legacy
   direct_mail: 'default',
+  inbound_call: 'success',
   other: 'default',
 };
 

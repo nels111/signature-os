@@ -124,6 +124,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/q/track/') ||
     // Twilio webhooks come from Twilio's servers (no Origin/session cookie)
     pathname.startsWith('/api/webhooks/twilio/') ||
+    // ElevenLabs answering-service webhook (validated by HMAC/shared-secret in the route)
+    pathname.startsWith('/api/webhooks/elevenlabs/') ||
     // Public website agent — cross-origin POST from signature-cleans.co.uk
     pathname.startsWith('/api/agent/')
   ) {
