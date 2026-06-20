@@ -58,3 +58,10 @@ credentials.json
 
 # generated PDF artefacts
 /generated-quotes/
+
+# build artifacts / deploy backups (never commit, keep out of build graph)
+_bt-*/
+.next-build/
+.next.bak-*/
+.next.broken-*/
+.next.preswap-*/

@@ -139,6 +139,31 @@ export async function POST(request: NextRequest) {
   }
 
   const data = parseAnsweringServicePayload(json);
+
+  // ── Junk-call guard ─────────────────────────────────────────────────────
+  // A genuine enquiry leaves at least one collected detail. Hang-ups, misdials
+  // and wrong numbers still fire a post_call_transcription event — short, with
+  // nothing collected. Skip those entirely: no lead, no activity, no SMS.
+  // Floor is overridable via ANSWERING_MIN_CALL_SECS (default 15s).
+  const MIN_CALL_SECS = Number(process.env.ANSWERING_MIN_CALL_SECS ?? 15);
+  const collectedDetails = [
+    data.callerName,
+    data.companyName,
+    data.phone,
+    data.email,
+    data.location,
+    data.serviceType,
+    data.messageNotes,
+  ].filter(Boolean);
+  const tooShort = data.durationSecs == null || data.durationSecs < MIN_CALL_SECS;
+  if (collectedDetails.length === 0 && tooShort) {
+    console.info('[answering-service] skipped empty/short call', {
+      conversationId: data.conversationId,
+      durationSecs: data.durationSecs,
+    });
+    return NextResponse.json({ ok: true, skipped: 'no_content' }, { status: 200 });
+  }
+
   const phone = resolvedPhone(data);
   const pd = phoneDigits(phone);
   const email = normEmail(data.email);

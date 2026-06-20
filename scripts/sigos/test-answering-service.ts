@@ -131,6 +131,42 @@ async function main() {
   check('D: non-transcription event ignored 200', resD.status === 200 && bodyD.ignored === 'call_initiation', bodyD);
   check('D: no lead created for ignored event', afterD === before, { before, afterD });
 
+  // ── Scenario E: junk/empty call (hang-up, no details) → skipped, NO lead ──
+  const beforeE = await prisma.lead.count();
+  const emptyCall = {
+    type: 'post_call_transcription',
+    data: {
+      agent_id: 'agent_test',
+      conversation_id: `${MARK}_conv_empty_${Date.now()}`,
+      metadata: { call_duration_secs: 3, phone_call: { direction: 'inbound', external_number: '+447000000123' } },
+      analysis: { transcript_summary: '', call_successful: 'failure', data_collection_results: {} },
+    },
+  };
+  const resE = await POST(signedRequest(emptyCall));
+  const bodyE = await resE.json();
+  const afterE = await prisma.lead.count();
+  check('E: short empty call skipped 200', resE.status === 200 && bodyE.skipped === 'no_content', bodyE);
+  check('E: NO lead created for empty call', afterE === beforeE, { beforeE, afterE });
+
+  // ── Scenario F: short call BUT details collected → still processed (lead) ──
+  const fPhone = `+44770091${String(Date.now()).slice(-4)}`;
+  const shortWithDetails = {
+    type: 'post_call_transcription',
+    data: {
+      agent_id: 'agent_test',
+      conversation_id: `${MARK}_conv_shortok_${Date.now()}`,
+      metadata: { call_duration_secs: 4, phone_call: { direction: 'inbound', external_number: fPhone } },
+      analysis: {
+        transcript_summary: 'quick but gave details',
+        call_successful: 'success',
+        data_collection_results: { caller_name: { value: 'Quick Caller' }, company_name: { value: `${MARK} ShortOK Ltd` }, phone_number: { value: fPhone } },
+      },
+    },
+  };
+  const resF = await POST(signedRequest(shortWithDetails));
+  const bodyF = await resF.json();
+  check('F: short call WITH details still processed', resF.status === 200 && bodyF.route === 'new_enquiry' && !!bodyF.leadId, bodyF);
+
   await cleanup();
 
   console.log(`\n=== ${pass} passed · ${fail} failed ===`);

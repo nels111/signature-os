@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 const pkg = require('./package.json') as { version?: string };
 
 const nextConfig: NextConfig = {
+  // distDir is env-driven so a production build can be written to a staging
+  // folder (NEXT_BUILD_DIR=.next-build) and atomically swapped in, never
+  // corrupting the live .next. At runtime the var is unset, so it stays '.next'.
+  distDir: process.env.NEXT_BUILD_DIR || '.next',
   eslint: { ignoreDuringBuilds: true },
   serverExternalPackages: ["pg", "bcryptjs"],
 
